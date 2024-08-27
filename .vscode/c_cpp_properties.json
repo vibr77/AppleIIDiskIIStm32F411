@@ -1,0 +1,25 @@
+{
+  "configurations": [
+    {
+      "name": "STM32",
+      "includePath": [
+        "Core/Inc",
+        "Drivers/CMSIS/Device/ST/STM32F4xx/Include",
+        "Drivers/CMSIS/Include",
+        "Drivers/STM32F4xx_HAL_Driver/Inc",
+        "Drivers/STM32F4xx_HAL_Driver/Inc/Legacy",
+        "FATFS/App",
+        "FATFS/Target",
+        "Middlewares/Third_Party/FatFs/src",
+        "Middlewares/Third_Party/cJSON/",
+        "Middlewares/Third_Party/ssd1306"
+      ],
+      "defines": [
+        "STM32F411xE",
+        "USE_HAL_DRIVER"
+      ],
+      "compilerPath": "/Applications/ArmGNUToolchain/13.2.Rel1/arm-none-eabi/bin/arm-none-eabi-gcc"
+    }
+  ],
+  "version": 4
+}
