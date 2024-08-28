@@ -160,6 +160,7 @@ void initScreen(){
   ssd1306_Clear();
   ssd1306_SetColor(White);
   displayStringAtPosition(30,3*9,"SmartDiskII");
+  ssd1306_UpdateScreen();
 }
 
 

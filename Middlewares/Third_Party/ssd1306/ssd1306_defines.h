@@ -17,6 +17,6 @@
 #define SSD1306_ADDRESS    0x3C   // I2C address display
 #define SSD1306_128X64            // SSD1306_128X32 or SSD1306_128X64
 #define SSD1306_USE_DMA       1   // 0: not used I2C DMA mode, 1: used I2C DMA mode
-#define SSD1306_CONTUPDATE    1   // 0: continue update mode disable, 1: continue update mode enable (only DMA MODE)
+#define SSD1306_CONTUPDATE    0   // 0: continue update mode disable, 1: continue update mode enable (only DMA MODE)
 
 #endif /* SSD1306_DEFINES_H_ */

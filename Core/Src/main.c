@@ -308,13 +308,13 @@ void TIM3_IRQHandler(void){
     TIM3->SR &= ~TIM_SR_UIF; 
     //RD_DATA_GPIO_Port->BSRR=1; 
     RD_DATA_GPIO_Port->BSRR=nextBit;                      // start by outputing the nextBit and then due the internal cooking for the next one
-
+    //HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_SET);
     bytePtr=bitCounter/8;
     bitPtr=bitCounter%8;
     nextBit=(*(bbPtr+bytePtr)>>(7-bitPtr) ) & 1;          // Assuming it is on GPIO PORT B and Pin 0 (0x1 Set and 0x01 << Reset)
     
     // Looking for WeakBit
-    
+  /*  
     if (nextBit==0){
       if (++zeroBits>2){
         nextBit=fakeBitTankInt[fakeBitTankPosition] & 1;    // 30% of fakebit in the buffer as per AppleSauce reco
@@ -325,7 +325,7 @@ void TIM3_IRQHandler(void){
     }else{
       zeroBits=0;
     }
-    
+   */ 
   
 
 
@@ -337,6 +337,7 @@ void TIM3_IRQHandler(void){
                                  // Clear the overflow interrupt 
   }else if (TIM3->SR & TIM_SR_CC1IF){                     // Pulse compare interrrupt on Channel 1
     RD_DATA_GPIO_Port->BSRR=1U <<16;                      // Rest the RD_DATA GPIO
+    //HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_RESET);
     TIM3->SR &= ~TIM_SR_CC1IF;                            // Clear the compare interrupt flag
   }else
     TIM3->SR = 0;
@@ -381,7 +382,7 @@ volatile unsigned int wrBytes=0;
 void TIM1_UP_TIM10_IRQHandler(void){
   if (TIM1->SR & TIM_SR_UIF){       
     TIM1->SR &= ~TIM_SR_UIF;                                                  // Reset the Interrupt
-    HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_SET);
+    //HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_SET);
   }else{
     TIM1->SR=0;
   }     
@@ -395,7 +396,7 @@ void TIM1_UP_TIM10_IRQHandler(void){
 void TIM1_CC_IRQHandler(void){
   
   if (TIM1->SR & TIM_SR_CC2IF){                                               // The count & compare is on channel 2 to avoid issue with ETR1
-    HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_RESET);
+    //HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_RESET);
 
     wrData=HAL_GPIO_ReadPin(WR_DATA_GPIO_Port, WR_DATA_Pin);  // get WR_DATA
    
@@ -427,7 +428,7 @@ void irqReadTrack(){
   HAL_NVIC_DisableIRQ(TIM1_UP_TIM10_IRQn);
   HAL_NVIC_DisableIRQ(TIM1_CC_IRQn);
   HAL_NVIC_EnableIRQ(TIM3_IRQn);
-  HAL_NVIC_EnableIRQ(TIM4_IRQn);
+  HAL_NVIC_DisableIRQ(TIM4_IRQn);
 
   HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
   HAL_NVIC_DisableIRQ(EXTI9_5_IRQn);
@@ -1303,21 +1304,23 @@ int main(void)
   memset(DMA_BIT_TX_BUFFER,0,6656*sizeof(char));
 
   int T1_DIER=0x0;
-  T1_DIER|=TIM_DIER_CC2IE;
-  T1_DIER|=TIM_DIER_UIE;
+  //T1_DIER|=TIM_DIER_CC2IE;
+  //T1_DIER|=TIM_DIER_UIE;
   TIM1->DIER|=T1_DIER;                                                     // Enable Output compare Interrupt
   
   int T4_DIER=0x0;
   T4_DIER|=TIM_DIER_CC2IE;
   T4_DIER|=TIM_DIER_UIE;
-  TIM4->DIER|=T4_DIER;   
+  //TIM4->DIER|=T4_DIER;   
 
   int dier=0x0;
   dier|=TIM_DIER_CC1IE;
   dier|=TIM_DIER_UIE;
   TIM3->DIER=dier;
 
-  initScreen();                                                                    // I2C Screen init
+  printf("D1\n");
+  initScreen();  
+  printf("D2\n");                                                                  // I2C Screen init
   HAL_Delay(1000);
   //processSdEject(SD_EJECT_Pin);
   
@@ -1401,8 +1404,8 @@ int main(void)
     //sprintf(filename,"/Zaxxon.woz");
     //sprintf(filename,"/WOZ 2.0/Blazing Paddles (Baudville).woz");                                     // 21/08 WORKING
     //sprintf(filename,"/WOZ 2.0/Border Zone - Disk 1, Side A.woz");                                    // 22/08 NOT WORKING
-    //sprintf(filename,"/WOZ 1.0/Bouncing Kamungas - Disk 1, Side A.woz");                              // 22/08 NOT WORKING
-    //sprintf(filename,"/WOZ 2.0/Commando - Disk 1, Side A.woz");                                       // 21/08 WORKING
+    //sprintf(filename,"/WOZ 2.0/Bouncing Kamungas - Disk 1, Side A.woz");                              // 22/08 NOT WORKING
+    sprintf(filename,"/WOZ 2.0/Commando - Disk 1, Side A.woz");                                       // 21/08 WORKING
     //sprintf(filename,"/WOZ 2.0/Crisis Mountain - Disk 1, Side A.woz");                                // 21/08 WORKING
     //sprintf(filename,"/WOZ 2.0/DOS 3.3 System Master.woz");                                           // 15/07 WORKING
     //sprintf(filename,"/WOZ 2.0/Dino Eggs - Disk 1, Side A.woz");                                      // 22/08 WORKING
@@ -1416,7 +1419,7 @@ int main(void)
     //sprintf(filename,"/WOZ 2.0/Stickybear Town Builder - Disk 1, Side A.woz");                        // 22/08 WORKING 
     //sprintf(filename,"/WOZ 2.0/Take 1 (Baudville).woz");                                              // 21/08 WORKING
     //sprintf(filename,"/WOZ 2.0/The Apple at Play.woz");                                               // 15/07 WORKING 
-    sprintf(filename,"/WOZ 2.0/The Bilestoad - Disk 1, Side A.woz");                                  // 20/08 WORKING
+    //sprintf(filename,"/WOZ 2.0/The Bilestoad - Disk 1, Side A.woz");                                    // 20/08 WORKING
     //sprintf(filename,"/WOZ 2.0/The Print Shop Companion - Disk 1, Side A.woz");                       // 22/08 WORKING
     //sprintf(filename,"/WOZ 2.0/Wings of Fury - Disk 1, Side A.woz");                                  // NOT Working missing 128K of RAM
     //sprintf(filename,"/Monster Smash - Disk 1, Side A.woz");                                          // NOT WORKING 22/08
@@ -1457,8 +1460,7 @@ int main(void)
 
     if (flgDeviceEnable==1 && prevTrk!=intTrk && flgImageMounted==1){
 
-      if (intTrk==0)
-        HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_SET);
+     
   
       trk=intTrk;                                   // Track has changed, but avoid new change during the process
       
@@ -1466,10 +1468,11 @@ int main(void)
       t1 = DWT->CYCCNT;                                       
       
       if (trk==255){
-        bitSize=253;
-        memcpy(DMA_BIT_TX_BUFFER,fakeBitTank,bitSize/8);
-        printf("ph:%02d newTrack:255 \n",ph_track);
-
+       /*
+          bitSize=253;
+          memcpy(DMA_BIT_TX_BUFFER,fakeBitTank,bitSize/8);
+          printf("ph:%02d newTrack:255 \n",ph_track);
+        */
         prevTrk=trk;
         continue;
       }
@@ -1477,7 +1480,7 @@ int main(void)
       // --------------------------------------------------------------------
       // PART 1 MAIN TRACK & RESTORE AS QUICKLY AS POSSIBLE THE DMA
       // --------------------------------------------------------------------
-                                                                                                                                                            
+      //HAL_Delay(3);                                                                                                                                                      
       HAL_NVIC_EnableIRQ(SDIO_IRQn);
       HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
       HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
@@ -1491,6 +1494,11 @@ int main(void)
       HAL_NVIC_DisableIRQ(DMA2_Stream6_IRQn);
       
       memcpy(DMA_BIT_TX_BUFFER,read_track_data_bloc,RawSDTrackSize);
+      if (intTrk==0){
+        HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_SET);
+        bitCounter=0;
+      }
+
 
       t2 = DWT->CYCCNT;
       diff1 = t2 - t1;
@@ -1645,25 +1653,25 @@ void SystemClock_Config(void)
 static void MX_NVIC_Init(void)
 {
   /* EXTI0_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(EXTI0_IRQn, 2, 0);
   HAL_NVIC_EnableIRQ(EXTI0_IRQn);
   /* EXTI1_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(EXTI1_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(EXTI1_IRQn, 2, 0);
   HAL_NVIC_EnableIRQ(EXTI1_IRQn);
   /* EXTI2_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(EXTI2_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(EXTI2_IRQn, 2, 0);
   HAL_NVIC_EnableIRQ(EXTI2_IRQn);
   /* EXTI3_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(EXTI3_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(EXTI3_IRQn, 2, 0);
   HAL_NVIC_EnableIRQ(EXTI3_IRQn);
   /* EXTI4_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(EXTI4_IRQn, 2, 0);
   HAL_NVIC_EnableIRQ(EXTI4_IRQn);
   /* TIM1_UP_TIM10_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(TIM1_UP_TIM10_IRQn, 1, 0);
+  HAL_NVIC_SetPriority(TIM1_UP_TIM10_IRQn, 4, 0);
   HAL_NVIC_EnableIRQ(TIM1_UP_TIM10_IRQn);
   /* TIM1_CC_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(TIM1_CC_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(TIM1_CC_IRQn, 4, 0);
   HAL_NVIC_EnableIRQ(TIM1_CC_IRQn);
   /* TIM3_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(TIM3_IRQn, 1, 0);
