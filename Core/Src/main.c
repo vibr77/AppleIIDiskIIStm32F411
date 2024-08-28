@@ -314,7 +314,7 @@ void TIM3_IRQHandler(void){
     nextBit=(*(bbPtr+bytePtr)>>(7-bitPtr) ) & 1;          // Assuming it is on GPIO PORT B and Pin 0 (0x1 Set and 0x01 << Reset)
     
     // Looking for WeakBit
-  /*  
+  
     if (nextBit==0){
       if (++zeroBits>2){
         nextBit=fakeBitTankInt[fakeBitTankPosition] & 1;    // 30% of fakebit in the buffer as per AppleSauce reco
@@ -325,7 +325,7 @@ void TIM3_IRQHandler(void){
     }else{
       zeroBits=0;
     }
-   */ 
+   
   
 
 
@@ -428,7 +428,7 @@ void irqReadTrack(){
   HAL_NVIC_DisableIRQ(TIM1_UP_TIM10_IRQn);
   HAL_NVIC_DisableIRQ(TIM1_CC_IRQn);
   HAL_NVIC_EnableIRQ(TIM3_IRQn);
-  HAL_NVIC_DisableIRQ(TIM4_IRQn);
+  HAL_NVIC_EnableIRQ(TIM4_IRQn);
 
   HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
   HAL_NVIC_DisableIRQ(EXTI9_5_IRQn);
@@ -641,7 +641,7 @@ void getDataBlocksBareMetal(long memoryAdr,unsigned char * buffer,int count){
   DWT->CYCCNT = 0; 
   t1 = DWT->CYCCNT;
   if (HAL_SD_ReadBlocks_DMA(&hsd, (uint8_t *)buffer, memoryAdr, count) != HAL_OK){
-    printf("Error HAL_SD_ReadBlocks_DMA");
+    log_error("Error HAL_SD_ReadBlocks_DMA");
   }
 }
 
@@ -655,7 +655,7 @@ void setDataBlocksBareMetal(long memoryAdr,unsigned char * buffer,int count){
   DWT->CYCCNT = 0; 
   t1 = DWT->CYCCNT;
   if (HAL_SD_WriteBlocks_DMA(&hsd, (uint8_t *)buffer, memoryAdr, count) != HAL_OK){
-    printf("Error HAL_SD_WriteBlocks_DMA");
+    log_error("Error HAL_SD_WriteBlocks_DMA");
   }
 }
 
@@ -1304,28 +1304,28 @@ int main(void)
   memset(DMA_BIT_TX_BUFFER,0,6656*sizeof(char));
 
   int T1_DIER=0x0;
-  //T1_DIER|=TIM_DIER_CC2IE;
-  //T1_DIER|=TIM_DIER_UIE;
+  T1_DIER|=TIM_DIER_CC2IE;
+  T1_DIER|=TIM_DIER_UIE;
   TIM1->DIER|=T1_DIER;                                                     // Enable Output compare Interrupt
   
   int T4_DIER=0x0;
   T4_DIER|=TIM_DIER_CC2IE;
   T4_DIER|=TIM_DIER_UIE;
-  //TIM4->DIER|=T4_DIER;   
+  TIM4->DIER|=T4_DIER;   
 
   int dier=0x0;
   dier|=TIM_DIER_CC1IE;
   dier|=TIM_DIER_UIE;
   TIM3->DIER=dier;
 
-  printf("D1\n");
-  initScreen();  
-  printf("D2\n");                                                                  // I2C Screen init
+
+  //initScreen();  
+                                                                  // I2C Screen init
   HAL_Delay(1000);
   //processSdEject(SD_EJECT_Pin);
   
   processDeviceEnableInterrupt(DEVICE_ENABLE_Pin);
-  //flgDeviceEnable=1;
+  flgDeviceEnable=1;
 
   dirChainedList = list_new();                                                      // ChainedList to manage File list in current path
   currentClistPos=0;                                                                // Current index in the chained List
@@ -1338,8 +1338,9 @@ int main(void)
   
 
   fres = f_mount(&fs, "", 1);                                       
+  
   if (fres == FR_OK) {
-    log_info("Loading config file");
+    /*log_info("Loading config file");
     if (loadConfigFile()==RET_ERR){
       log_error("Error in loading configFile");
       //setConfigFileDefaultValues();
@@ -1363,7 +1364,7 @@ int main(void)
   
     walkDir(currentFullPath);
     //walkDir("");
-  
+  */
   }else{
     log_error("Error mounting sdcard %d",fres);
   }
@@ -1371,7 +1372,7 @@ int main(void)
   csize=fs.csize;
   database=fs.database;
   
-  
+  /*
   if (mountImagefile(currentImageFilename)==RET_OK){
     swithPage(IMAGE,NULL);
 
@@ -1386,6 +1387,7 @@ int main(void)
        log_error("error no file to mount");
     swithPage(FS,NULL);
   }
+  */
 
     irqReadTrack();
     char filename[128];
@@ -1405,8 +1407,8 @@ int main(void)
     //sprintf(filename,"/WOZ 2.0/Blazing Paddles (Baudville).woz");                                     // 21/08 WORKING
     //sprintf(filename,"/WOZ 2.0/Border Zone - Disk 1, Side A.woz");                                    // 22/08 NOT WORKING
     //sprintf(filename,"/WOZ 2.0/Bouncing Kamungas - Disk 1, Side A.woz");                              // 22/08 NOT WORKING
-    sprintf(filename,"/WOZ 2.0/Commando - Disk 1, Side A.woz");                                       // 21/08 WORKING
-    //sprintf(filename,"/WOZ 2.0/Crisis Mountain - Disk 1, Side A.woz");                                // 21/08 WORKING
+    //sprintf(filename,"/WOZ 2.0/Commando - Disk 1, Side A.woz");                                       // 21/08 WORKING
+    //sprintf(filename,"/WOZ 2.0/Crisis Mountain - Disk 1, Side A.woz");                                  // 21/08 WORKING
     //sprintf(filename,"/WOZ 2.0/DOS 3.3 System Master.woz");                                           // 15/07 WORKING
     //sprintf(filename,"/WOZ 2.0/Dino Eggs - Disk 1, Side A.woz");                                      // 22/08 WORKING
     //sprintf(filename,"/WOZ 2.0/First Math Adventures - Understanding Word Problems.woz");             // 20/07 WORKING
@@ -1414,7 +1416,7 @@ int main(void)
     //sprintf(filename,"/WOZ 2.0/Miner 2049er II - Disk 1, Side A.woz");                                // 22/08 WORKING 
     //sprintf(filename,"/WOZ 2.0/Planetfall - Disk 1, Side A.woz");                                     // 21/08 WORKING
     //sprintf(filename,"/WOZ 2.0/Rescue Raiders - Disk 1, Side B.woz");                                 // 21/08 WORKING
-    //sprintf(filename,"/WOZ 2.0/Sammy Lightfoot - Disk 1, Side A.woz");                                // 21/08 WORKING
+    sprintf(filename,"/WOZ 2.0/Sammy Lightfoot - Disk 1, Side A.woz");                                // 21/08 WORKING
     //sprintf(filename,"/WOZ 2.0/Stargate - Disk 1, Side A.woz");                                       // 21/08 NOT WORKING playing with /ENABLE
     //sprintf(filename,"/WOZ 2.0/Stickybear Town Builder - Disk 1, Side A.woz");                        // 22/08 WORKING 
     //sprintf(filename,"/WOZ 2.0/Take 1 (Baudville).woz");                                              // 21/08 WORKING
@@ -1433,7 +1435,7 @@ int main(void)
 
     if (flgImageMounted==1){
       initeBeaming();
-      swithPage(IMAGE,NULL);
+      //swithPage(IMAGE,NULL);
     }
 
 
@@ -1455,7 +1457,7 @@ int main(void)
 
 */
   HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_RESET);
-
+  log_info("here1\n");
   while (1){
 
     if (flgDeviceEnable==1 && prevTrk!=intTrk && flgImageMounted==1){
@@ -1480,7 +1482,9 @@ int main(void)
       // --------------------------------------------------------------------
       // PART 1 MAIN TRACK & RESTORE AS QUICKLY AS POSSIBLE THE DMA
       // --------------------------------------------------------------------
-      //HAL_Delay(3);                                                                                                                                                      
+      
+      HAL_Delay(2);                                                                                                                                                      
+      
       HAL_NVIC_EnableIRQ(SDIO_IRQn);
       HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
       HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
@@ -1496,7 +1500,9 @@ int main(void)
       memcpy(DMA_BIT_TX_BUFFER,read_track_data_bloc,RawSDTrackSize);
       if (intTrk==0){
         HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_SET);
-        bitCounter=0;
+        //bitCounter=0;
+      }else{
+         HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_RESET);
       }
 
 
@@ -1674,7 +1680,7 @@ static void MX_NVIC_Init(void)
   HAL_NVIC_SetPriority(TIM1_CC_IRQn, 4, 0);
   HAL_NVIC_EnableIRQ(TIM1_CC_IRQn);
   /* TIM3_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(TIM3_IRQn, 1, 0);
+  HAL_NVIC_SetPriority(TIM3_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(TIM3_IRQn);
   /* SDIO_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(SDIO_IRQn, 6, 0);
@@ -2007,11 +2013,6 @@ static void MX_DMA_Init(void)
   /* DMA controller clock enable */
   __HAL_RCC_DMA2_CLK_ENABLE();
   __HAL_RCC_DMA1_CLK_ENABLE();
-
-  /* DMA interrupt init */
-  /* DMA1_Stream6_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Stream6_IRQn, 14, 0);
-  HAL_NVIC_EnableIRQ(DMA1_Stream6_IRQn);
 
 }
 
