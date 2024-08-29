@@ -13,6 +13,7 @@ Note
 + any stm32fx would work, only available ram size is important >= 32 kbytes to manage 3 full track in // and also write buffer
 
 Lessons learne:
+- SDCard need to be formated with 64 sectors of 512 Bytes each / cluster mkfs.fat -F 32 -s64 
 - SDCard CMD17 is not fast enough due to wait before accessing to the bloc (140 CPU Cycle at 64 MHz), prefer CMD18 with multiple blocs read,
 - Circular buffer with partial track is possible but needs complex coding to manage buffer copy and correct SDcard timing (I do not recommand),
 - bitstream output is made via DMA SPI (best accurate option), do not use baremetal bitbanging with assemnbly (my first attempt) it is not accurate in ARM with internal interrupt,
@@ -21,7 +22,6 @@ Lessons learne:
 Current status: READ PARTIALLY WORKING / WRITE Experimental
 + woz file support : in progress first images are working
 + NIC file support : in progress first images are working
-
 
 "tasks": [
 			{
@@ -197,8 +197,6 @@ void (*ptrbtnDown)(void *);
 void (*ptrbtnEntr)(void *);
 void (*ptrbtnRet)(void *);
 
-
-
 char selItem[256];                                           // select from chainedlist item;
 char currentFullPath[1024];                                  // current path from root
 char * currentImageFilename=NULL;                              // current mounted image filename;
@@ -234,7 +232,24 @@ const uint8_t fakeBitTankInt[]={1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 
                                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 1,
                                 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1,
                                 0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 1, 1, 0};
-const char fakeBitTank[]="\xE4\x23\x61\x40\x04\x0C\x84\x1E\x69\x86\x21\xA0\x32\xA1\x42\x24\x10\xD7\x05\xC7\x00\x50\x91\x82\x83\x81\x12\x14\x38\x09\xA8\x96";
+const char fakeBitTank[]={
+0x1F, 0xCD, 0x7F, 0x58, 0x4E, 0xA4, 0x5A, 0x8F, 0xC6, 0x0D, 0xBE, 0xB5, 0xDA, 0x6D, 0xBC, 0x55, 
+0x98, 0x6B, 0x3B, 0x0C, 0x8B, 0x7B, 0xAC, 0x79, 0x70, 0x3E, 0x13, 0x74, 0xBD, 0xEB, 0x5F, 0xF5,
+0xAA, 0x45, 0x90, 0xB7, 0xF9, 0x65, 0xE5, 0xBC, 0x78, 0x0E, 0xD1, 0x86, 0x1F, 0x8C, 0x1B, 0xC6, 
+0x91, 0x69, 0x16, 0xFF, 0xBE, 0x36, 0x54, 0x6C, 0xDC, 0x37, 0x84, 0xEE, 0xD4, 0x86, 0xFD, 0x89, 
+0x02, 0xCD, 0x5D, 0x7B, 0xD9, 0x4A, 0xC5, 0x2E, 0x48, 0xEF, 0xFC, 0x74, 0xA1, 0xEA, 0xFD, 0x87, 
+0x2E, 0x53, 0x30, 0x91, 0xA1, 0x88, 0x78, 0x9B, 0x9B, 0xFD, 0xF7, 0x88, 0xCC, 0x97, 0xC5, 0x48, 
+0xBF, 0x36, 0x50, 0x00, 0xD3, 0xBA, 0x04, 0x64, 0x30, 0x1C, 0x3D, 0x40, 0xB4, 0x73, 0x3C, 0xA9, 
+0xBB, 0x4E, 0xF1, 0xE1, 0x46, 0xC2, 0x81, 0x04, 0xE9, 0x12, 0x09, 0x38, 0xA6, 0xCD, 0x9C, 0x97, 
+0x81, 0x50, 0x7E, 0xE5, 0xF4, 0x3D, 0x2E, 0x92, 0x8C, 0x43, 0xE6, 0xF7, 0x62, 0x41, 0xFA, 0x51, 
+0xAF, 0x66, 0x5A, 0x04, 0x56, 0xB8, 0xB0, 0x1C, 0x96, 0x48, 0x98, 0xF3, 0x00, 0x19, 0xFC, 0x0E, 
+0x87, 0x69, 0x9F, 0xC6, 0xD0, 0xA5, 0x36, 0x12, 0x1D, 0x8C, 0xB5, 0x06, 0x5A, 0xA5, 0x56, 0x90, 
+0x32, 0xEE, 0x37, 0x19, 0x81, 0xCD, 0x1C, 0x1C, 0x53, 0x9F, 0x79, 0x04, 0x8F, 0x34, 0xB1, 0x5B, 
+0x73, 0x44, 0x80, 0xC5, 0xE2, 0x4A, 0x20, 0x89, 0xB2, 0xFE, 0xEA, 0x5D, 0x37, 0x2F, 0x13, 0x22, 
+0xE5, 0x70, 0x90, 0x23, 0xCD, 0x62, 0x81, 0xC5, 0xCF, 0xBA, 0x22, 0x6A, 0xC3, 0x1A, 0x08, 0x4C, 
+0x4A, 0xB8, 0xEA, 0xB1, 0xF5, 0x70, 0x1A, 0xB6, 0xD9, 0x9C, 0x4E, 0xBF, 0x29, 0x93, 0xF5, 0x0F, 
+0x9F, 0xE6, 0x66, 0x20, 0x04, 0xB2, 0xBF, 0xF7, 0x64, 0x4C, 0x86, 0x67, 0x84, 0x27, 0x82, 0xAB
+};
 
 volatile unsigned char headWindow=0x0A;                         // 0b0000 1010 For initialisation and avoid weakbit at the very begining (first cycle)
 volatile unsigned int fakeBitTankPosition=0;                    // bit position in the fakeBitTank
@@ -430,7 +445,7 @@ void irqReadTrack(){
   HAL_NVIC_EnableIRQ(TIM3_IRQn);
   HAL_NVIC_EnableIRQ(TIM4_IRQn);
 
-  HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
+  //HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
   HAL_NVIC_DisableIRQ(EXTI9_5_IRQn);
 }
 /**
@@ -439,6 +454,7 @@ void irqReadTrack(){
   * @retval None
   */
 void irqWriteTrack(){
+
   HAL_NVIC_EnableIRQ(TIM1_UP_TIM10_IRQn);
   HAL_NVIC_EnableIRQ(TIM1_CC_IRQn);
   HAL_NVIC_DisableIRQ(TIM3_IRQn);
@@ -630,6 +646,11 @@ void Custom_SD_ReadCpltCallback(void){
     log_info(" Custom_SD_ReadCpltCallback diff %ld",diff1);
   }
 }
+
+void getDataBlocks(int trk){
+
+}
+
 
 /**
   * @brief sort a new chainedlist of item alphabetically
@@ -1186,6 +1207,7 @@ enum STATUS mountImagefile(char * filename){
 
     getSDAddr=getSDAddrWoz;
     getTrackBitStream=getWozTrackBitStream;
+    //getTrackBitStream=getWozTrackBitStream_fopen;
     setTrackBitStream=setWozTrackBitStream;
     getTrackFromPh=getWozTrackFromPh;
     getTrackSize=getWozTrackSize;
@@ -1224,7 +1246,7 @@ enum STATUS initeBeaming(){
   DWT->CYCCNT = 0;                              // Reset cpu cycle counter
   t1 = DWT->CYCCNT; 
  
-  //flgWriteProtected=1;
+  flgWriteProtected=1;
 
   if (flgWriteProtected==1)
     HAL_GPIO_WritePin(WR_PROTECT_GPIO_Port,WR_PROTECT_Pin,GPIO_PIN_SET);                              // WRITE_PROTECT is enable
@@ -1233,7 +1255,6 @@ enum STATUS initeBeaming(){
 
   HAL_GPIO_WritePin(RD_DATA_GPIO_Port,RD_DATA_GPIO_Port,GPIO_PIN_RESET); 
 
-  //memcpy(DMA_BIT_TX_BUFFER,read_track_data_bloc,RawSDTrackSize);
   
   bbPtr=(volatile u_int8_t*)&DMA_BIT_TX_BUFFER;
   bitSize=6656*8;
@@ -1319,7 +1340,7 @@ int main(void)
   TIM3->DIER=dier;
 
 
-  //initScreen();  
+  initScreen();  
                                                                   // I2C Screen init
   HAL_Delay(1000);
   //processSdEject(SD_EJECT_Pin);
@@ -1336,11 +1357,10 @@ int main(void)
                                                                            
   char *imgFile=NULL;
   
-
   fres = f_mount(&fs, "", 1);                                       
   
   if (fres == FR_OK) {
-    /*log_info("Loading config file");
+    log_info("Loading config file");
     if (loadConfigFile()==RET_ERR){
       log_error("Error in loading configFile");
       //setConfigFileDefaultValues();
@@ -1363,8 +1383,7 @@ int main(void)
     }
   
     walkDir(currentFullPath);
-    //walkDir("");
-  */
+
   }else{
     log_error("Error mounting sdcard %d",fres);
   }
@@ -1404,11 +1423,12 @@ int main(void)
     //sprintf(filename,"Locksmith 6.0 Fast Disk.nic");
     //sprintf(filename,"Locksmith.woz");
     //sprintf(filename,"/Zaxxon.woz");
+    //sprintf(filename,"/Bouncing Kamungas.woz");                              // 22/08 NOT WORKING
     //sprintf(filename,"/WOZ 2.0/Blazing Paddles (Baudville).woz");                                     // 21/08 WORKING
-    //sprintf(filename,"/WOZ 2.0/Border Zone - Disk 1, Side A.woz");                                    // 22/08 NOT WORKING
+    //sprintf(filename,"/WOZ 2.0/Border Zone - Disk 1, Side A.woz");                                      // 22/08 NOT WORKING
     //sprintf(filename,"/WOZ 2.0/Bouncing Kamungas - Disk 1, Side A.woz");                              // 22/08 NOT WORKING
     //sprintf(filename,"/WOZ 2.0/Commando - Disk 1, Side A.woz");                                       // 21/08 WORKING
-    //sprintf(filename,"/WOZ 2.0/Crisis Mountain - Disk 1, Side A.woz");                                  // 21/08 WORKING
+    sprintf(filename,"/WOZ 2.0/Crisis Mountain - Disk 1, Side A.woz");                                // 21/08 WORKING
     //sprintf(filename,"/WOZ 2.0/DOS 3.3 System Master.woz");                                           // 15/07 WORKING
     //sprintf(filename,"/WOZ 2.0/Dino Eggs - Disk 1, Side A.woz");                                      // 22/08 WORKING
     //sprintf(filename,"/WOZ 2.0/First Math Adventures - Understanding Word Problems.woz");             // 20/07 WORKING
@@ -1416,7 +1436,7 @@ int main(void)
     //sprintf(filename,"/WOZ 2.0/Miner 2049er II - Disk 1, Side A.woz");                                // 22/08 WORKING 
     //sprintf(filename,"/WOZ 2.0/Planetfall - Disk 1, Side A.woz");                                     // 21/08 WORKING
     //sprintf(filename,"/WOZ 2.0/Rescue Raiders - Disk 1, Side B.woz");                                 // 21/08 WORKING
-    sprintf(filename,"/WOZ 2.0/Sammy Lightfoot - Disk 1, Side A.woz");                                // 21/08 WORKING
+    //sprintf(filename,"/WOZ 2.0/Sammy Lightfoot - Disk 1, Side A.woz");                                // 21/08 WORKING
     //sprintf(filename,"/WOZ 2.0/Stargate - Disk 1, Side A.woz");                                       // 21/08 NOT WORKING playing with /ENABLE
     //sprintf(filename,"/WOZ 2.0/Stickybear Town Builder - Disk 1, Side A.woz");                        // 22/08 WORKING 
     //sprintf(filename,"/WOZ 2.0/Take 1 (Baudville).woz");                                              // 21/08 WORKING
@@ -1435,9 +1455,10 @@ int main(void)
 
     if (flgImageMounted==1){
       initeBeaming();
-      //swithPage(IMAGE,NULL);
+     // swithPage(IMAGE,NULL);
     }
 
+     swithPage(FS,NULL);
 
   unsigned long cAlive=0;
 
@@ -1454,27 +1475,27 @@ int main(void)
   while(fsState!=READY){}
   HAL_TIM_PWM_Start_IT(&htim3,TIM_CHANNEL_4);
   while(1){}
-
 */
+
   HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_RESET);
-  log_info("here1\n");
+  printf("here\n");
   while (1){
 
     if (flgDeviceEnable==1 && prevTrk!=intTrk && flgImageMounted==1){
 
-     
-  
+    
       trk=intTrk;                                   // Track has changed, but avoid new change during the process
-      
       DWT->CYCCNT = 0;                              // Reset cpu cycle counter
       t1 = DWT->CYCCNT;                                       
       
       if (trk==255){
-       /*
-          bitSize=253;
-          memcpy(DMA_BIT_TX_BUFFER,fakeBitTank,bitSize/8);
+       
+          for (int j=0;j<25;j++){
+            memcpy(DMA_BIT_TX_BUFFER+j*256,fakeBitTank,256);
+          }
+          bitSize=51200;
           printf("ph:%02d newTrack:255 \n",ph_track);
-        */
+        
         prevTrk=trk;
         continue;
       }
@@ -2013,6 +2034,11 @@ static void MX_DMA_Init(void)
   /* DMA controller clock enable */
   __HAL_RCC_DMA2_CLK_ENABLE();
   __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Stream6_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream6_IRQn, 14, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream6_IRQn);
 
 }
 

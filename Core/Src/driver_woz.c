@@ -53,11 +53,14 @@ long getSDAddrWoz(int trk,int block,int csize, long database){
 }
 
 enum STATUS getWozTrackBitStream_fopen(int trk,unsigned char * buffer){
+  
   int long_sector = TRK_startingBlockOffset[trk];
   FRESULT fres; 
   FIL fil;  
 
-  char filename[]="/WOZ 2.0/The Apple at Play.woz";
+  while(fsState!=READY){};
+  fsState=BUSY;
+  char filename[]="/WOZ 2.0/Bouncing Kamungas - Disk 1, Side A.woz";
   fres = f_open(&fil,filename , FA_READ);    
   if(fres != FR_OK){
     log_error("File open Error: (%i)",fres);
@@ -71,6 +74,7 @@ enum STATUS getWozTrackBitStream_fopen(int trk,unsigned char * buffer){
     return RET_ERR;
   }
   fclose(&fil);
+  fsState=READY;
   return RET_OK;
 
 }

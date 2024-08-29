@@ -112,6 +112,7 @@ void updateFSDisplay(int init){
   ssd1306_SetColor(White);
   sprintf(tmp,"%02d/%02d",selectedFsIndx+1,lstCount);
   displayStringAtPosition(96,6*9+1,tmp);
+  ssd1306_UpdateScreen();
      
 }
 
@@ -203,7 +204,7 @@ void initIMAGEScreen(char * imageName,int type){
 
   sprintf(tmp,"WP:Y SYN:N V:1");
   displayStringAtPosition(5,6*9,tmp);
-
+  ssd1306_UpdateScreen();
 }
 
 void updateIMAGEScreen(unsigned int status,int trk){
@@ -245,6 +246,7 @@ void initFSScreen(char * path){
   char tmp[32];
   sprintf(tmp,"xx/xx");
   displayStringAtPosition(96,6*9+2,tmp);
+  ssd1306_UpdateScreen();
 
 }
 
