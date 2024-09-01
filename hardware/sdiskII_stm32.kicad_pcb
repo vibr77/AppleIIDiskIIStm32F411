@@ -137,7 +137,7 @@
 		(descr "Through hole IDC box header, 2x10, 2.54mm pitch, DIN 41651 / IEC 60603-13, double rows, https://docs.google.com/spreadsheets/d/16SsEcesNF15N3Lb4niX7dcUr-NY5_MFPQhobNuNppn4/edit#gid=0")
 		(tags "Through hole vertical IDC box header THT 2x10 2.54mm double row")
 		(property "Reference" "J2"
-			(at 1.27 -6.1 270)
+			(at 1.27 -6.1 -90)
 			(layer "F.SilkS")
 			(uuid "2996355f-dd6b-484b-87c9-cfc5f618eff5")
 			(effects
@@ -148,7 +148,7 @@
 			)
 		)
 		(property "Value" "APPLE_SDISKII"
-			(at 1.27 28.96 270)
+			(at 1.27 28.96 -90)
 			(layer "F.Fab")
 			(uuid "44b5294a-06bc-402b-b67d-cbd2edc54329")
 			(effects
@@ -520,7 +520,7 @@
 			(uuid "aae71f49-aeda-4be5-8c03-1f9f2c5d9c6d")
 		)
 		(fp_text user "${REFERENCE}"
-			(at 1.27 11.43 360)
+			(at 1.27 11.43 0)
 			(layer "F.Fab")
 			(uuid "fa7cf150-a54e-4e98-8265-dea4180e43e2")
 			(effects
@@ -1903,11 +1903,11 @@
 	(footprint "Button_Switch_THT:SW_PUSH_6mm"
 		(layer "F.Cu")
 		(uuid "1c51000f-4f66-4144-95a3-950953620f56")
-		(at 120.75 60.25)
+		(at 121.25 59.75)
 		(descr "Generic 6mm SW tactile push button")
 		(tags "tact sw push 6mm")
 		(property "Reference" "SW_BTN_UP1"
-			(at 3.25 -2 360)
+			(at 3.25 -2 0)
 			(layer "F.SilkS")
 			(uuid "4c0f26f7-2069-4d7f-9d1d-a5ebe54e1d57")
 			(effects
@@ -1918,7 +1918,7 @@
 			)
 		)
 		(property "Value" "SW_Push"
-			(at 3.75 6.7 360)
+			(at 3.75 6.7 0)
 			(layer "F.Fab")
 			(uuid "5113cf06-f8df-45f0-92c4-223b7fc6f85a")
 			(effects
@@ -2190,7 +2190,7 @@
 			(uuid "a3eca8af-f03d-4c2e-a165-3347d9f2dafc")
 		)
 		(fp_text user "${REFERENCE}"
-			(at 3.25 2.25 360)
+			(at 3.25 2.25 0)
 			(layer "F.Fab")
 			(uuid "55d5f1a8-bf1f-488d-a38b-355cade84c46")
 			(effects
@@ -2259,7 +2259,7 @@
 	(footprint "Button_Switch_THT:SW_PUSH_6mm"
 		(layer "F.Cu")
 		(uuid "a1bf8028-0132-4806-8376-fd95912e799f")
-		(at 135.75 63.25 -90)
+		(at 136.25 63.25 -90)
 		(descr "Generic 6mm SW tactile push button")
 		(tags "tact sw push 6mm")
 		(property "Reference" "SW_BTN_ENTR1"
@@ -3593,7 +3593,7 @@
 	(footprint "Button_Switch_THT:SW_PUSH_6mm"
 		(layer "F.Cu")
 		(uuid "db0a52ec-6538-4aaa-90f8-9f86b7f18ad8")
-		(at 112.75 69.25 90)
+		(at 112.75 69.75 90)
 		(descr "Generic 6mm SW tactile push button")
 		(tags "tact sw push 6mm")
 		(property "Reference" "SW_BTN_RET1"
@@ -3949,11 +3949,11 @@
 	(footprint "Button_Switch_THT:SW_PUSH_6mm"
 		(layer "F.Cu")
 		(uuid "fbc55a60-dbd4-4f76-99ab-a6e225ea9522")
-		(at 120.75 68.75)
+		(at 121.25 68.75)
 		(descr "Generic 6mm SW tactile push button")
 		(tags "tact sw push 6mm")
 		(property "Reference" "SW_BTN_DOWN1"
-			(at 3.25 -2 360)
+			(at 3.25 -2 0)
 			(layer "F.SilkS")
 			(uuid "45b6625d-a9dc-4593-849c-18cc3a1c3031")
 			(effects
@@ -3964,7 +3964,7 @@
 			)
 		)
 		(property "Value" "SW_Push"
-			(at 3.75 6.7 360)
+			(at 3.75 6.7 0)
 			(layer "F.Fab")
 			(uuid "9e6a4946-27b0-4b53-9901-db6806005ce8")
 			(effects
@@ -4236,7 +4236,7 @@
 			(uuid "70e71edf-2da3-4c19-870a-b4f094d55564")
 		)
 		(fp_text user "${REFERENCE}"
-			(at 3.25 2.25 360)
+			(at 3.25 2.25 0)
 			(layer "F.Fab")
 			(uuid "7ce82043-fb8d-4e4b-b437-3afc66f5aab2")
 			(effects
@@ -4301,6 +4301,204 @@
 				(xyz 0 0 0)
 			)
 		)
+	)
+	(gr_line
+		(start 136.25 63.25)
+		(end 136.25 69.75)
+		(stroke
+			(width 0.2)
+			(type default)
+		)
+		(layer "F.Cu")
+		(net 21)
+		(uuid "0527669d-ef62-47eb-bd09-2dff41acf056")
+	)
+	(gr_line
+		(start 110.5 72)
+		(end 112.75 69.75)
+		(stroke
+			(width 0.2)
+			(type default)
+		)
+		(layer "F.Cu")
+		(net 21)
+		(uuid "14675579-7707-43d0-8a32-0ca7a1efc536")
+	)
+	(gr_line
+		(start 127.75 73.25)
+		(end 121.25 73.25)
+		(stroke
+			(width 0.2)
+			(type default)
+		)
+		(layer "F.Cu")
+		(net 16)
+		(uuid "2ade7453-4038-4dbe-a18f-9eda38b63405")
+	)
+	(gr_line
+		(start 119.75 61.25)
+		(end 121.25 59.75)
+		(stroke
+			(width 0.2)
+			(type default)
+		)
+		(layer "F.Cu")
+		(net 21)
+		(uuid "3b83ef28-c2f6-4e19-85b1-ab729efd39af")
+	)
+	(gr_line
+		(start 115 72)
+		(end 119 72)
+		(stroke
+			(width 0.2)
+			(type default)
+		)
+		(layer "F.Cu")
+		(net 21)
+		(uuid "3cfb1eed-4e3f-4905-9c60-c1dc3c0449e4")
+	)
+	(gr_line
+		(start 121.25 68.75)
+		(end 127.75 68.75)
+		(stroke
+			(width 0.2)
+			(type default)
+		)
+		(layer "F.Cu")
+		(net 21)
+		(uuid "4ee6364e-0839-428d-a629-c9a2c9f2fb23")
+	)
+	(gr_line
+		(start 117.25 63.25)
+		(end 117.25 69.75)
+		(stroke
+			(width 0.2)
+			(type default)
+		)
+		(layer "F.Cu")
+		(net 18)
+		(uuid "58028dcb-6c7d-45e4-9c1e-75c83e5f1252")
+	)
+	(gr_line
+		(start 130 71.75)
+		(end 127.75 68.75)
+		(stroke
+			(width 0.2)
+			(type default)
+		)
+		(layer "F.Cu")
+		(net 21)
+		(uuid "79573baa-4ea0-421d-a3dd-ba4ab3266ace")
+	)
+	(gr_line
+		(start 112.75 69.75)
+		(end 115 72)
+		(stroke
+			(width 0.2)
+			(type default)
+		)
+		(layer "F.Cu")
+		(net 21)
+		(uuid "7bddefd8-2597-47f6-abeb-accbb8067c8d")
+	)
+	(gr_line
+		(start 112.75 63.25)
+		(end 112.75 69.75)
+		(stroke
+			(width 0.2)
+			(type default)
+		)
+		(layer "F.Cu")
+		(net 21)
+		(uuid "8137a051-9aa5-4911-9971-4f57f4a54033")
+	)
+	(gr_line
+		(start 119 72)
+		(end 121.25 68.75)
+		(stroke
+			(width 0.2)
+			(type default)
+		)
+		(layer "F.Cu")
+		(net 21)
+		(uuid "9aaebb7f-e140-4f29-8e04-b41a2c22a362")
+	)
+	(gr_line
+		(start 121.25 68.75)
+		(end 119.75 67.25)
+		(stroke
+			(width 0.2)
+			(type default)
+		)
+		(layer "F.Cu")
+		(net 21)
+		(uuid "9c34ded4-75ba-4d99-81b3-d679c15b3f43")
+	)
+	(gr_line
+		(start 135.25 71.75)
+		(end 130 71.75)
+		(stroke
+			(width 0.2)
+			(type default)
+		)
+		(layer "F.Cu")
+		(net 21)
+		(uuid "ab84c05f-8976-4576-87df-ed20fd9afea9")
+	)
+	(gr_line
+		(start 131.75 69.75)
+		(end 131.75 63.25)
+		(stroke
+			(width 0.2)
+			(type default)
+		)
+		(layer "F.Cu")
+		(net 17)
+		(uuid "c90e8025-349a-4e47-8f72-a794c600ad9c")
+	)
+	(gr_line
+		(start 119.75 67.25)
+		(end 119.75 61.25)
+		(stroke
+			(width 0.2)
+			(type default)
+		)
+		(layer "F.Cu")
+		(net 21)
+		(uuid "d0b5d3f8-51a7-420c-8876-fc39281d2398")
+	)
+	(gr_line
+		(start 92.75 72)
+		(end 110.5 72)
+		(stroke
+			(width 0.2)
+			(type default)
+		)
+		(layer "F.Cu")
+		(net 21)
+		(uuid "e7eeb29d-894f-4b23-8e83-3a951c575c4d")
+	)
+	(gr_line
+		(start 136.25 69.75)
+		(end 135.25 71.75)
+		(stroke
+			(width 0.2)
+			(type default)
+		)
+		(layer "F.Cu")
+		(net 21)
+		(uuid "ea8414cf-5d10-40b8-bf19-66e792b55ab8")
+	)
+	(gr_line
+		(start 91.5 70.75)
+		(end 92.75 72)
+		(stroke
+			(width 0.2)
+			(type default)
+		)
+		(layer "F.Cu")
+		(net 21)
+		(uuid "ffe8892f-1e5d-41a8-825b-ccabc14f0374")
 	)
 	(gr_rect
 		(start 88 19.25)

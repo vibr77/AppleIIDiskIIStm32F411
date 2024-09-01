@@ -39,8 +39,6 @@ C_SOURCES =  \
 Core/Src/configFile.c \
 Core/Src/display.c \
 Core/Src/dma_printf.c \
-Core/Src/dma_ring.c \
-Core/Src/dma_scanf.c \
 Core/Src/driver_nic.c \
 Core/Src/driver_woz.c \
 Core/Src/list.c \

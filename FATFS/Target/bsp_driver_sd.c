@@ -29,6 +29,7 @@
 /* USER CODE END 0 */
 #else
 /* USER CODE BEGIN FirstSection */
+#include "main.h"
 /* can be used to modify / undefine following code or add new definitions */
 /* USER CODE END FirstSection */
 /* Includes ------------------------------------------------------------------*/

@@ -69,33 +69,15 @@ enum STATUS{RET_OK,RET_ERR};
 
 void EnableTiming(void);
 void dumpBuf(unsigned char * buf,long memoryAddr,int len);
-enum STATUS dumpBufFile(char * filename,unsigned char * buffer,int length);
+enum STATUS dumpBufFile(char * filename,volatile unsigned char * buffer,int length);
 enum STATUS writeTrkFile(char * filename,char * buffer,uint32_t offset);
 
 char *byte_to_binary(int x);
 
-enum STATUS cmd17GetDataBlockBareMetal(long memoryAdr,unsigned char *buffer);
-enum STATUS cmd18GetDataBlocksBareMetal(long memoryAdr,unsigned char * buffer,int count);
-enum STATUS cmd25SetDataBlocksBareMetal(long memoryAdr,unsigned char * buffer,int count);
-
-// HAL Interrupt function
-
-/*void HAL_SPI_TxHalfCpltCallback(SPI_HandleTypeDef *hspi);           // DMA SPI Half buffer completion
-void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi);               // DMA SPI Full buffer completion
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim);        // Debouncing button timer interrupt
-
-void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef * hspi);
-void HAL_SPI_RxHalfCpltCallback(SPI_HandleTypeDef * hspi);
-*/
-void computeCircularAddr(int half);
-void processCircularBufferCopy(unsigned int src_s,unsigned int src_e,unsigned int dst_s,unsigned int dst_e,unsigned int blocksize);
-
 list_t * sortLinkedList(list_t * plst);                             // Sort the chainedList
 enum STATUS walkDir(char * path);                                   // Build chainedList of Directories/Files Items
-
 enum STATUS mountImagefile(char * filename);
 
-//int isDiskIIDisable();
 void processBtnInterrupt(uint16_t GPIO_Pin);
 
 void processPrevFSItem();
@@ -107,14 +89,25 @@ void processMountOption();
 void nothing();
 void processBtnRet();
 
+void debounceBtn(int GPIO);
+
+void irqReadTrack();
+void irqWriteTrack();
+void irqWIdle();
+
+void Custom_SD_WriteCpltCallback(void);
+void Custom_SD_ReadCpltCallback(void);
+
+void getDataBlocksBareMetal(long memoryAdr,volatile unsigned char * buffer,int count);
+void setDataBlocksBareMetal(long memoryAdr,volatile unsigned char * buffer,int count);
+
 enum STATUS swithPage(enum page newPage,void * arg);
 void processDiskHeadMoveInterrupt(uint16_t GPIO_Pin);
 char processDeviceEnableInterrupt(uint16_t GPIO_Pin);
 char processSdEject(uint16_t GPIO_PIN);
 
 enum STATUS mountImagefile(char * filename);
- enum STATUS initeBeaming();
-int findTrackIndex(int requestedTrack);
+enum STATUS initeBeaming();
 
 /* USER CODE END EFP */
 
@@ -149,13 +142,13 @@ int findTrackIndex(int requestedTrack);
 #define RD_DATA_GPIO_Port GPIOB
 #define WR_PROTECT_Pin GPIO_PIN_2
 #define WR_PROTECT_GPIO_Port GPIOB
-#define SD_EDJECT_Pin GPIO_PIN_10
-#define SD_EDJECT_GPIO_Port GPIOB
+#define BTN_RET_Pin GPIO_PIN_12
+#define BTN_RET_GPIO_Port GPIOB
+#define BTN_RET_EXTI_IRQn EXTI15_10_IRQn
+#define SD_EJECT_Pin GPIO_PIN_13
+#define SD_EJECT_GPIO_Port GPIOB
 #define DEBUG_Pin GPIO_PIN_14
 #define DEBUG_GPIO_Port GPIOB
-#define BTN_RET_Pin GPIO_PIN_11
-#define BTN_RET_GPIO_Port GPIOA
-#define BTN_RET_EXTI_IRQn EXTI15_10_IRQn
 #define WR_REQ_Pin GPIO_PIN_9
 #define WR_REQ_GPIO_Port GPIOB
 #define WR_REQ_EXTI_IRQn EXTI9_5_IRQn

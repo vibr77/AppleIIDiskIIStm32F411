@@ -73,7 +73,7 @@ enum STATUS getWozTrackBitStream_fopen(int trk,unsigned char * buffer){
     log_error("File read Error: (%i)",fres);
     return RET_ERR;
   }
-  fclose(&fil);
+  f_close(&fil);
   fsState=READY;
   return RET_OK;
 
