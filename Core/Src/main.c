@@ -162,9 +162,6 @@ static void MX_TIM2_Init(void);
 static void MX_NVIC_Init(void);
 /* USER CODE BEGIN PFP */
 
-
-
-
 bool buttonDebounceState=true;
 extern __uint32_t TRK_BitCount[160];
 
@@ -191,7 +188,7 @@ extern uint8_t CardType;                                    // fatfs_sdcard.c ty
 volatile unsigned char flgDeviceEnable=0;
 unsigned char flgImageMounted=0;                            // Image file mount status flag
 unsigned char flgBeaming=0;                                 // DMA SPI1 to Apple II Databeaming status flag
-volatile unsigned int  flgwhiteNoise=0;                     // White noise in case of blank 255 track to generate random bit
+volatile unsigned int flgwhiteNoise=0;                     // White noise in case of blank 255 track to generate random bit
 unsigned char flgWriteProtected=0;                                   // Write Protected
 
 enum STATUS (*getTrackBitStream)(int,unsigned char*);       // pointer to readBitStream function according to driver woz/nic
@@ -217,26 +214,19 @@ int lastlistPos;
 list_t * dirChainedList;
 
 // DEBUG BLOCK
-volatile struct ilog {
-    uint16_t  tc;
-    uint8_t type;
-    uint16_t val1;
-} iolg_t;
 
-uint8_t ilog_indx=0;
-struct ilog il[512];
-uint16_t tc1=0;
 unsigned long t1,t2,diff1;   
+
 
 int wrStartPtr=0;
 int wrEndPtr=0;
 int wrBitWritten=0;
 uint8_t wrTrackOverlap=0;
 
-int wr_attempt=0;
+int wr_attempt=0;                         // temp variable to keep incremental counter of the debug dump to file
  
 #define weakBit 1
-const uint8_t fakeBitTankInt[]={1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
+const uint8_t weakBitTank[]   ={1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
                                 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0,
                                 1, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1,
                                 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0,
@@ -248,6 +238,9 @@ const uint8_t fakeBitTankInt[]={1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 
                                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 1,
                                 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1,
                                 0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 1, 1, 0};
+
+volatile unsigned int weakBitTankPosition=0;
+
 const char fakeBitTank[]={
 0x1F, 0xCD, 0x7F, 0x58, 0x4E, 0xA4, 0x5A, 0x8F, 0xC6, 0x0D, 0xBE, 0xB5, 0xDA, 0x6D, 0xBC, 0x55, 
 0x98, 0x6B, 0x3B, 0x0C, 0x8B, 0x7B, 0xAC, 0x79, 0x70, 0x3E, 0x13, 0x74, 0xBD, 0xEB, 0x5F, 0xF5,
@@ -267,7 +260,6 @@ const char fakeBitTank[]={
 0x9F, 0xE6, 0x66, 0x20, 0x04, 0xB2, 0xBF, 0xF7, 0x64, 0x4C, 0x86, 0x67, 0x84, 0x27, 0x82, 0xAB
 };
 
-volatile unsigned char headWindow=0x0A;                         // 0b0000 1010 For initialisation and avoid weakbit at the very begining (first cycle)
 volatile unsigned int fakeBitTankPosition=0;                    // bit position in the fakeBitTank
 
 /* USER CODE END PFP */
@@ -295,26 +287,23 @@ uint8_t nextBit=0;
 volatile uint8_t *bbPtr=0x0;
 
 
-/*
-*
-*
-*
-*/
-
+/**
+  * @brief Button debouncer that reset the Timer 4
+  * @param GPIO
+  * @retval None
+  */
 void debounceBtn(int GPIO){
  
   buttonDebounceState=false;
   TIM4->CNT=0;
   TIM4->CR1 |= TIM_CR1_CEN;
-
   processBtnInterrupt(GPIO);
-  
 }
    
 
 /**
-  * @brief sort a new chainedlist of item alphabetically
-  * @param list_t * plst
+  * @brief TIMER4 IRQ Handler, manage the debouncer of the control button (UP,DWN,RET,ENTER)
+  * @param 
   * @retval None
   */
 void TIM4_IRQHandler(void){
@@ -329,43 +318,40 @@ void TIM4_IRQHandler(void){
 volatile int zeroBits=0;
 
 /**
-  * @brief sort a new chainedlist of item alphabetically
-  * @param list_t * plst
+  * @brief TIMER 3 IRQ Interrupt is handling the reading process
+  * @param None
   * @retval None
   */
-
 void TIM3_IRQHandler(void){
 
   if (TIM3->SR & TIM_SR_UIF){
     TIM3->SR &= ~TIM_SR_UIF; 
-    //RD_DATA_GPIO_Port->BSRR=1; 
+
     RD_DATA_GPIO_Port->BSRR=nextBit;                      // start by outputing the nextBit and then due the internal cooking for the next one
     //HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_SET);
     bytePtr=bitCounter/8;
     bitPtr=bitCounter%8;
     nextBit=(*(bbPtr+bytePtr)>>(7-bitPtr) ) & 1;          // Assuming it is on GPIO PORT B and Pin 0 (0x1 Set and 0x01 << Reset)
     
-    // Looking for WeakBit
+    // ************  WEAKBIT ****************
   
     if (nextBit==0){
       if (++zeroBits>2){
-        nextBit=fakeBitTankInt[fakeBitTankPosition] & 1;    // 30% of fakebit in the buffer as per AppleSauce reco
+        nextBit=weakBitTank[fakeBitTankPosition] & 1;    // 30% of fakebit in the buffer as per AppleSauce reco
 
-        if (++fakeBitTankPosition>213)
-          fakeBitTankPosition=0;
+        if (++weakBitTankPosition>213)
+          weakBitTankPosition=0;
       }
     }else{
       zeroBits=0;
     }
-   
-  
 
+    // ************  WEAKBIT ****************
 
     bitCounter++;
     if (bitCounter>=bitSize){
       bitCounter=0;
     }
-
                                                           // Clear the overflow interrupt 
   }else if (TIM3->SR & TIM_SR_CC1IF){                     // Pulse compare interrrupt on Channel 1
     RD_DATA_GPIO_Port->BSRR=1U <<16;                      // Rest the RD_DATA GPIO
@@ -375,18 +361,16 @@ void TIM3_IRQHandler(void){
     TIM3->SR = 0;
 }
 
-
-
 /*
 WRITE PART:
-- TIMER1 is handling the write pulse from the Apple II
+- TIMER2 is handling the write pulse from the Apple II
          and triggered by ETR1 => PA12
     
     PA12 : ETR1
     PA07 : WR_DATA
     PB09 : WR_REQ
     
-    TIMER1 is 4 uS period (399)
+    TIMER2 is 4 uS period (399)
     CC2 is 200 pulse (in the middle of the bit cell)
 
     0000 Reset state (WRDATA rising edge causing a short (i.e. 50ns) aysnchronous reset pulse of counter.
@@ -414,10 +398,13 @@ volatile unsigned int wrBytes=0;
   */
 void TIM2_IRQHandler(void){
 
-  if (TIM2->SR & TIM_SR_UIF){       
+  if (TIM2->SR & TIM_SR_UIF){ 
+
     TIM2->SR &= ~TIM_SR_UIF;                                                  // Reset the Interrupt
     HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_SET);
-  }else if (TIM2->SR & TIM_SR_CC2IF){                                         // The count & compare is on channel 2 to avoid issue with ETR1
+  
+  }else if (TIM2->SR & TIM_SR_CC2IF){                                        // The count & compare is on channel 2 to avoid issue with ETR1
+
     HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_RESET);
 
     wrData=HAL_GPIO_ReadPin(WR_DATA_GPIO_Port, WR_DATA_Pin);  // get WR_DATA
@@ -446,8 +433,8 @@ void TIM2_IRQHandler(void){
 
 
 /**
-  * @brief sort a new chainedlist of item alphabetically
-  * @param list_t * plst
+  * @brief Adjust Enable IRQ for reading process to avoid jitter / delay / corrupted data 
+  * @param None
   * @retval None
   */
 void irqReadTrack(){
@@ -459,8 +446,8 @@ void irqReadTrack(){
   HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
 }
 /**
-  * @brief sort a new chainedlist of item alphabetically
-  * @param list_t * plst
+  * @brief Adjust Enable IRQ for writting process to avoid jitter / delay / corrupted data
+  * @param None
   * @retval None
   */
 void irqWriteTrack(){
@@ -475,6 +462,11 @@ void irqWriteTrack(){
   HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
 }
 
+/**
+  * @brief Adjust Enable IRQ for idle process to avoid jitter / delay / corrupted data
+  * @param None
+  * @retval None
+  */
 void irqWIdle(){
 
   HAL_NVIC_DisableIRQ(TIM2_IRQn);
@@ -483,29 +475,16 @@ void irqWIdle(){
   HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 }
 
+
 /**
-  * @brief sort a new chainedlist of item alphabetically
-  * @param list_t * plst
-  * @retval None
-  */
-void dumpIlog(){
-  for (int i=0;i<ilog_indx;i++){
-    if (i==0){
-      log_info("%03d: %05d %c %d",i,il[i].tc,il[i].type,il[i].val1);
-    }else{
-      int d=(il[i].tc-il[i-1].tc);
-      log_info("%03d: %05d %03d %c %d",i,il[i].tc,d,il[i].type,il[i].val1);
-    } 
-  }
-}
-/**
-  * @brief sort a new chainedlist of item alphabetically
-  * @param list_t * plst
-  * @retval None
+  * @brief debug function to dump content of buffer to file
+  * @param filename char * file name of the file written
+  * @param buffer unsigned char * of the memory buffer
+  * @param length of the buffer
+  * @retval STATUS provides RET_OK / RET_ERR (1,0)
   */
 enum STATUS dumpBufFile(char * filename,volatile unsigned char * buffer,int length){
 
- 
   FIL fil; 		  //File handle
   FRESULT fres; //Result after operations
   while(fsState!=READY){};
@@ -538,10 +517,13 @@ enum STATUS dumpBufFile(char * filename,volatile unsigned char * buffer,int leng
   
   return RET_OK;
 }
+
 /**
-  * @brief sort a new chainedlist of item alphabetically
-  * @param list_t * plst
-  * @retval None
+  * @brief write track to file using FAT_FS function
+  * @param filename name of the file to write to
+  * @param buffer char * containing the buffer
+  * @param offset lseek offset in the file
+  * @retval STATUS RET_OK / RET_ERR
   */
 enum STATUS writeTrkFile(char * filename,char * buffer,uint32_t offset){
   
@@ -581,25 +563,26 @@ enum STATUS writeTrkFile(char * filename,char * buffer,uint32_t offset){
       totalBytes+=bytesWrote;
     }else{
       log_error("f_write error (%i)\n",fres);
-     
       return RET_ERR;
     }
   }
 
   log_debug("Wrote %i bytes to '%s' starting at %ld!\n", totalBytes,filename,offset);
   f_close(&fil);
-  return RET_OK;
 
+  return RET_OK;
 }
+
 /**
-  * @brief sort a new chainedlist of item alphabetically
-  * @param list_t * plst
+  * @brief dump buffer to UART in Hex with 16% value / line
+  * @param buf input buffer to be displayed 
+  * @param memoryAddr Not used, 
+  * @param len buffer len
   * @retval None
   */
 void dumpBuf(unsigned char * buf,long memoryAddr,int len){
 
   log_info("dump Buffer addr:%ld len:%d",memoryAddr,len);
- 
   for (int i=0;i<len;i++){
       if (i%16==0){
         if (i%512==0)
@@ -612,27 +595,27 @@ void dumpBuf(unsigned char * buf,long memoryAddr,int len){
   }
   printf("\n");
 }
+
 /**
-  * @brief sort a new chainedlist of item alphabetically
-  * @param list_t * plst
-  * @retval None
+  * @brief create a binary representation of an INT
+  * @param int char
+  * @retval char *
   */
 char *byte_to_binary(int x){
-    char * b=(char*)malloc(9*sizeof(char));
-    b[0] = '\0';
+  char * b=(char*)malloc(9*sizeof(char));
+  b[0] = '\0';
 
-    int z;
-    for (z = 128; z > 0; z >>= 1){
-        strcat(b, ((x & z) == z) ? "1" : "0");
-    }
-    return b;
+  int z;
+  for (z = 128; z > 0; z >>= 1){
+      strcat(b, ((x & z) == z) ? "1" : "0");
+  }
+
+  return b;
 }
 
-
-
 /**
-  * @brief sort a new chainedlist of item alphabetically
-  * @param list_t * plst
+  * @brief callback function from FatFS SDIO DMA for write process
+  * @param None
   * @retval None
   */
 void Custom_SD_WriteCpltCallback(void){
@@ -646,8 +629,8 @@ void Custom_SD_WriteCpltCallback(void){
 }
 
 /**
-  * @brief sort a new chainedlist of item alphabetically
-  * @param list_t * plst
+  * @brief callback function from FatFS SDIO DMA for read process
+  * @param None
   * @retval None
   */
 void Custom_SD_ReadCpltCallback(void){
@@ -660,14 +643,11 @@ void Custom_SD_ReadCpltCallback(void){
   }
 }
 
-void getDataBlocks(int trk){
-
-}
-
-
 /**
-  * @brief sort a new chainedlist of item alphabetically
-  * @param list_t * plst
+  * @brief read block from sdcard directly using SDIO DMA request
+  * @param memoryAdr sector number of the requested block
+  * @param buffer destination buffer of the read blocks
+  * @param count number of block to be read
   * @retval None
   */
 void getDataBlocksBareMetal(long memoryAdr,volatile unsigned char * buffer,int count){
@@ -680,8 +660,10 @@ void getDataBlocksBareMetal(long memoryAdr,volatile unsigned char * buffer,int c
 }
 
 /**
-  * @brief sort a new chainedlist of item alphabetically
-  * @param list_t * plst
+  * @brief write block from sdcard directly using SDIO DMA request
+  * @param memoryAdr sector number of the requested block
+  * @param buffer source buffer of the read blocks
+  * @param count number of block to be written
   * @retval None
   */
 void setDataBlocksBareMetal(long memoryAdr,volatile unsigned char * buffer,int count){
@@ -694,8 +676,8 @@ void setDataBlocksBareMetal(long memoryAdr,volatile unsigned char * buffer,int c
 }
 
 /**
-  * @brief sort a new chainedlist of item alphabetically
-  * @param list_t * plst
+  * @brief output binary representation of char
+  * @param x char to be represented
   * @retval None
   */
 void printBits(unsigned char x){
@@ -703,7 +685,6 @@ void printBits(unsigned char x){
     putchar('0'+((x>>(i-1))&1));
   putchar(' ');
 }
-
 
 /**
   * @brief sort a new chainedlist of item alphabetically
@@ -834,7 +815,7 @@ enum STATUS walkDir(char * path){
 char processSdEject(uint16_t GPIO_PIN){
   log_info("processSdeject");
   
-  int sdEject=HAL_GPIO_ReadPin(SD_EJECT_GPIO_Port, GPIO_PIN);        // Check if SDCard is ejected
+  int sdEject=HAL_GPIO_ReadPin(SD_EJECT_GPIO_Port, GPIO_PIN);                 // Check if SDCard is ejected
   if (sdEject==1){  
     flgImageMounted=0;
 
@@ -1126,9 +1107,7 @@ volatile const int position2Direction[8][8] = {               // position2Direct
 
 void processDiskHeadMoveInterrupt(uint16_t GPIO_Pin){
 
- 
- volatile unsigned char stp=(GPIOA->IDR&0b0000000000001111);
-
+  volatile unsigned char stp=(GPIOA->IDR&0b0000000000001111);
   volatile int newPosition=magnet2Position[stp];
 
   if (newPosition>=0){
@@ -1140,12 +1119,12 @@ void processDiskHeadMoveInterrupt(uint16_t GPIO_Pin){
   
     if (ph_track<0)
       ph_track=0;
-
-    if (ph_track>160)                                                                 
+    else if (ph_track>160)                                                                 
       ph_track=160;                                             
                                           
     intTrk=getTrackFromPh(ph_track);                                        // Get the current track from the accroding driver                   
   }
+  return;
 }
 
 /**
@@ -1163,14 +1142,10 @@ enum STATUS mountImagefile(char * filename){
   FRESULT fr;
   FILINFO fno;
   
-
-
   log_info("Mounting image: %s",filename);
   while(fsState!=READY){};
-
-
-
   fsState=BUSY;
+
   fr = f_stat(filename, &fno);
   switch (fr) {
     case FR_OK:
@@ -1216,7 +1191,6 @@ enum STATUS mountImagefile(char * filename){
     getTrackFromPh=getWozTrackFromPh;
     getTrackSize=getWozTrackSize;
     
-
     optimalBitTiming=wozFile.opt_bit_timing;
     flgWriteProtected=wozFile.is_write_protected;
     
@@ -1344,8 +1318,7 @@ int main(void)
   TIM3->DIER=dier;
 
 
-  initScreen();  
-                                                                  // I2C Screen init
+  initScreen();                                                                     // I2C Screen init
   HAL_Delay(1000);
   //processSdEject(SD_EJECT_Pin);
   
@@ -1428,7 +1401,7 @@ int main(void)
     //sprintf(filename,"Locksmith.woz");
     //sprintf(filename,"/Zaxxon.woz");
     //sprintf(filename,"/Bouncing Kamungas.woz");                              // 22/08 NOT WORKING
-    //sprintf(filename,"/WOZ 2.0/Blazing Paddles (Baudville).woz");                                     // 21/08 WORKING
+    //ssprintf(filename,"/WOZ 2.0/Blazing Paddles (Baudville).woz");                                     // 21/08 WORKING
     //sprintf(filename,"/WOZ 2.0/Border Zone - Disk 1, Side A.woz");                                      // 22/08 NOT WORKING
     //sprintf(filename,"/WOZ 2.0/Bouncing Kamungas - Disk 1, Side A.woz");                              // 22/08 NOT WORKING
     //sprintf(filename,"/WOZ 2.0/Commando - Disk 1, Side A.woz");                                       // 21/08 WORKING
@@ -2076,7 +2049,7 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin : DEVICE_ENABLE_Pin */
   GPIO_InitStruct.Pin = DEVICE_ENABLE_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(DEVICE_ENABLE_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : WR_DATA_Pin */
