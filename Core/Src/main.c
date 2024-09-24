@@ -85,15 +85,17 @@ UART
 
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
+#include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
+#include <time.h>
+
 #include "main.h"
 #include "fatfs.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include <stdbool.h>
-#include <stdio.h>
-#include <string.h>
-#include <time.h>
+
 
 #include "display.h"
 //#include "fatfs_sdcard.h"
@@ -207,8 +209,11 @@ void (*ptrbtnRet)(void *);
 
 char selItem[256];                                           // select from chainedlist item;
 char currentFullPath[1024];                                  // current path from root
-char * currentImageFilename=NULL;                              // current mounted image filename;
+char currentPath[128];                                       // current directory name max 128 char
+char * currentImageFilename=NULL;                            // current mounted image filename;
 char currentFullPathImageFilename[1024];                     // fullpath from root image filename
+
+image_info_t mountImageInfo;
 
 int lastlistPos;
 list_t * dirChainedList;
@@ -293,13 +298,12 @@ volatile uint8_t *bbPtr=0x0;
   * @retval None
   */
 void debounceBtn(int GPIO){
- 
+
   buttonDebounceState=false;
   TIM4->CNT=0;
   TIM4->CR1 |= TIM_CR1_CEN;
   processBtnInterrupt(GPIO);
 }
-   
 
 /**
   * @brief TIMER4 IRQ Handler, manage the debouncer of the control button (UP,DWN,RET,ENTER)
@@ -309,7 +313,7 @@ void debounceBtn(int GPIO){
 void TIM4_IRQHandler(void){
 
   if (TIM4->SR & TIM_SR_UIF){
-	  buttonDebounceState = true;
+    buttonDebounceState = true;
     printf("debounced\n");
   }
   TIM4->SR = 0;
@@ -717,6 +721,28 @@ list_t * sortLinkedList(list_t * plst){
 }
 
 /**
+  * @brief Extract the current directory from the full path
+  * @param path
+  * @retval RET_OK/RET_ERR
+  */
+enum STATUS processPath(char *path){
+  if (path==NULL)
+    return -1;
+
+  int len=strlen(path);
+  sprintf(currentPath,"/");
+
+  for (int i=len-1;i!=-1;i--){
+    if (path[i]=='/'){
+      snprintf(currentPath,128,"%s",path+i+1);
+      break;
+    }
+  }
+  printf("currentPath:%s\n",currentPath);
+  return RET_OK;
+}
+
+/**
   * @brief Build & sort a new chainedlist of file/dir item based on the current path
   * @param path
   * @retval RET_OK/RET_ERR
@@ -724,6 +750,8 @@ list_t * sortLinkedList(list_t * plst){
 enum STATUS walkDir(char * path){
   DIR dir;
   FRESULT     fres;  
+
+  processPath(path);
 
   while(fsState!=READY){};
 
@@ -740,6 +768,7 @@ enum STATUS walkDir(char * path){
   int len;
   lastlistPos=0;
   dirChainedList=list_new();
+
 
   if (fres == FR_OK){
       if (strcmp(path,"") && strcmp(path,"/")){
@@ -977,6 +1006,7 @@ void processSelectFSItem(){
   if (selItem[2]=='.' && selItem[3]=='.'){                // selectedItem is [UpDir];
     for (int i=len-1;i!=-1;i--){
       if (currentFullPath[i]=='/'){
+        snprintf(currentPath,128,"%s",currentFullPath+i);
         currentFullPath[i]=0x0;
         dispSelectedIndx=0;
         currentClistPos=0;
@@ -1051,12 +1081,12 @@ enum STATUS swithPage(enum page newPage,void * arg){
     case MENU:
       break;
     case IMAGE:
-       initIMAGEScreen(currentImageFilename,0);
-       ptrbtnUp=nothing;
-       ptrbtnDown=nothing;
-       ptrbtnEntr=nothing;
-       ptrbtnRet=processBtnRet;
-       currentPage=IMAGE;
+      initIMAGEScreen(currentImageFilename,0);
+      ptrbtnUp=nothing;
+      ptrbtnDown=nothing;
+      ptrbtnEntr=nothing;
+      ptrbtnRet=processBtnRet;
+      currentPage=IMAGE;
       break;
     case MOUNT:
       mountImageScreen((char*)arg+2);
@@ -1175,7 +1205,13 @@ enum STATUS mountImagefile(char * filename){
      getTrackBitStream=getNicTrackBitStream;
      getTrackFromPh=getNicTrackFromPh;
      getTrackSize=getNicTrackSize;
-     optimalBitTiming=32;
+     
+     mountImageInfo.optimalBitTiming=32;
+     mountImageInfo.writeProtected=0;
+     mountImageInfo.version=0;
+     mountImageInfo.cleaned=0;
+     mountImageInfo.type=0;
+     
      flgWriteProtected=0;
   }else if (l>4 && 
       (!memcmp(filename+(l-4),"\x2E\x57\x4F\x5A",4)  ||           // .WOZ
@@ -1191,7 +1227,14 @@ enum STATUS mountImagefile(char * filename){
     getTrackFromPh=getWozTrackFromPh;
     getTrackSize=getWozTrackSize;
     
-    optimalBitTiming=wozFile.opt_bit_timing;
+    mountImageInfo.optimalBitTiming=wozFile.opt_bit_timing;
+    mountImageInfo.writeProtected=wozFile.is_write_protected;
+    mountImageInfo.synced=wozFile.sync;
+    mountImageInfo.version=wozFile.version;
+    mountImageInfo.cleaned=wozFile.cleaned;
+    mountImageInfo.type=1;
+
+
     flgWriteProtected=wozFile.is_write_protected;
     
   }else{
@@ -1238,9 +1281,9 @@ enum STATUS initeBeaming(){
   bitSize=6656*8;
   bitCounter=0;
 
-  TIM3->ARR=(optimalBitTiming*125/10)-1;
+  TIM3->ARR=(mountImageInfo.optimalBitTiming*125/10)-1;
 
-  log_info("initeBeaming optimalBitTiming:%d",optimalBitTiming);
+  log_info("initeBeaming optimalBitTiming:%d",mountImageInfo.optimalBitTiming);
   
   flgBeaming=1;
   return RET_OK; 
@@ -1386,6 +1429,9 @@ int main(void)
   */
 
     irqReadTrack();
+
+    HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
+
     char filename[128];
     //sprintf(filename,"/Blank(5).woz");
     //sprintf(filename,"/spiradisc/Frogger.woz");
@@ -1566,7 +1612,7 @@ int main(void)
           setConfigParamStr("currentPath",currentFullPath);
           saveConfigFile();
           currentClistPos=0;
-          initFSScreen("");
+          initFSScreen(currentPath);
           updateFSDisplay(-1); 
           nextAction=NONE;
           break;
@@ -1582,8 +1628,8 @@ int main(void)
             log_error("Error in saving param to configFie:lastImageFile %s",tmp);
           }
 
-          mountImagefile(tmp);
-          initeBeaming();
+          //mountImagefile(tmp);
+          //initeBeaming();
           
           dumpConfigParams();
           if (saveConfigFile()==RET_ERR){
@@ -2117,9 +2163,9 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
    
   }else if (GPIO_Pin==DEVICE_ENABLE_Pin){
     processDeviceEnableInterrupt(DEVICE_ENABLE_Pin);
-  }else if (GPIO_Pin==SD_EJECT_Pin){
+  }/*else if (GPIO_Pin==SD_EJECT_Pin){                            // SD EJECT IS NOT ANYMORE AN INTERRUPT
     processSdEject(GPIO_Pin);
-  }
+  }*/
   
   else if ((GPIO_Pin == BTN_RET_Pin   ||      // BTN_RETURN
             GPIO_Pin == BTN_ENTR_Pin  ||      // BTN_ENTER

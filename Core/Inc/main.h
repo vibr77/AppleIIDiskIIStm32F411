@@ -33,6 +33,7 @@ extern "C" {
 /* USER CODE BEGIN Includes */
 #include "list.h"
 #include "defines.h"
+
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -108,6 +109,16 @@ char processSdEject(uint16_t GPIO_PIN);
 
 enum STATUS mountImagefile(char * filename);
 enum STATUS initeBeaming();
+
+typedef struct image_info_s {
+  uint8_t type;
+  uint8_t version;
+  uint8_t writeProtected;
+  uint8_t synced;
+  uint8_t cleaned;
+  uint8_t optimalBitTiming;
+} image_info_t;
+
 
 /* USER CODE END EFP */
 

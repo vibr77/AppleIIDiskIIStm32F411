@@ -21,7 +21,7 @@ extern long database;                                            // start of the
 extern int csize;  
 extern volatile enum FS_STATUS fsState;
 unsigned int fatWozCluster[20];
-char * woz1_256B_prologue;                                       // needed to store the potential overwrite 
+char * woz1_256B_prologue;                                       // needed to store the potential overwrite
 
 int getWozTrackFromPh(int phtrack){
    return TMAP[phtrack];

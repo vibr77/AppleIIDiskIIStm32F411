@@ -8,7 +8,9 @@
 
 extern list_t * dirChainedList;
 extern char currentFullPath[1024]; 
+extern char currentPath[128];
 extern int currentClistPos;
+extern image_info_t mountImageInfo;
 
 uint8_t selectedFsIndx=0;
 
@@ -90,14 +92,11 @@ void updateFSDisplay(int init){
   }
 
   // Render Part
-
-
   for (int i=0;i<MAX_LINE_ITEM;i++){
 
     clearLineStringAtPosition(1+i,offset);
     if (fsDispItem[i].status!=0){
       
-     
       ssd1306_SetColor(White);
       dispIcon(1,(1+i)*9+offset,fsDispItem[i].icon);
 
@@ -112,8 +111,9 @@ void updateFSDisplay(int init){
   ssd1306_SetColor(White);
   sprintf(tmp,"%02d/%02d",selectedFsIndx+1,lstCount);
   displayStringAtPosition(96,6*9+1,tmp);
+
   ssd1306_UpdateScreen();
-     
+
 }
 
 void dispIcon(int x,int y,int indx){
@@ -125,21 +125,39 @@ void dispIcon(int x,int y,int indx){
   };
 
   ssd1306_DrawBitmap(x,y,8,8,icon_set+8*indx);
-
 }
 
 void mountImageScreen(char * filename){
+  
+  char tmp[28];
+  char tmp2[28];
+  int i=0;
+
+  if (filename==NULL)
+    return;
+  
   clearScreen();
+  i=strlen(filename);
+ 
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wformat-truncation"
+  snprintf(tmp,18,"%s",filename);
+  if (i>20)
+    snprintf(tmp2,23,"%s...",tmp);
+  else
+    snprintf(tmp2,23,"%s",filename);
+  #pragma GCC diagnostic pop
+  
   ssd1306_SetColor(White);
-  displayStringAtPosition(5,1*9,"Mount");
-  displayStringAtPosition(5,2*9,filename);
+  displayStringAtPosition(5,1*9,"Mounting:");
+  displayStringAtPosition(5,2*9,tmp2);
   
   displayStringAtPosition(30,4*9,"YES");
   displayStringAtPosition(30,5*9,"NO");
   
   ssd1306_SetColor(Inverse);
   ssd1306_FillRect(30-5,4*9-1,50,9);
-
+  ssd1306_UpdateScreen();
 }
 
 void toggleMountOption(int i){
@@ -147,6 +165,7 @@ void toggleMountOption(int i){
   ssd1306_SetColor(Inverse);
   ssd1306_FillRect(30-5,4*9-1,50,9);
   ssd1306_FillRect(30-5,5*9-1,50,9);
+  ssd1306_UpdateScreen();
 }
 
 void clearScreen(){
@@ -179,7 +198,7 @@ void initIMAGEScreen(char * imageName,int type){
       break;
   }
 
-  snprintf(tmp,20,"%s",imageName+i+1);
+  snprintf(tmp,20,"%s",imageName+i);
   len=strlen(tmp);
 
   if (len<20){
@@ -190,19 +209,34 @@ void initIMAGEScreen(char * imageName,int type){
     if (i!=0)
       tmp[i]=0x0;
   }
-
+  char CL,WP,SYN;
   displayStringAtPosition(5,1*9,tmp);
-  if (type==0)
-    displayStringAtPosition(5,2*9,"type: WOZ");
-  else 
+  if (mountImageInfo.type==0)
     displayStringAtPosition(5,2*9,"type: NIC");
+  else if (mountImageInfo.type==1)
+    displayStringAtPosition(5,2*9,"type: WOZ");
   
   displayStringAtPosition(5,3*9,"Track: 0");
 
-  sprintf(tmp,"CL:N OT:32");
+  if (mountImageInfo.cleaned==1)
+    CL='Y';
+  else
+    CL='N';
+  
+  if (mountImageInfo.writeProtected==1)
+    WP='Y';
+  else
+    WP='N';
+  
+  if (mountImageInfo.synced==1)
+    SYN='Y';
+  else 
+    SYN='N';
+
+  sprintf(tmp,"CL:%c OT:%d",CL,mountImageInfo.optimalBitTiming);
   displayStringAtPosition(5,5*9,tmp);
 
-  sprintf(tmp,"WP:Y SYN:N V:1");
+  sprintf(tmp,"WP:%c SYN:%c V:%d",WP,SYN,mountImageInfo.version);
   displayStringAtPosition(5,6*9,tmp);
   ssd1306_UpdateScreen();
 }
@@ -241,11 +275,17 @@ void initFSScreen(char * path){
   displayStringAtPosition(0,0,"File listing");
   ssd1306_DrawLine(0,8,127,8);
   ssd1306_DrawLine(0,6*9-1,127,6*9-1);
-  displayStringAtPosition(0,6*9+1,path); 
   
   char tmp[32];
   sprintf(tmp,"xx/xx");
-  displayStringAtPosition(96,6*9+2,tmp);
+  displayStringAtPosition(96,6*9+1,tmp);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-truncation"
+ 
+  snprintf(tmp,18,"%s",currentPath);
+#pragma GCC diagnostic pop
+  displayStringAtPosition(0,6*9+1,tmp);
+
   ssd1306_UpdateScreen();
 
 }
