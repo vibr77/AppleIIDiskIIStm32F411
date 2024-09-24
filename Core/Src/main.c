@@ -1387,11 +1387,11 @@ int main(void)
 
     irqReadTrack();
     char filename[128];
-    sprintf(filename,"/Blank(5).woz");
+    //sprintf(filename,"/Blank(5).woz");
     //sprintf(filename,"/spiradisc/Frogger.woz");
     //sprintf(filename,"/spiradisc/Lunar Leepers.woz");
     
-    //sprintf(filename,"/Locksmith v6.0B.woz");
+    sprintf(filename,"/Locksmith v6.0B.woz");
     //sprintf(filename,"/DK.woz");                                                                      // WORKS only with 6656 DMABuf size;
     //sprintf(filename,"/Bouncing Kamungas crk.woz");
     //sprintf(filename,"/ER16.woz");                                                                    // WORKING
@@ -1455,7 +1455,7 @@ int main(void)
 */
 
   HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_RESET);
-  printf("here\n");
+
   while (1){
 
     if (flgDeviceEnable==1 && prevTrk!=intTrk && flgImageMounted==1){
@@ -2106,7 +2106,7 @@ static void MX_GPIO_Init(void)
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
 
- // printf("startr here 0 %d\n",GPIO_Pin);
+  printf("startr here 0 %d\n",GPIO_Pin);
   if( GPIO_Pin == STEP0_Pin   ||               // Step 0 PB8
       GPIO_Pin == STEP1_Pin   ||               // Step 1 PB9
       GPIO_Pin == STEP2_Pin   ||               // Step 2 PB10
@@ -2127,7 +2127,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
             GPIO_Pin == BTN_DOWN_Pin          // BTN_DOWN
             ) && buttonDebounceState==true){
     
-
+    //printf("here1\n");
     debounceBtn(GPIO_Pin);
    
 
