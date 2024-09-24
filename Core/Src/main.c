@@ -456,9 +456,9 @@ void irqReadTrack(){
   */
 void irqWriteTrack(){
 
-   HAL_NVIC_DisableIRQ(SDIO_IRQn);
-   HAL_NVIC_DisableIRQ(DMA2_Stream3_IRQn);
-   HAL_NVIC_DisableIRQ(DMA2_Stream6_IRQn);
+  HAL_NVIC_DisableIRQ(SDIO_IRQn);
+  HAL_NVIC_DisableIRQ(DMA2_Stream3_IRQn);
+  HAL_NVIC_DisableIRQ(DMA2_Stream6_IRQn);
 
   HAL_NVIC_EnableIRQ(TIM2_IRQn);
   HAL_NVIC_DisableIRQ(TIM3_IRQn);
@@ -557,7 +557,7 @@ enum STATUS writeTrkFile(char * filename,char * buffer,uint32_t offset){
     if(fres == FR_OK) {
       totalBytes+=bytesWrote;
     }else{
-	    log_error("f_write error (%i)\n",fres);
+      log_error("f_write error (%i)\n",fres);
       return RET_ERR;
     }
   }
@@ -588,14 +588,13 @@ void dumpBuf(unsigned char * buf,long memoryAddr,int len){
 
   log_info("dump Buffer addr:%ld len:%d",memoryAddr,len);
   for (int i=0;i<len;i++){
-      if (i%16==0){
-        if (i%512==0)
-          printf("\n-");
-        printf("\n%03X: ",i);
-        
-      }
+    if (i%16==0){
+      if (i%512==0)
+        printf("\n-");
+    printf("\n%03X: ",i);
+      
+    }
     printf("%02X ",buf[i]);
-   
   }
   printf("\n");
 }
@@ -756,7 +755,7 @@ enum STATUS walkDir(char * path){
   while(fsState!=READY){};
 
   fres = f_opendir(&dir, path);
- 
+
   log_info("directory listing:%s",path);
 
   if (fres != FR_OK){
@@ -801,9 +800,8 @@ enum STATUS walkDir(char * path){
              !memcmp(fno.fname+(len-4),"\x2E\x77\x6F\x7A",4)) &&           // .woz
              !(fno.fattrib & AM_SYS) &&                                    // Not System file
              !(fno.fattrib & AM_HID)                                       // Not Hidden file
-             )
-             
-             ){
+            )
+            ){
               
           fileName=malloc(64*sizeof(char));
           if (fno.fattrib & AM_DIR){
@@ -819,9 +817,9 @@ enum STATUS walkDir(char * path){
             list_rpush(dirChainedList, list_node_new(fileName));
             lastlistPos++;
           }
-       
+
         
-       log_info("%c%c%c%c %10d %s/%s",
+        log_info("%c%c%c%c %10d %s/%s",
           ((fno.fattrib & AM_DIR) ? 'D' : '-'),
           ((fno.fattrib & AM_RDO) ? 'R' : '-'),
           ((fno.fattrib & AM_SYS) ? 'S' : '-'),
@@ -900,7 +898,7 @@ char processDeviceEnableInterrupt(uint16_t GPIO_Pin){
     GPIO_InitStruct.Mode  = GPIO_MODE_INPUT;
     GPIO_InitStruct.Pull  = GPIO_NOPULL;
     HAL_GPIO_Init(RD_DATA_GPIO_Port, &GPIO_InitStruct);
-     
+
     GPIO_InitStruct.Pin   = WR_PROTECT_Pin;
     GPIO_InitStruct.Mode  = GPIO_MODE_INPUT;
     GPIO_InitStruct.Pull  = GPIO_NOPULL;
@@ -935,9 +933,8 @@ void processBtnInterrupt(uint16_t GPIO_Pin){
       log_info("BTN ENT");
       break;
     case BTN_RET_Pin:
-
       ptrbtnRet(NULL);
-     log_info("BTN RET");
+      log_info("BTN RET");
       break;
     default:
       break;
@@ -1119,7 +1116,7 @@ enum STATUS swithPage(enum page newPage,void * arg){
 
 volatile const int magnet2Position[16] = {
 //   0000 0001 0010 0011 0100 0101 0110 0111 1000 1001 1010 1011 1100 1101 1110 1111
-       -1,   0,   2,   1,   4,  -1,   3,  -1,   6,   7,  -1,  -1,   5,  -1,  -1,  -1
+      -1,   0,   2,   1,   4,  -1,   3,  -1,   6,   7,  -1,  -1,   5,  -1,  -1,  -1
 };
 
 volatile const int position2Direction[8][8] = {               // position2Direction[X][Y] :X ROW Y: COLUMN 
@@ -1341,7 +1338,7 @@ int main(void)
   log_info("**     This is the sound of sea !    **");
   log_info("***************************************");
   
- 
+
   EnableTiming();                                                          // Enable WatchDog to get precise CPU Cycle counting
   memset((unsigned char *)&DMA_BIT_TX_BUFFER,0,6656*sizeof(char));
 
@@ -1374,7 +1371,7 @@ int main(void)
 
   int trk=35;
   ph_track=160;
-                                                                           
+
   char *imgFile=NULL;
   
   fres = f_mount(&fs, "", 1);                                       
@@ -1473,7 +1470,7 @@ int main(void)
     //sprintf(currentImageFilename,"%s",filename);
     
     if ((mountImagefile(filename))==RET_ERR){
-     log_error("Mount Image Error");
+      log_error("Mount Image Error");
     }
 
     if (flgImageMounted==1){
@@ -1481,9 +1478,10 @@ int main(void)
      // swithPage(IMAGE,NULL);
     }
 
-     swithPage(FS,NULL);
+    swithPage(FS,NULL);
 
   unsigned long cAlive=0;
+  
 
   volatile int newBitSize=0;
   volatile uint32_t oldBitSize=0;
@@ -1512,7 +1510,6 @@ int main(void)
       t1 = DWT->CYCCNT;                                       
       
       if (trk==255){
-       
           for (int j=0;j<25;j++){
             memcpy((unsigned char *)&DMA_BIT_TX_BUFFER+j*256,fakeBitTank,256);
           }
@@ -1522,7 +1519,7 @@ int main(void)
         prevTrk=trk;
         continue;
       }
-     
+
       // --------------------------------------------------------------------
       // PART 1 MAIN TRACK & RESTORE AS QUICKLY AS POSSIBLE THE DMA
       // --------------------------------------------------------------------
@@ -1548,7 +1545,7 @@ int main(void)
       if (intTrk==0){
         HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_SET);
       }else{
-         HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_RESET);
       }
       /*    End of debug       */
 
@@ -1645,6 +1642,7 @@ int main(void)
       }
     }else{
       cAlive++;
+      updateIMAGEScreen(0,trk);
       if (cAlive==50000000){
         printf(".\n");
         cAlive=0;

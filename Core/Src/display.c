@@ -1,3 +1,4 @@
+
 #include "stdio.h"
 #include "display.h"
 #include "ssd1306.h"
@@ -31,6 +32,7 @@ typedef struct FSDISPITEM{
 FSDISPITEM_t fsDispItem[MAX_LINE_ITEM];
 
 int currentTrk=0;
+int currentStatus=0;
 
 void updateFSDisplay(int init){
   
@@ -39,7 +41,7 @@ void updateFSDisplay(int init){
 
   char tmp[32];
   char * value;
- 
+
   list_node_t *fsItem; 
   uint8_t fsIndx=0;
   uint8_t lstCount=dirChainedList->len;
@@ -241,23 +243,29 @@ void initIMAGEScreen(char * imageName,int type){
   ssd1306_UpdateScreen();
 }
 
-void updateIMAGEScreen(unsigned int status,int trk){
-  char tmp[32];
+void updateIMAGEScreen(uint8_t status,uint8_t trk){
+  
 
-  if (currentTrk!=trk){
-    sprintf(tmp,"Track: %02d",trk);
-    displayStringAtPosition(5,3*9,tmp);
-    currentTrk=trk;
+  if (currentTrk!=trk || status!=currentStatus){
+
+    char tmp[32];
+
+    if (currentTrk!=trk){
+      sprintf(tmp,"Track: %02d",trk);
+      displayStringAtPosition(5,3*9,tmp);
+      currentTrk=trk;
+    }
+
+    if (status==0){
+      sprintf(tmp,"Mode: reading");
+      displayStringAtPosition(5,4*9,tmp);
+    }else if(status==1){
+      sprintf(tmp,"Mode: writing");
+      displayStringAtPosition(5,4*9,tmp);
+    }
+    ssd1306_UpdateScreen();
   }
-
-  if (status==0){
-    sprintf(tmp,"Mode: reading");
-    displayStringAtPosition(5,4*9,tmp);
-  }else if(status==1){
-    sprintf(tmp,"Mode: writing");
-    displayStringAtPosition(5,4*9,tmp);
-  }
-
+  return;
 }
 
 void initSdEjectScreen(){
