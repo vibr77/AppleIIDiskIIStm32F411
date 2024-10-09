@@ -10,10 +10,11 @@
 #include "log.h"
 
 __uint8_t TMAP[160];
-__uint16_t TRK_startingBlockOffset[40];
-__uint16_t TRK_BlockCount[40];
-__uint32_t TRK_BitCount[40];
-woz_info_t wozFile;
+__uint16_t TRK_startingBlockOffset[41];
+__uint16_t TRK_BlockCount[41];
+__uint32_t TRK_BitCount[41];
+
+
 
 const char logPrefix[]="[woz_driver]";
 
@@ -22,7 +23,7 @@ extern int csize;
 extern volatile enum FS_STATUS fsState;
 unsigned int fatWozCluster[20];
 char * woz1_256B_prologue;                                       // needed to store the potential overwrite
-
+woz_info_t wozFile;
 int getWozTrackFromPh(int phtrack){
    return TMAP[phtrack];
 }
@@ -101,7 +102,6 @@ enum STATUS getWozTrackBitStream(int trk,unsigned char * buffer){
     }
     getDataBlocksBareMetal(addr,tmp2,blockNumber+1);
     while (fsState!=READY){}                                                          // we need to wait here... with the DMA
-    dumpBuf(tmp2,1,1024);
     memcpy(buffer,tmp2+256,blockNumber*512-10);                                       // Last 10 Bytes are not Data Stream Bytes
     woz1_256B_prologue=malloc(256*sizeof(char));
     memcpy(woz1_256B_prologue,tmp2,256);                                              // we need this to speed up the write process
@@ -134,7 +134,7 @@ enum STATUS setWozTrackBitStream(int trk,unsigned char * buffer){
     // First we need to get the first 256 bytes of t
     memcpy(tmp2,woz1_256B_prologue,256);
     memcpy(tmp2+256,buffer,blockNumber*512);   
-    //cmd25SetDataBlocksBareMetal(addr,tmp2,blockNumber+1);               // <!> Last 10 Bytes are not Data Stream Bytes
+    //cmd25SetDataBlocksBareMetal(addr,tmp2,blockNumber+1);                           // <!> Last 10 Bytes are not Data Stream Bytes
     free(tmp2);
   }
         
@@ -148,7 +148,6 @@ enum STATUS mountWozFile(char * filename){
     
     FRESULT fres; 
     FIL fil;  
-
 
     for (int i=0;i<160;i++)
       TMAP[i]=255;
@@ -175,9 +174,9 @@ enum STATUS mountWozFile(char * filename){
     }
 
     unsigned int pt;
-    char * woz_header=(char*)malloc(4*sizeof(char));
+    char * woz_header=(char*)malloc(6*sizeof(char));
     f_read(&fil,woz_header,4,&pt);
-    if (!memcmp(woz_header,"\x57\x4F\x5A\x31",4)){               //57 4F 5A 31
+    if (!memcmp(woz_header,"\x57\x4F\x5A\x31",4)){                    //57 4F 5A 31
         log_info("Image:woz version 1");
         wozFile.version=1;
     }else if (!memcmp(woz_header,"\x57\x4F\x5A\x32",4)){
@@ -190,17 +189,21 @@ enum STATUS mountWozFile(char * filename){
     free(woz_header);
 
     // Getting the Info Chunk
-    char *info_chunk=(char*)malloc(60*sizeof(char));
+    char *info_chunk=(char*)malloc(66*sizeof(char));
     f_lseek(&fil,12);
     f_read(&fil,info_chunk,60,&pt);
 
+    log_info("info_chunk read:%d",pt);
+    
     if (!memcmp(info_chunk,"\x49\x4E\x46\x4F",4)){                  // Little Indian 0x4F464E49  
         
-        wozFile.disk_type=(int)info_chunk[1+8];
+        wozFile.disk_type=(uint8_t)info_chunk[1+8];
         log_info("woz file disk type:%d",wozFile.disk_type);
         
-        wozFile.is_write_protected=(int)info_chunk[2+8];
+        
+        wozFile.is_write_protected=info_chunk[2+8];
         log_info("woz file write protected:%d",wozFile.is_write_protected);
+        
         
         wozFile.sync=(int)info_chunk[3+8];
         log_info("woz file write synced:%d",wozFile.sync);
@@ -214,6 +217,8 @@ enum STATUS mountWozFile(char * filename){
           wozFile.largest_track= info_chunk[44+8] | info_chunk[45+8] << 8;
           log_info("woz opt_bit_timing %d",wozFile.opt_bit_timing);
           log_info("woz largest_track %d",wozFile.largest_track);
+        }else{
+          wozFile.opt_bit_timing=32;
         }
         
         memcpy(wozFile.creator,info_chunk+5+8,32);
@@ -229,10 +234,10 @@ enum STATUS mountWozFile(char * filename){
     
     char * tmap_chunk=(char *)malloc(168*sizeof(char));
     if (!tmap_chunk){
-       log_error("tmap_chunk error");
-       return RET_ERR;
+        log_error("tmap_chunk error");
+        return RET_ERR;
     }
-       
+
     f_lseek(&fil,80);
     f_read(&fil,tmap_chunk,168,&pt);
     
@@ -248,7 +253,7 @@ enum STATUS mountWozFile(char * filename){
     }
     
     free(tmap_chunk);
-
+    
     if (wozFile.version==2){
         char * trk_chunk=(char *)malloc(1280*sizeof(char));
         if (!trk_chunk)
@@ -257,7 +262,7 @@ enum STATUS mountWozFile(char * filename){
         f_lseek(&fil,248);
         f_read(&fil,trk_chunk,1280,&pt);
 
-        if (!memcmp(trk_chunk,"\x54\x52\x4B\x53",4)){          // 0x534B5254          // ERREUR A FIXER ICI
+        if (!memcmp(trk_chunk,"\x54\x52\x4B\x53",4)){                                                                 // 0x534B5254          // ERREUR A FIXER ICI
 
             for (int i=0;i<40;i++){
                 TRK_startingBlockOffset[i]=(((unsigned short)trk_chunk[i*8+8+1] << 8) & 0xF00) | trk_chunk[i*8+8];
@@ -287,7 +292,7 @@ enum STATUS mountWozFile(char * filename){
           f_read(&fil,trk_chunk,10,&pt);
 
           TRK_BitCount[i] = ((trk_chunk[1] << 8) | trk_chunk[0])*8;
-          log_info("woz trk file offset trk:%03d offset:%02dx512 BlkCount:%d BitCount:%ld",i,TRK_startingBlockOffset[i],TRK_BlockCount[i],TRK_BitCount[i]);
+          //log_info("woz trk file offset trk:%03d offset:%02dx512 BlkCount:%d BitCount:%ld",i,TRK_startingBlockOffset[i],TRK_BlockCount[i],TRK_BitCount[i]);
           free(trk_chunk);
         }
         return RET_OK;

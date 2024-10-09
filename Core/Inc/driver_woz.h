@@ -24,7 +24,7 @@ typedef struct woz_info_s {
                                         //      WOZ2 => 2
                                         //      WOZ 2.1 => 3
     uint8_t     disk_type;              // 1 = 5.25, 2 = 3.5
-    uint8_t     is_write_protected;     // 1 = Floppy is write protected
+    int     is_write_protected;     // 1 = Floppy is write protected
     uint8_t     sync;                   // 1 = Cross track sync
     uint8_t     cleaned;                // 1 = MC3470 fake bits removed
     char        creator [32];           // Name of software created this file (UTF-8, 0x20 padded, NOT zero terminated)

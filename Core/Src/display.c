@@ -186,8 +186,14 @@ void initScreen(){
 }
 
 
-void initIMAGEScreen(char * imageName,int type){
+enum STATUS initIMAGEScreen(char * imageName,int type){
   
+  if (imageName==NULL){
+    log_error("imageName is null");
+    return RET_ERR;
+  }
+    
+
   char tmp[32];
   clearScreen();
   ssd1306_SetColor(White);
@@ -200,7 +206,7 @@ void initIMAGEScreen(char * imageName,int type){
       break;
   }
 
-  snprintf(tmp,20,"%s",imageName+i);
+  snprintf(tmp,20,"%s",imageName+i+1);
   len=strlen(tmp);
 
   if (len<20){
@@ -241,27 +247,27 @@ void initIMAGEScreen(char * imageName,int type){
   sprintf(tmp,"WP:%c SYN:%c V:%d",WP,SYN,mountImageInfo.version);
   displayStringAtPosition(5,6*9,tmp);
   ssd1306_UpdateScreen();
+  return RET_OK;
 }
 
 void updateIMAGEScreen(uint8_t status,uint8_t trk){
   
-
   if (currentTrk!=trk || status!=currentStatus){
 
     char tmp[32];
 
     if (currentTrk!=trk){
-      sprintf(tmp,"Track: %02d",trk);
+      sprintf(tmp,"Track: %02d ",trk);
       displayStringAtPosition(5,3*9,tmp);
       currentTrk=trk;
     }
 
     if (status==0){
-      sprintf(tmp,"Mode: reading");
-      displayStringAtPosition(5,4*9,tmp);
+      sprintf(tmp,"RD");
+      displayStringAtPosition(72,3*9,tmp);
     }else if(status==1){
-      sprintf(tmp,"Mode: writing");
-      displayStringAtPosition(5,4*9,tmp);
+      sprintf(tmp,"WR");
+      displayStringAtPosition(72,3*9,tmp);
     }
     ssd1306_UpdateScreen();
   }
@@ -272,7 +278,9 @@ void initSdEjectScreen(){
 
   clearScreen();
   ssd1306_SetColor(White);
-  displayStringAtPosition(5,1*9, "SD CARD IS EJECTED");
+  displayStringAtPosition(5,3*9, "ERROR:");
+  displayStringAtPosition(5,4*9, "SD CARD IS EJECTED");
+  ssd1306_UpdateScreen();
 }
 
 void initFSScreen(char * path){
@@ -289,7 +297,6 @@ void initFSScreen(char * path){
   displayStringAtPosition(96,6*9+1,tmp);
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wformat-truncation"
- 
   snprintf(tmp,18,"%s",currentPath);
 #pragma GCC diagnostic pop
   displayStringAtPosition(0,6*9+1,tmp);

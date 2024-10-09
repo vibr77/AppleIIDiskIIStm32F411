@@ -23,14 +23,6 @@ enum STATUS loadConfigFile(){
     FRESULT fres; //Result after operations
     
     while(fsState!=READY){};
-
-    fres = f_mount(&fs, "", 1); //1=mount now
-    if (fres != FR_OK) {
-	    log_error("f_mount error (%i)\n", fres);
-        fsState=READY;
-        return RET_ERR;
-    }
-    
     fsState=BUSY;
     fres = f_open(&fil, configFilename, FA_READ );
     if(fres != FR_OK) {
@@ -70,7 +62,7 @@ enum STATUS loadConfigFile(){
     if (cJSON_IsString(name) && (name->valuestring != NULL)){
         printf("Checking monitor \"%s\"\n", name->valuestring);
     }
-   
+
     return RET_OK;
 }
 
@@ -96,12 +88,6 @@ enum STATUS saveConfigFile(){
     FRESULT fres;                               //Result after operations
     while(fsState!=READY){};
 
-    fres = f_mount(&fs, "", 1);       //1=mount now
-    if (fres != FR_OK) {
-	    log_error("f_mount error (%i)\n", fres);
-        fsState=READY;
-        return RET_ERR;
-    }
     fsState=BUSY;
     fres = f_open(&fil, configFilename, FA_WRITE | FA_CREATE_ALWAYS);
     if(fres != FR_OK) {

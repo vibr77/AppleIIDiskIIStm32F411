@@ -83,6 +83,7 @@ void processBtnInterrupt(uint16_t GPIO_Pin);
 
 void processPrevFSItem();
 void processNextFSItem();
+void processUpdirFSItem();
 void processSelectFSItem();
 
 void processToogleOption();
@@ -102,7 +103,7 @@ void Custom_SD_ReadCpltCallback(void);
 void getDataBlocksBareMetal(long memoryAdr,volatile unsigned char * buffer,int count);
 void setDataBlocksBareMetal(long memoryAdr,volatile unsigned char * buffer,int count);
 
-enum STATUS swithPage(enum page newPage,void * arg);
+enum STATUS switchPage(enum page newPage,void * arg);
 void processDiskHeadMoveInterrupt(uint16_t GPIO_Pin);
 char processDeviceEnableInterrupt(uint16_t GPIO_Pin);
 char processSdEject(uint16_t GPIO_PIN);
@@ -160,6 +161,8 @@ typedef struct image_info_s {
 #define SD_EJECT_GPIO_Port GPIOB
 #define DEBUG_Pin GPIO_PIN_14
 #define DEBUG_GPIO_Port GPIOB
+#define SCR_PWR_Pin GPIO_PIN_10
+#define SCR_PWR_GPIO_Port GPIOA
 #define WR_REQ_Pin GPIO_PIN_9
 #define WR_REQ_GPIO_Port GPIOB
 #define WR_REQ_EXTI_IRQn EXTI9_5_IRQn

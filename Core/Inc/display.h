@@ -10,7 +10,8 @@ void toggleMountOption(int i);
 void clearScreen();
 void initScreen();
 
-void initIMAGEScreen(char * imageName,int type);
+enum STATUS initIMAGEScreen(char * imageName,int type);
+
 void updateIMAGEScreen(uint8_t status,uint8_t trk);
 
 void initSdEjectScreen();
