@@ -251,17 +251,23 @@ enum STATUS initIMAGEScreen(char * imageName,int type){
 }
 
 void updateIMAGEScreen(uint8_t status,uint8_t trk){
-  
+  unsigned long t1,t2,diff1;  
+   DWT->CYCCNT = 0;
+   t1 = DWT->CYCCNT; 
   if (currentTrk!=trk || status!=currentStatus){
 
     char tmp[32];
 
     if (currentTrk!=trk){
-      sprintf(tmp,"Track: %02d ",trk);
+      //sprintf(tmp,"Track: %02d ",trk);
+      sprintf(tmp,"TRACK: %02d",trk);
       displayStringAtPosition(5,3*9,tmp);
       currentTrk=trk;
     }
-
+        t2 = DWT->CYCCNT;
+    diff1 = t2 - t1;
+    //log_info("diff Str: %d",diff1);
+    
     if (status==0){
       sprintf(tmp,"RD");
       displayStringAtPosition(72,3*9,tmp);
@@ -269,7 +275,9 @@ void updateIMAGEScreen(uint8_t status,uint8_t trk){
       sprintf(tmp,"WR");
       displayStringAtPosition(72,3*9,tmp);
     }
+    
     ssd1306_UpdateScreen();
+
   }
   return;
 }

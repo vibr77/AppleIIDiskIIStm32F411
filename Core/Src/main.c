@@ -20,6 +20,8 @@ Note
 
 Lessons learned:
 - Warning screen update with DMA while SDIO is running can perform SDIO error
+- When SDIO appears one way is to investigate is to disable all interrupt & renable one by one
+- Using a clock divider is also helping, clockDIV by 2 is solving the SDCard issue
 - SDCard need to be formated with 64 sectors of 512 Bytes each / cluster mkfs.fat -F 32 -s64 
 - SDCard CMD17 is not fast enough due to wait before accessing to the bloc (140 CPU Cycle at 64 MHz), prefer CMD18 with multiple blocs read,
 
@@ -362,7 +364,7 @@ void TIM3_IRQHandler(void){
     }
                                                           // Clear the overflow interrupt 
   }else if (TIM3->SR & TIM_SR_CC1IF){                     // Pulse compare interrrupt on Channel 1
-    RD_DATA_GPIO_Port->BSRR=1U <<16;                      // Rest the RD_DATA GPIO
+    RD_DATA_GPIO_Port->BSRR=1U <<16;                      // Reset the RD_DATA GPIO
     //HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_RESET);
     TIM3->SR &= ~TIM_SR_CC1IF;                            // Clear the compare interrupt flag
   }else
@@ -447,10 +449,12 @@ void TIM2_IRQHandler(void){
 void irqReadTrack(){
 
   HAL_NVIC_DisableIRQ(TIM2_IRQn);
+
   HAL_NVIC_EnableIRQ(TIM3_IRQn);
   HAL_NVIC_EnableIRQ(TIM4_IRQn);
+  
   HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
-  HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 }
 /**
   * @brief Adjust Enable IRQ for writting process to avoid jitter / delay / corrupted data
@@ -630,7 +634,7 @@ void Custom_SD_WriteCpltCallback(void){
     fsState=READY;                                                                                       // Reset cpu cycle counter
     t2 = DWT->CYCCNT;
     diff1 = t2 - t1;
-    log_info(" Custom_SD_WriteCpltCallback diff %ld",diff1);
+    //log_info(" Custom_SD_WriteCpltCallback diff %ld",diff1);
   }
 }
 
@@ -645,7 +649,7 @@ void Custom_SD_ReadCpltCallback(void){
     fsState=READY;                                                                                       // Reset cpu cycle counter
     t2 = DWT->CYCCNT;
     diff1 = t2 - t1;
-    log_info(" Custom_SD_ReadCpltCallback diff %ld",diff1);
+    //log_info(" Custom_SD_ReadCpltCallback diff %ld",diff1);
   }
 }
 
@@ -662,7 +666,7 @@ void getDataBlocksBareMetal(long memoryAdr,volatile unsigned char * buffer,int c
   t1 = DWT->CYCCNT;
   uint8_t i=0;
   while(HAL_SD_ReadBlocks_DMA(&hsd, (uint8_t *)buffer, memoryAdr, count) != HAL_OK && i<2){
-    log_error("Error HAL_SD_ReadBlocks_DMA error:%d retry:%d",hsd.ErrorCode,i);
+    log_error("Error HAL_SD_ReadBlocks_DMA memoryAdr:%d numBlock:%d error:%d retry:%d",memoryAdr,count,hsd.ErrorCode,i);
     i++;
   }
 }
@@ -872,7 +876,6 @@ char processDeviceEnableInterrupt(uint16_t GPIO_Pin){
   // The DEVICE_ENABLE signal from the Disk controller is activeLow
 
   uint8_t  a=HAL_GPIO_ReadPin(DEVICE_ENABLE_GPIO_Port,GPIO_Pin);
-  //uint8_t  b=HAL_GPIO_ReadPin(A2_PWR_GPIO_Port,A2_PWR_Pin);
   
   GPIO_InitTypeDef GPIO_InitStruct = {0};
 
@@ -895,7 +898,7 @@ char processDeviceEnableInterrupt(uint16_t GPIO_Pin){
     else
       HAL_GPIO_WritePin(WR_PROTECT_GPIO_Port,WR_PROTECT_Pin,GPIO_PIN_RESET);
   
-  }else if (flgDeviceEnable==1 && a==1 /*&& b==1*/){
+  }else if (flgDeviceEnable==1 && a==1 ){
     
     flgDeviceEnable=0;
     
@@ -1196,6 +1199,8 @@ enum STATUS mountImagefile(char * filename){
   while(fsState!=READY){};
   fsState=BUSY;
 
+  fr = f_mount(&fs, "", 1);                 // to be checked 
+
   fr = f_stat(filename, &fno);
   switch (fr) {
     case FR_OK:
@@ -1347,7 +1352,6 @@ int main(void)
   MX_TIM3_Init();
   MX_FATFS_Init();
   MX_TIM4_Init();
-
   MX_SDIO_SD_Init();
   MX_TIM2_Init();
 
@@ -1382,7 +1386,17 @@ int main(void)
 
   initScreen();                                                                     // I2C Screen init
   HAL_Delay(1000);
+/*
+  DWT->CYCCNT = 0;                              // Reset cpu cycle counter
+  t1 = DWT->CYCCNT; 
+  updateIMAGEScreen(0,10);
+  t2 = DWT->CYCCNT;
+  diff1 = t2 - t1;
+  log_info("diff %d",diff1);
+  while(1){
 
+  }
+*/
   processSdEject(SD_EJECT_Pin);
   
   processDeviceEnableInterrupt(DEVICE_ENABLE_Pin);
@@ -1424,9 +1438,6 @@ int main(void)
       log_info("loading configFile: OK");
     }
       
-    
-    
- 
     imgFile=(char*)getConfigParamStr("lastFile");
     char * tmp=(char*)getConfigParamStr("currentPath");
     
@@ -1467,7 +1478,7 @@ int main(void)
   }
 
   irqReadTrack();
-  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
+  //HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
     // char filename[128];
     //sprintf(filename,"/Blank(5).woz");
@@ -1565,12 +1576,14 @@ int main(void)
       // PART 1 MAIN TRACK & RESTORE AS QUICKLY AS POSSIBLE THE DMA
       // --------------------------------------------------------------------
       
-      //HAL_Delay(2);                                 // TODO check if still needed                                                                                                                                                   
-      
+      if (currentPage==IMAGE)
+        updateIMAGEScreen(0,trk);
+ 
       HAL_NVIC_EnableIRQ(SDIO_IRQn);
       HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
       HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
-
+      //HAL_NVIC_DisableIRQ(DMA1_Stream6_IRQn);
+    
       getTrackBitStream(trk,read_track_data_bloc);
         
       while(fsState!=READY){}
@@ -1578,6 +1591,7 @@ int main(void)
       HAL_NVIC_DisableIRQ(SDIO_IRQn);
       HAL_NVIC_DisableIRQ(DMA2_Stream3_IRQn);
       HAL_NVIC_DisableIRQ(DMA2_Stream6_IRQn);
+      //HAL_NVIC_EnableIRQ(DMA1_Stream6_IRQn);
 
       memcpy((unsigned char *)&DMA_BIT_TX_BUFFER,read_track_data_bloc,RawSDTrackSize);
       
@@ -1590,18 +1604,18 @@ int main(void)
       }
       /*    End of debug       */
 
-      t2 = DWT->CYCCNT;
-      diff1 = t2 - t1;
+      //t2 = DWT->CYCCNT;
+      //diff1 = t2 - t1;
       
       oldBitSize=bitSize;
       oldBitCounter=bitCounter;
       newBitSize=getTrackSize(trk); 
           
-      newBitCounter = (oldBitCounter * oldBitSize) / newBitSize;
+      newBitCounter = (oldBitCounter * oldBitSize) / newBitSize;          // TODO Fix this Long long computation
       bitSize=newBitSize;
 
       prevTrk=trk;
-      printf("trk %d %d newBitCounter:%ld bitCounter:%d\n",trk,bitSize,newBitCounter,bitCounter);
+      printf("trk %d %d \n",trk,bitSize);
       
     }else if (nextAction!=NONE){                                         // Several action can not be done on Interrupt
       
@@ -1655,7 +1669,7 @@ int main(void)
           break;
         
         case IMG_MOUNT:
-
+          flgImageMounted=0;
           int len=strlen(currentFullPath)+strlen(selItem)+1;
           char * tmp=(char *)malloc(len*sizeof(char));
           sprintf(tmp,"%s/%s",currentFullPath,selItem+2);
@@ -1687,7 +1701,7 @@ int main(void)
     }else{
       cAlive++;
       //if (currentPage==IMAGE)
-        //updateIMAGEScreen(0,trk);
+      //  updateIMAGEScreen(0,trk);
 
       if (cAlive==50000000){
         printf(".\n");
@@ -1764,41 +1778,38 @@ void SystemClock_Config(void)
 static void MX_NVIC_Init(void)
 {
   /* EXTI0_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(EXTI0_IRQn, 2, 0);
+  HAL_NVIC_SetPriority(EXTI0_IRQn, 2, 2);
   HAL_NVIC_EnableIRQ(EXTI0_IRQn);
   /* EXTI1_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(EXTI1_IRQn, 2, 0);
+  HAL_NVIC_SetPriority(EXTI1_IRQn, 2, 2);
   HAL_NVIC_EnableIRQ(EXTI1_IRQn);
   /* EXTI2_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(EXTI2_IRQn, 2, 0);
+  HAL_NVIC_SetPriority(EXTI2_IRQn, 2, 2);
   HAL_NVIC_EnableIRQ(EXTI2_IRQn);
   /* EXTI3_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(EXTI3_IRQn, 2, 0);
+  HAL_NVIC_SetPriority(EXTI3_IRQn, 2, 2);
   HAL_NVIC_EnableIRQ(EXTI3_IRQn);
   /* EXTI4_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(EXTI4_IRQn, 2, 0);
+  HAL_NVIC_SetPriority(EXTI4_IRQn, 2, 2);
   HAL_NVIC_EnableIRQ(EXTI4_IRQn);
   /* TIM3_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(TIM3_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(TIM3_IRQn);
   /* SDIO_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(SDIO_IRQn, 6, 0);
+  HAL_NVIC_SetPriority(SDIO_IRQn, 6, 6);
   HAL_NVIC_EnableIRQ(SDIO_IRQn);
   /* DMA2_Stream3_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 6, 0);
+  HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 6, 6);
   HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
   /* DMA2_Stream6_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream6_IRQn, 6, 0);
+  HAL_NVIC_SetPriority(DMA2_Stream6_IRQn, 6, 6);
   HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
   /* EXTI9_5_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 4, 0);
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 4, 4);
   HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
   /* EXTI15_10_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 13, 0);
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 13, 13);
   HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
-  /* DMA1_Stream6_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Stream6_IRQn, 14, 0);
-  HAL_NVIC_EnableIRQ(DMA1_Stream6_IRQn);
   /* TIM2_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(TIM2_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(TIM2_IRQn);
@@ -1859,7 +1870,7 @@ static void MX_SDIO_SD_Init(void)
   hsd.Init.ClockPowerSave = SDIO_CLOCK_POWER_SAVE_DISABLE;
   hsd.Init.BusWide = SDIO_BUS_WIDE_4B;
   hsd.Init.HardwareFlowControl = SDIO_HARDWARE_FLOW_CONTROL_DISABLE;
-  hsd.Init.ClockDiv = 0;
+  hsd.Init.ClockDiv = 8;
   /* USER CODE BEGIN SDIO_Init 2 */
   hsd.Init.BusWide = SDIO_BUS_WIDE_1B;
   if (HAL_SD_Init(&hsd) != HAL_OK){
@@ -2102,6 +2113,11 @@ static void MX_DMA_Init(void)
   __HAL_RCC_DMA2_CLK_ENABLE();
   __HAL_RCC_DMA1_CLK_ENABLE();
 
+  /* DMA interrupt init */
+  /* DMA1_Stream6_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream6_IRQn, 14, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream6_IRQn);
+
 }
 
 /**
@@ -2124,11 +2140,8 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, RD_DATA_Pin|WR_PROTECT_Pin|DEBUG_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(SCR_PWR_GPIO_Port, SCR_PWR_Pin, GPIO_PIN_SET);
-
-  /*Configure GPIO pins : BTN_ENTR_Pin BTN_DOWN_Pin BTN_UP_Pin */
-  GPIO_InitStruct.Pin = BTN_ENTR_Pin|BTN_DOWN_Pin|BTN_UP_Pin;
+  /*Configure GPIO pins : BTN_DOWN_Pin BTN_ENTR_Pin BTN_UP_Pin */
+  GPIO_InitStruct.Pin = BTN_DOWN_Pin|BTN_ENTR_Pin|BTN_UP_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
@@ -2176,13 +2189,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(SD_EJECT_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : SCR_PWR_Pin */
-  GPIO_InitStruct.Pin = SCR_PWR_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(SCR_PWR_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : WR_REQ_Pin */
   GPIO_InitStruct.Pin = WR_REQ_Pin;

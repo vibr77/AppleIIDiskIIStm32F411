@@ -37,13 +37,13 @@ long getSDAddrWoz(int trk,int block,int csize, long database){
   if (wozFile.version==2){
     int long_sector = TRK_startingBlockOffset[trk] + block;
     //int long_sector=3+trk*13;
-    //log_debug("long_sector: %d",long_sector);
+    log_debug("long_sector: %d",long_sector);                         // <!> TODO debug To be removed in production
     int long_cluster = long_sector >> 6;
     int ft = fatWozCluster[long_cluster];
     rSector=database+(ft-2)*csize+(long_sector & (csize-1));
 
   }else if (wozFile.version==1){
-    int long_sector = 13*trk;                                // 13 block of 512 per track
+    int long_sector = 13*trk;                                         // 13 block of 512 per track
     int long_cluster = long_sector >> 6;
     int ft = fatWozCluster[long_cluster];
     rSector=database+(ft-2)*csize+(long_sector & (csize-1));
@@ -197,7 +197,7 @@ enum STATUS mountWozFile(char * filename){
     
     if (!memcmp(info_chunk,"\x49\x4E\x46\x4F",4)){                  // Little Indian 0x4F464E49  
         
-        wozFile.disk_type=(uint8_t)info_chunk[1+8];
+       /* wozFile.disk_type=(uint8_t)info_chunk[1+8];
         log_info("woz file disk type:%d",wozFile.disk_type);
         
         
@@ -210,7 +210,7 @@ enum STATUS mountWozFile(char * filename){
         
         wozFile.cleaned=(int)info_chunk[4+8];
         log_info("woz cleaned:%d",wozFile.cleaned);
-        
+        */
         if (wozFile.version==2){
           
           wozFile.opt_bit_timing=(int)info_chunk[39+8];

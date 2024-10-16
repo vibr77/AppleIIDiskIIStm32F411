@@ -20,6 +20,7 @@
 
 #include <math.h>
 #include "ssd1306.h"
+#include "log.h"
 
 #if SSD1306_USE_DMA == 0 && SSD1306_CONTUPDATE == 1
 #error SSD1306_CONTUPDATE only in DMA MODE !
@@ -37,6 +38,8 @@ SSD1306_Geometry display_geometry = SSD1306_GEOMETRY;
 //
 static const uint16_t width(void)  { return SSD1306_WIDTH; };
 static const uint16_t height(void)  { return SSD1306_HEIGHT; };
+
+unsigned long tA,tB,diffT; 
 
 uint16_t ssd1306_GetWidth(void)
 {
@@ -836,35 +839,52 @@ void ssd1306_WriteCommand(uint8_t command)
 //
 void ssd1306_UpdateScreen(void)
 {
+  
+  DWT->CYCCNT = 0;
+  tA = DWT->CYCCNT; 
   uint8_t  command;
   if(ssd1306_updatestatus == 0)
   {
     ssd1306_updatestatus = SSD1306_HEIGHT;
     ssd1306_updateend = SSD1306_HEIGHT + (SSD1306_HEIGHT / 2);
     command = 0xB0;
+
     HAL_I2C_Mem_Write_DMA(&SSD1306_I2C_PORT, SSD1306_I2C_ADDR, 0x00, 1, &command, 1);
+  
   }
   else if(ssd1306_updatestatus >= SSD1306_HEIGHT)
   {
     ssd1306_updatestatus -= (SSD1306_HEIGHT / 2);
     ssd1306_updateend = (ssd1306_updatestatus + (SSD1306_HEIGHT / 2 + 1)) & 0xFC;
   }
+
+    
 }
 
 char ssd1306_UpdateScreenCompleted(void)
 {
+  /*
+  tB = DWT->CYCCNT;
+  diffT = tB - tA;
+  log_info("diff upd %d",diffT);
+*/
   if(ssd1306_updatestatus)
     return 0;
   else
     return 1;
 }
 
-__weak void ssd1306_UpdateCompletedCallback(void) { };
+__weak void ssd1306_UpdateCompletedCallback(void) {
+
+ssd1306_UpdateScreenCompleted();
+
+ };
 
 void HAL_I2C_MemTxCpltCallback(I2C_HandleTypeDef *hi2c)
 {
   uint32_t phase;
   uint8_t  command;
+
   if(hi2c->Instance == SSD1306_I2C_PORT.Instance)
   {
     if(ssd1306_updatestatus)
@@ -873,8 +893,9 @@ void HAL_I2C_MemTxCpltCallback(I2C_HandleTypeDef *hi2c)
       {
         ssd1306_updatestatus++;
         phase = ssd1306_updatestatus & 3;
-        if(phase == 3)
+        if(phase == 3){
           HAL_I2C_Mem_Write_DMA(&SSD1306_I2C_PORT, SSD1306_I2C_ADDR, 0x40, 1, &SSD1306_Buffer[SSD1306_WIDTH * ((ssd1306_updatestatus >> 2) & (SSD1306_HEIGHT / 8 - 1))], width());
+        }
         else
         {
           if(phase == 0)
@@ -883,16 +904,21 @@ void HAL_I2C_MemTxCpltCallback(I2C_HandleTypeDef *hi2c)
             command = SETLOWCOLUMN;
           else if(phase == 2)
             command = SETHIGHCOLUMN;
+            
           HAL_I2C_Mem_Write_DMA(&SSD1306_I2C_PORT, SSD1306_I2C_ADDR, 0x00, 1, &command, 1);
         }
       }
       else
       {
+        //log_info("here");
         ssd1306_updatestatus = 0;
         ssd1306_UpdateCompletedCallback();
       }
     }
   }
+
+  
+    
 }
 
 #elif SSD1306_CONTUPDATE == 1

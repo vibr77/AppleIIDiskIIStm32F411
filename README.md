@@ -2,9 +2,14 @@
 
 This project is about creating an Apple II Disk emulator capable of reading / writing disk image from/to SDCARD.
 
-Special thanks to Uncle Bernie & Retro_device. The project progress thread is on [AppleFritter Apple II Disk emulator using STM32]( https://www.applefritter.com/content/apple-ii-disk-emulator-using-stm32) 
+This hardware emulator tries to replicate the behaviour of a real DISK II and thus should pass the copy protection on guenine disk images. 
+
+The project is still in beta mode, progress thread is on [AppleFritter Apple II Disk emulator using STM32]( https://www.applefritter.com/content/apple-ii-disk-emulator-using-stm32).
  
-This project relies on a STM32F401 SOC, STM32F411 can also work.
+This project relies on a STM32F411 (BlackPill) with SDIO Port
+
+
+
  
 
 ## Features ##
@@ -40,7 +45,6 @@ This is currently a DIY project made on plug board.
 - Support of nic,woz 1.x -> 2.1 for writing
 - configuration screen
 - adding USB & UF2 bootlooder firmware update support
-- GAL to remove part of the circuitery
 - Remove STM HAL (High Level) driver and move to low level 
 
 ## Design main principles: 
