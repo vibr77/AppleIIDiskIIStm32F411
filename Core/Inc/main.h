@@ -127,10 +127,10 @@ typedef struct image_info_s {
 #define BTN_DOWN_Pin GPIO_PIN_13
 #define BTN_DOWN_GPIO_Port GPIOC
 #define BTN_DOWN_EXTI_IRQn EXTI15_10_IRQn
-#define BTN_ENTR_Pin GPIO_PIN_14
+#define BTN_ENTR_Pin GPIO_PIN_15
 #define BTN_ENTR_GPIO_Port GPIOC
 #define BTN_ENTR_EXTI_IRQn EXTI15_10_IRQn
-#define BTN_UP_Pin GPIO_PIN_15
+#define BTN_UP_Pin GPIO_PIN_14
 #define BTN_UP_GPIO_Port GPIOC
 #define BTN_UP_EXTI_IRQn EXTI15_10_IRQn
 #define STEP0_Pin GPIO_PIN_0
