@@ -1,6 +1,6 @@
 # Apple II STM32 based Hadware DISKII EMULATOR
 
-This project is about creating an Apple II Disk emulator capable of reading / writing disk image from/to SDCARD.
+This project is about creating an Apple II Disk II hardware emulator capable of reading / writing disk image from/to SDCARD.
 
 This hardware emulator tries to replicate the behaviour of a real DISK II and thus should pass the copy protection on guenine disk images. 
 
