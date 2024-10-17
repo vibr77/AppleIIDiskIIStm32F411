@@ -58,12 +58,10 @@ Architecture:
 GPIO
 
 BTN
-  - PC13 BTN_ENTR
+  - PC13 BTN_DOWN
   - PC14 BTN_UP
-  - PC15 BTN_DOWN
+  - PC15 BTN_ENTR
   - PB12 BTN_RET
-
-SCREEN POWER : PA10
 
 STEP
   - PA0 STEP0
@@ -180,8 +178,8 @@ unsigned char prevTrk=0;                                    // prevTrk to keep t
 unsigned int RawSDTrackSize=6656;                           // Maximuum track size on NIC & WOZ to load from SD
 unsigned char read_track_data_bloc[6656];                   // 3 adjacent track 3 x RawSDTrackSize
   
-volatile unsigned char DMA_BIT_TX_BUFFER[6656];             // DMA Buffer from the SPI
-volatile unsigned char DMA_BIT_RX_BUFFER[6656];             // DMA Buffer from the SPI
+volatile unsigned char DMA_BIT_TX_BUFFER[6656];             // DMA Buffer for READ Track
+volatile unsigned char DMA_BIT_RX_BUFFER[6656];             // DMA Buffer for WRITE Track
 
 uint8_t optimalBitTiming=32;
 

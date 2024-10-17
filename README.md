@@ -1,4 +1,4 @@
-# Apple II STM32 DISK EMULATOR
+# Apple II STM32 based Hadware DISKII EMULATOR
 
 This project is about creating an Apple II Disk emulator capable of reading / writing disk image from/to SDCARD.
 
@@ -6,11 +6,9 @@ This hardware emulator tries to replicate the behaviour of a real DISK II and th
 
 The project is still in beta mode, progress thread is on [AppleFritter Apple II Disk emulator using STM32]( https://www.applefritter.com/content/apple-ii-disk-emulator-using-stm32).
  
-This project relies on a STM32F411 (BlackPill) with SDIO Port
+This project relies on a STM32F411(BlackPill) with SDIO Port.
 
 
-
- 
 
 ## Features ##
 
@@ -19,7 +17,7 @@ The list of features currently supported in this project:
 - Mount / unmount disk image
 - Read mounted image file on Apple II
 - Write (experimental)
-- supported disk image format:
+- Supported disk image format:
 
 	| format  | read  | write  |
 	|:----------|:----------|:----------|
@@ -29,11 +27,26 @@ The list of features currently supported in this project:
 	| DSK    | NO    | NO    |
 	| PO    | NO    | NO    |
 
+- Copy protection status
+
+	| Copy Protection | Status  | 
+	|:----------|:----------|
+	| FAT Track | PASSED   |
+	| Weak Bit  | PASSED    | 
+	| Cross track sync  | PASSED    | 
+	| Half track | PASSED    | 
+	| Data Latch    | PASSED    | 
+	| Timing Bits   | PASSED    |
+	| E7   | PASSED    | 
+	| Optimal Bit Timing <4uS   | PASSED    |
+	| Various Bit Counter    | PASSED    | 
+	| SpiraDisc    | PASSED    | 
+
 
 
 ## Status of the project ##
 
-This is currently a DIY project made on plug board. 
+The first PCB and software are available for testing purpose only. 
 
 
 ## What is coming next ## 
@@ -47,60 +60,129 @@ This is currently a DIY project made on plug board.
 - adding USB & UF2 bootlooder firmware update support
 - Remove STM HAL (High Level) driver and move to low level 
 
-## Design main principles: 
+## Hardware design main principles: ##
 
-- The STM32F4x is preferred due to the size of the SRAM > 60 kB. a DISK II floppy track is about 50.000 Bits, and to be able to read some of the floppy protection mecanism 3 adjacents track need to be loaded in memory at the same time (a woz track maximum size is 13 blocs of 512 Bytes = 6656 Bytes). On top of this 2 DMA Buffer are needed : 1 for reading, 1 for writing.
+- The STM32F4x is preferred due to the size of the SRAM > 60 kB. a DISK II floppy track is about 50.000 Bits, and to be able to read some of the floppy protection mecanism timing is really critical and shifting from one track to another should respect some very specific rules.
 
-- After many iterations and testing, it appears that the ARM Cortex Mx are not able to fully respect CPU cycle on bitbanging & baremetal GPIO output, thus the approach is sending read buffer via ASM code was not giving great result. Instead the approach of sending read buffer via circular DMA gives pretty good results.
+- After many, many, many iterations and design tests, I decided to use a single track load in memory and to have SDCARD Data Read/Write using a 4bit SDIO port for speed.
 
-- It is the same for the writing process, the preferred approach was to use SPI with DMA.
-- Thus 3 SPI are needed:
-	- SPI 2 For reading / writing to the SDCard
-	- SPI 1 for sending read buffer to the Apple II Disk Controller
-	- SPI 3 for receiving write buffer from the Apple II Disk Controller
+- As well, the Apple II is expecting data at a very precise pace 1 bit every 4 uS (32*125ns). Multiple options can be considered to perform this:
+	- 1/ Using SPI with DMA
+	- 2/ Assembly code with CPU cycle calculation & GPIO Bitbanging
+	- 3/ Timer interrupt trigger with GPIO Bitbanging (preferred option)
 
-- Some floppy disk protections use the track density to increase the number of bits on a track, decreasing the classic period of 4Us per bit. To address this, the read SPI is set a slave to be able to control the clock based on PWM Timer. Using this timer, the SPI frequency can be adjusted moving with a 0.125 uS step. Since woz 2.0, in the info chunk Byte at offset 59 provide with the Optimal Bit timing to manage disk bit density. The SPI clock is manage by TIM3 on the STM32
+The first option was my initial choice, very simple straight forward, and the CPU using DMA was completly free to do something else while sending data. One of the aspect of the SPI is to send 8 bits (1 Bytes) at a time. When using WOZ 1.0 and WOZ 2.0 the number of bits per track are not aligned with 8 and thus using SPI may (every time on a 36 track disk) introduce bit misalignement and corrupted data. 
 
-- The Read pulse width, The Disk II is generating a pulse of 1 us within a period of 4 us, the SPI is not able to generate by itself such a signal, the 74LS123 U1A will do the job of generating a signal of 1.125 us on the failing edge of the SPI MISO (MISO because of the Slave mode of the SPI). The B Pin (schmitt trigger is used), PIN A has to be ground.
+The second option was also tested and gives very poor reliability and was very quickly put aside. 
 
-- The write process is much more complex and need more circuitery.
+The last one, using TIMER interrupt seems by far to be the best option and enable to free up CPU time to manage the OLED display updates and to other button interrupt. 
+Each interrupt, the Read GPIO is bitbang according to the track stream position. The real advantage is to be able to address very easily some specific protection mecanism using fake bit tank. Using timer is also very easy to increase or reduce the space between 2 bit because some games use 3.8 uS instead of 4 uS.
 
-- Head move: the head move is managed via STEP0, STEP1, STEP2, STEP3 GPIO_PIN and Rising/Falling Edge interrupt.
+- The approach for the writing process is pretty much the same as for the reading process, using a dedicated timer with an overflow every 4us. As writing uses polarity inversion, an internal software XOR is done instead of using external circuitery. Using the SDIO makes it also very easy timing wise to write to SDCard.  
 
-- Drive Enable signal from the DISK Controller is active Low, Thus from a software standpoint we need to have an active High signal, thus the LS14 is used.
+Using this approach with Timers, there is no need to external circuitery and almost everything can be manage from a software standpoint (in the future I might add a 74LS125 to protect the STM32).
 
-- The screen is based on a very classic 0.96 Oled display connected via I2C.
+Main design on STM32:
 
-- FatFs 0.15 is used to read / write from/to the SDCard, due to overhead on using f_read, HAL SPI function
+Head positionning stepper, managed by external interrupts: 
+  - PA0 STEP0, ExtI0
+  - PA1 STEP1, ExtI1
+  - PA2 STEP2, ExtI2
+  - PA3 STEP3, ExtI3
+
+
+Button: External Interrupt 9-15 with Timer4 as a debouncer
+  - PC13 BTN_DOWN
+  - PC14 BTN_UP
+  - PC15 BTN_ENTR
+  - PB12 BTN_RET
+
+SDCARD: SDIO Port with a clock divider by 2 (to keep most of the SDCard working)
+  - PB4 DO
+  - PA8 D1
+  - PA9 D2
+  - PB5 D3
+  - PA6 CMD
+  - PB15 CK
+
+I2C Oled Screen SSD1306
+  - PB06 SCL
+  - PB07 SDA
+
+UART:
+  - PA15 TX
+  - PB3 RX
+
+TIMERS:
+- TIM2 Timer 2 : Use to Manage the WR_DATA, ETR1 Slave Reset mode to resync with the Apple II  Write Pulse that is 3.958 uS instead of 4uS. Every Rising Edge resync
+- TIM3 Timer 3 : Use to Manage the RD_DATA, 
+- TIM4 Timer 4 : Internal no PWM, debouncer for the control button
+
 
 ## BOM ## 
 
 
-| Ref.      | Type.     | Mouser    |
+| Ref.      | Type.     |  Ref Supplier  |
 |:----------|:----------|:----------|
-| U1        | 74LS123   | Cell 3    |
-| U2        | LM1117-3.3    | Cell 3    |
-| U3        | TTL 74LS125   | Cell 3    |
-| U4        | TTL 74LS14    | Cell 3    |
-| U5        | 74LS74    | Cell 3    |
-| U6        | 74LS393   | Cell 3    |
-| U7        | 74LS86    | Cell 3    |
-| C1        | 220pF    	 | Cell 3    |
-| C2        | 47pF    	 | Cell 3    |
-| C3,C4     | 10uF    	 | Cell 3    |
-| C5,C6,C7,C8,C9     | 100nF    	 | Cell 3    |
-| R1,R2,R3,R4,R5,R6  | 10K    	 | Cell 3    |
-| R7,R8,R9  | 1K    	 | Cell 3    |
-| J1		| Micro SDCard    	 | Cell 3    |
-| J2		| 2x10 Conn    	 | Cell 3    |
+| Uc1        | STM32F411 (BlackPill)   | Aliexpress WeAct Studio 3.0 STM32F411CEU6  |
+| U2        | SDCard PushPush GCT MEM2055 / GCT MEM2075  | Mouser 640-MEM20750014001A / LCSC C381084  |
+| U8        | SSD1315 I2C 128x64 0.96 OLED   |  LCSC C5248080   |
+| R1,R2,R3  | Resistor 1K (Optional)  1/4W L6.3mm_D2.5mm_P10.16mm  | Mouser 708-CFF14JT1K00 |
+|J1|PWR|Pin Header_1x02 P2.54mm  |
+|J2|Apple IDC 2x10P P2.54| LCSC C115249|
+|J3|DBG|Pin Header_1x05 P2.54mm  |
+|J4|UART|Pin Header_1x03 P2.54mm  |
+|J5|TIM|Pin Header_1x03 P2.54mm  |
+|J6|STLINK|Pin Header_1x04 P2.54mm  |
+|DOWN1,ENTR1,RET1,UP1|6mm 5mm Round Button 50mA Direct Insert 6mm SPST 12V| LCSC C393938
+
+
+## Software design main principles: ##
+
+The current software version rely on :
+- STM32 HAL Driver from STMicro
+- FATFS 0.15 (becareful STCUBEMX32 override to version 0.11)
+- CJOSN for configuration file (with some tweaks to make FATFS working)
+- SSD1306 Lib with DMA
+
+Software Architecture: 
+
+the maximum track size is 13*512*8= 53 248 Bits or 6656 Bytes
+
+2 Unsigned char Buffers are used :
+- DMA_BIT_TX_BUFFER[6656];   	// For reading part     
+- DMA_BIT_RX_BUFFER[6656];		// For writing part
+
+weakBitTank uint_8 array & fakeBitTank char array are used to manage some copy protection mecanism
+
+### Important Functions ### 
+
+- void TIM3_IRQHandler: Manage the Bitbang of the GPIO port to send track data every 4us (or less depending on the WOZ file configuration) to the Apple II
+
+- void void TIM2_IRQHandler: Manage the data sent from the Apple II for the writing process. It use a software XOR to detect polarity inversion and write 1 or 0 to the DMA_BIT_RX_BUFFER.
+
+- void irqReadTrack: Configure interrupt for Reading 
+- void irqWriteTrack: Configure interrupt for Writing
+
+- void getDataBlocksBareMetal(long memoryAdr,volatile unsigned char * buffer,int count): Instead of using FATFS function such as F_OPEN, using direct access to the SDCard using the SDIO port to receive data is faster.
+
+- void setDataBlocksBareMetal(long memoryAdr,volatile unsigned char * buffer,int count): same for the writing process, faster than using FATFS
+
+<!> keep in mind that even if FATFS is not used to read and write to the SDCARD data from/to the Apple II, FATFS is needed to build up the File Allocation Table with the right file address block.
+
+- void processDeviceEnableInterrupt: Interrrupt function used when Apple II change signal on DEVICE_ENABLE PIN to activate or deactivate the DISKII Drive. This signal is active LOW
+
+- void processBtnInterrupt: Manage the 4 BTN press
+
+- void processDiskHeadMoveInterrupt(uint16_t GPIO_Pin): Interrupt function link to the 4 GPIO Stepper motor of the DISKII.
+
+
+- Main () is orchestring the program execution. 
+
+Please note that you will need to have a STLINK32 to upload the firmware to the STM32F411
 
 
 
 
 
 
-
-
-
-
-Reference reading
