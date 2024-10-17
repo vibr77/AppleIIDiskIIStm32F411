@@ -1,4 +1,0 @@
-(fp_lib_table
-  (version 7)
-  (lib (name "sdisk_stm32")(type "KiCad")(uri "${KIPRJMOD}/sdisk_stm32.pretty")(options "")(descr "Microsdcard footprint"))
-)

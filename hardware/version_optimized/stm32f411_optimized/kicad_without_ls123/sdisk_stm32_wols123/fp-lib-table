@@ -1,6 +1,0 @@
-(fp_lib_table
-  (version 7)
-  (lib (name "sdisk_stm32")(type "KiCad")(uri "${KIPRJMOD}/sdisk_stm32.pretty")(options "")(descr "Microsdcard footprint"))
-  (lib (name "acheron_Hardware.pretty-master")(type "KiCad")(uri "${KIPRJMOD}/acheron_Hardware.pretty-master")(options "")(descr ""))
-  (lib (name "DM-OLED096-636")(type "KiCad")(uri "${KIPRJMOD}/ssd1306.pretty/DM-OLED096-636")(options "")(descr ""))
-)
