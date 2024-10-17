@@ -6,30 +6,69 @@
 # Generic Makefile (based on gcc)
 #
 # ChangeLog :
-#	2017-02-10 - Several enhancements + project update mode
+#   2024-04-27 - Added env file inclusion. 
+#                Added way to overide: build directory, target name and optimisation.
+#                Added GCC_PATH by env file to not make the makefile machine dependent.
+#                Currently folder structure in build directory is preserved
+#                Switching of debug/release build output folder now happens based on debug flag
+#   2017-02-10 - Several enhancements + project update mode
 #   2015-07-22 - first version
 # ------------------------------------------------
 
 ######################################
-# target
+# Environment Variables
 ######################################
-TARGET = AppleIISDiskII_stm32f411
-
+# Imports the environment file in which the compiler and other tooling is set
+# for the build machine.
+# This can also be used to overwrite some makefile variables
+file_exists = $(or $(and $(wildcard $(1)),1),0)
+ifeq ($(call file_exists,.stm32env),1)
+  include .stm32env
+endif
 
 ######################################
-# building variables
+# Target
 ######################################
-# debug build?
-DEBUG = 1
-# optimization
-OPT = -Og
-
+# This is the name of the embedded target which will be build
+# The final file name will also have debug or release appended to it.
+TARGET ?= AppleIISDiskII_stm32f411
 
 #######################################
-# paths
+# Build directories
 #######################################
-# Build path
-BUILD_DIR = build
+# Build path can be overwritten when calling make or setting the environment variable
+# in .stm32env
+
+BUILD_DIRECTORY ?= build
+
+
+######################################
+# Optimization
+######################################
+# Optimization is switched based upon the DEBUG variable. If set to 1
+# it will be build in debug mode with the Og optimization flag (optimized for debugging).
+# If set to 0 (false) then by default the variable is used in the configuration yaml
+# This can also be overwritten using the environment variable or by overwriting it
+# by calling make with the OPTIMIZATION variable e.g.:
+# make -f STM32Make.make -j 16  OPTIMIZATION=Os
+
+# variable which determines if it is a debug build
+DEBUG ?= 1
+
+# debug flags when debug is defined
+OPTIMIZATION ?= -Og
+
+RELEASE_DIRECTORY = $(BUILD_DIRECTORY)/debug
+ifeq ($(DEBUG),1)
+  # Sets debugging optimization -Og and the debug information output
+  OPTIMIZATION_FLAGS += -Og -g -gdwarf -ggdb
+  $(TARGET) := $(TARGET)-debug
+  RELEASE_DIRECTORY := $(BUILD_DIRECTORY)/debug
+else
+  OPTIMIZATION_FLAGS += $(OPTIMIZATION)
+  $(TARGET) := $(TARGET)-release
+  RELEASE_DIRECTORY := $(BUILD_DIRECTORY)/release
+endif
 
 ######################################
 # source
@@ -97,30 +136,41 @@ Core/Src/dataPulse.s \
 startup_stm32f411xe.s
 
 
-
 #######################################
-# binaries
+# Tools
 #######################################
-PREFIX = arm-none-eabi-
+ARM_PREFIX = arm-none-eabi-
 POSTFIX = "
-# The gcc compiler bin path can be either defined in make command via GCC_PATH variable (> make GCC_PATH=xxx)
-# either it can be added to the PATH environment variable.
-GCC_PATH="/Applications/ArmGNUToolchain/13.2.Rel1/arm-none-eabi/bin
-ifdef GCC_PATH
-CXX = $(GCC_PATH)/$(PREFIX)g++$(POSTFIX)
-CC = $(GCC_PATH)/$(PREFIX)gcc$(POSTFIX)
-AS = $(GCC_PATH)/$(PREFIX)gcc$(POSTFIX) -x assembler-with-cpp
-CP = $(GCC_PATH)/$(PREFIX)objcopy$(POSTFIX)
-SZ = $(GCC_PATH)/$(PREFIX)size$(POSTFIX)
+PREFIX = "
+# The gcc compiler bin path can be defined in the make command via ARM_GCC_PATH variable (e.g.: make ARM_GCC_PATH=xxx)
+# or it can be added to the PATH environment variable.
+# By default the variable be used from the environment file: .stm32env.
+# if it is not defined
+
+ifdef ARM_GCC_PATH
+    CC = $(PREFIX)$(ARM_GCC_PATH)/$(ARM_PREFIX)gcc$(POSTFIX)
+    CXX = $(PREFIX)$(ARM_GCC_PATH)/$(ARM_PREFIX)g++$(POSTFIX)
+    AS = $(PREFIX)$(ARM_GCC_PATH)/$(ARM_PREFIX)gcc$(POSTFIX) -x assembler-with-cpp
+    CP = $(PREFIX)$(ARM_GCC_PATH)/$(ARM_PREFIX)objcopy$(POSTFIX)
+    SZ = $(PREFIX)$(ARM_GCC_PATH)/$(ARM_PREFIX)size$(POSTFIX)
+    DP = $(PREFIX)$(ARM_GCC_PATH)/$(ARM_PREFIX)objdump$(POSTFIX)
 else
-CXX = $(PREFIX)g++
-CC = $(PREFIX)gcc
-AS = $(PREFIX)gcc -x assembler-with-cpp
-CP = $(PREFIX)objcopy
-SZ = $(PREFIX)size
+  CC ?= $(ARM_PREFIX)gcc
+  CXX ?= $(ARM_PREFIX)g++$
+  AS ?= $(ARM_PREFIX)gcc -x assembler-with-cpp
+  CP ?= $(ARM_PREFIX)objcopy
+  SZ ?= $(ARM_PREFIX)size
+  DP ?= $(ARM_PREFIX)objdump
 endif
+
 HEX = $(CP) -O ihex
 BIN = $(CP) -O binary -S
+LSS = $(DP) -h -S
+
+# Flash and debug tools
+# Default is openocd however will be gotten from the env file when existing
+OPENOCD ?= openocd
+
 
 #######################################
 # CFLAGS
@@ -172,16 +222,11 @@ C_INCLUDES =  \
 
 
 # compile gcc flags
-ASFLAGS = $(MCU) $(AS_DEFS) $(AS_INCLUDES) $(OPT) -Wall -fdata-sections -ffunction-sections
+ASFLAGS = $(MCU) $(AS_DEFS) $(AS_INCLUDES) $(C_INCLUDES) $(C_DEFS) $(OPTIMIZATION_FLAGS) 
 
-CFLAGS = $(MCU) $(C_DEFS) $(C_INCLUDES) $(OPT) -Wall -fdata-sections -ffunction-sections
+CFLAGS = $(MCU) $(C_DEFS) $(C_INCLUDES) $(OPTIMIZATION_FLAGS)
 
-CXXFLAGS = $(MCU) $(CXX_DEFS) $(C_INCLUDES) $(OPT) -Wall -fdata-sections -ffunction-sections -feliminate-unused-debug-types
-
-ifeq ($(DEBUG), 1)
-CFLAGS += -g -gdwarf -ggdb
-CXXFLAGS += -g -gdwarf -ggdb
-endif
+CXXFLAGS = $(MCU) $(CXX_DEFS) $(C_INCLUDES) $(OPTIMIZATION_FLAGS)
 
 # Add additional flags
 CFLAGS += -Wall -fdata-sections -ffunction-sections 
@@ -191,6 +236,12 @@ CXXFLAGS +=
 # Generate dependency information
 CFLAGS += -MMD -MP -MF"$(@:%.o=%.d)"
 CXXFLAGS += -MMD -MP -MF"$(@:%.o=%.d)"
+
+# Output a list file for the compiled source file.
+# This is a representative of the source code in assembly
+ASSEMBLER_LIST_OUTPUT_FLAG = -Wa,-a,-ad,-alms=$(call add_release_directory,$<,lst)
+CFLAGS += $(ASSEMBLER_LIST_OUTPUT_FLAG)
+CXXFLAGS += $(ASSEMBLER_LIST_OUTPUT_FLAG)
 
 #######################################
 # LDFLAGS
@@ -206,86 +257,129 @@ LIBDIR = \
 # Additional LD Flags from config file
 ADDITIONALLDFLAGS = -Wl,--print-memory-usage -specs=nano.specs 
 
-LDFLAGS = $(MCU) $(ADDITIONALLDFLAGS) -T$(LDSCRIPT) $(LIBDIR) $(LIBS) -Wl,-Map=$(BUILD_DIR)/$(TARGET).map,--cref -Wl,--gc-sections
-
-# default action: build all
-all: $(BUILD_DIR)/$(TARGET).elf $(BUILD_DIR)/$(TARGET).hex $(BUILD_DIR)/$(TARGET).bin
-
+LDFLAGS = $(MCU) $(ADDITIONALLDFLAGS) -T$(LDSCRIPT) $(LIBDIR) $(LIBS) -Wl,-Map=$(BUILD_DIRECTORY)/$(TARGET).map,--cref -Wl,--gc-sections
 
 #######################################
 # build the application
 #######################################
-# list of cpp program objects
-OBJECTS = $(addprefix $(BUILD_DIR)/,$(notdir $(CPP_SOURCES:.cpp=.o)))
-vpath %.cpp $(sort $(dir $(CPP_SOURCES)))
+add_release_directory = $(sort $(addprefix $(RELEASE_DIRECTORY)/,$(addsuffix .$(2),$(basename $(subst ../,parent,$(1))))))
 
-# list of C objects
-OBJECTS += $(addprefix $(BUILD_DIR)/,$(notdir $(C_SOURCES:.c=.o)))
+REMOVE_DIRECTORY_COMMAND = rm -fR
+mkdir_function = mkdir -p $(1)
+ifeq ($(OS),Windows_NT)
+  convert_to_windows_path = $(strip $(subst /,\,$(patsubst %/,%,$(1))))
+  REMOVE_DIRECTORY_COMMAND = cmd /c rd /s /q
+  mkdir_function = cmd /e:on /c md $(call convert_to_windows_path,$(1))
+endif
+
+
+
+OBJECTS = $(call add_release_directory,$(C_SOURCES),o)
+OBJECTS += $(call add_release_directory,$(CPP_SOURCES),o)
+OBJECTS += $(call add_release_directory,$(ASM_SOURCES),o)
 vpath %.c $(sort $(dir $(C_SOURCES)))
-
-# list of ASM program objects
-UPPER_CASE_ASM_SOURCES = $(filter %.S,$(ASM_SOURCES))
-LOWER_CASE_ASM_SOURCES = $(filter %.s,$(ASM_SOURCES))
-
-OBJECTS += $(addprefix $(BUILD_DIR)/,$(notdir $(UPPER_CASE_ASM_SOURCES:.S=.o)))
-OBJECTS += $(addprefix $(BUILD_DIR)/,$(notdir $(LOWER_CASE_ASM_SOURCES:.s=.o)))
+vpath %.cc $(sort $(dir $(CXX_SOURCES)))
+vpath %.cp $(sort $(dir $(CXX_SOURCES)))
+vpath %.cxx $(sort $(dir $(CXX_SOURCES)))
+vpath %.cpp $(sort $(dir $(CXX_SOURCES)))
+vpath %.c++ $(sort $(dir $(CXX_SOURCES)))
+vpath %.C $(sort $(dir $(CXX_SOURCES)))
+vpath %.CPP $(sort $(dir $(CXX_SOURCES)))
 vpath %.s $(sort $(dir $(ASM_SOURCES)))
+vpath %.S $(sort $(dir $(ASM_SOURCES)))
 
-$(BUILD_DIR)/%.o: %.cpp STM32Make.make | $(BUILD_DIR) 
-	$(CXX) -c $(CXXFLAGS) -Wa,-a,-ad,-alms=$(BUILD_DIR)/$(notdir $(<:.cpp=.lst)) $< -o $@
+# the tree of folders which needs to be present based on the object files
+BUILD_TREE = $(sort $(dir $(OBJECTS)))
 
-$(BUILD_DIR)/%.o: %.cxx STM32Make.make | $(BUILD_DIR) 
-	$(CXX) -c $(CXXFLAGS) -Wa,-a,-ad,-alms=$(BUILD_DIR)/$(notdir $(<:.cxx=.lst)) $< -o $@
+# C build
+$(RELEASE_DIRECTORY)/%.o: %.c STM32Make.make | $(BUILD_TREE)
+	$(CC) -c $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/%.o: %.c STM32Make.make | $(BUILD_DIR) 
-	$(CC) -c $(CFLAGS) -Wa,-a,-ad,-alms=$(BUILD_DIR)/$(notdir $(<:.c=.lst)) $< -o $@
+# C++ build 
+$(RELEASE_DIRECTORY)/%.o: %.cc STM32Make.make | $(BUILD_TREE)
+	$(CXX) -c $(CXXFLAGS) $< -o $@
 
-$(BUILD_DIR)/%.o: %.s STM32Make.make | $(BUILD_DIR)
-	$(AS) -c $(CFLAGS) $< -o $@
+$(RELEASE_DIRECTORY)/%.o: %.cp STM32Make.make | $(BUILD_TREE)
+	$(CXX) -c $(CXXFLAGS) $< -o $@
 
-$(BUILD_DIR)/%.o: %.S STM32Make.make | $(BUILD_DIR)
-	$(AS) -c $(CFLAGS) $< -o $@
+$(RELEASE_DIRECTORY)/%.o: %.cxx STM32Make.make | $(BUILD_TREE)
+	$(CXX) -c $(CXXFLAGS) $< -o $@
 
-$(BUILD_DIR)/$(TARGET).elf: $(OBJECTS) STM32Make.make
+$(RELEASE_DIRECTORY)/%.o: %.cpp STM32Make.make | $(BUILD_TREE)
+	$(CXX) -c $(CXXFLAGS) $< -o $@
+
+$(RELEASE_DIRECTORY)/%.o: %.c++ STM32Make.make | $(BUILD_TREE)
+	$(CXX) -c $(CXXFLAGS) $< -o $@
+
+$(RELEASE_DIRECTORY)/%.o: %.C STM32Make.make | $(BUILD_TREE)
+	$(CXX) -c $(CXXFLAGS) $< -o $@
+
+$(RELEASE_DIRECTORY)/%.o: %.CPP STM32Make.make | $(BUILD_TREE)
+	$(CXX) -c $(CXXFLAGS) $< -o $@
+
+#Assembly build
+$(RELEASE_DIRECTORY)/%.o: %.s STM32Make.make | $(BUILD_TREE)
+	$(AS) -c $(ASFLAGS) $< -o $@
+
+$(RELEASE_DIRECTORY)/%.o: %.S STM32Make.make | $(BUILD_TREE)
+	$(AS) -c $(ASFLAGS) $< -o $@
+
+$(RELEASE_DIRECTORY)/%.o: %.sx STM32Make.make | $(BUILD_TREE)
+	$(AS) -c $(ASFLAGS) $< -o $@
+
+$(BUILD_DIRECTORY)/$(TARGET).elf: $(OBJECTS) STM32Make.make | $(BUILD_DIRECTORY)
 	$(CC) $(OBJECTS) $(LDFLAGS) -o $@
 	$(SZ) $@
 
-$(BUILD_DIR)/%.hex: $(BUILD_DIR)/%.elf | $(BUILD_DIR)
+$(BUILD_DIRECTORY)/%.hex: $(BUILD_DIRECTORY)/%.elf | $(BUILD_DIRECTORY)
 	$(HEX) $< $@
 
-$(BUILD_DIR)/%.bin: $(BUILD_DIR)/%.elf | $(BUILD_DIR)
+$(BUILD_DIRECTORY)/%.bin: $(BUILD_DIRECTORY)/%.elf | $(BUILD_DIRECTORY)
 	$(BIN) $< $@
 
-$(BUILD_DIR):
-	mkdir $@
+$(BUILD_DIRECTORY)/%.lss: $(BUILD_DIRECTORY)/%.elf | $(BUILD_DIRECTORY)
+	$(LSS) $< > $@
+
+$(BUILD_DIRECTORY):
+	$(call mkdir_function, $@)
+
+$(BUILD_TREE):
+	$(call mkdir_function, $@)
 
 #######################################
-# flash
+# all
 #######################################
-flash: $(BUILD_DIR)/$(TARGET).elf
-	"/opt/homebrew/bin/openocd" -f ./openocd.cfg -c "program $(BUILD_DIR)/$(TARGET).elf verify reset exit"
+# default action: build all
+all:
+	$(BUILD_DIRECTORY)/$(TARGET).elf 
+	$(BUILD_DIRECTORY)/$(TARGET).hex 
+	$(BUILD_DIRECTORY)/$(TARGET).bin 
+	$(BUILD_DIRECTORY)/$(TARGET).lss 
+
+
+flash: $(BUILD_DIRECTORY)/$(TARGET).elf
+	"$(OPENOCD)" -f ./openocd.cfg -c "program $(BUILD_DIRECTORY)/$(TARGET).elf verify reset exit"
 
 #######################################
 # erase
 #######################################
-erase: $(BUILD_DIR)/$(TARGET).elf
-	"/opt/homebrew/bin/openocd" -f ./openocd.cfg -c "init; reset halt; stm32f4x mass_erase 0; exit"
+erase: $(BUILD_DIRECTORY)/$(TARGET).elf
+	"$(OPENOCD)" -f ./openocd.cfg -c "init; reset halt; stm32f4x mass_erase 0; exit"
 
 #######################################
 # clean up
 #######################################
 clean:
-	-rm -fR $(BUILD_DIR)
+	$(REMOVE_DIRECTORY_COMMAND) $(BUILD_DIRECTORY)
 
 #######################################
 # custom makefile rules
 #######################################
 
-
 	
 #######################################
 # dependencies
 #######################################
--include $(wildcard $(BUILD_DIR)/*.d)
+-include $(wildcard $(BUILD_DIRECTORY)/*.d)
 
 # *** EOF ***

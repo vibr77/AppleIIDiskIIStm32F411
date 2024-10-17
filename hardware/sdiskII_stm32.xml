@@ -1,0 +1,799 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<export version="E">
+  <design>
+    <source>/Users/vincent.besson/SynologyDrive/20.Pro/41.TechProjects/02.Apple_II/06.Apple SDISK II/AppleIISDiskII_stm32f411_sdio/hardware/sdiskII_stm32.kicad_sch</source>
+    <date>2024-10-16T18:41:06+0100</date>
+    <tool>Eeschema 8.0.5</tool>
+    <sheet number="1" name="/" tstamps="/">
+      <title_block>
+        <title>APPLE II DISK EM STM32F401</title>
+        <company/>
+        <rev>19</rev>
+        <date/>
+        <source>sdiskII_stm32.kicad_sch</source>
+        <comment number="1" value=""/>
+        <comment number="2" value=""/>
+        <comment number="3" value=""/>
+        <comment number="4" value=""/>
+        <comment number="5" value=""/>
+        <comment number="6" value=""/>
+        <comment number="7" value=""/>
+        <comment number="8" value=""/>
+        <comment number="9" value=""/>
+      </title_block>
+    </sheet>
+  </design>
+  <components>
+    <comp ref="DOWN1">
+      <value>SW_Push</value>
+      <footprint>Button_Switch_THT:SW_PUSH_6mm</footprint>
+      <description>Push button switch, generic, two pins</description>
+      <fields>
+        <field name="Footprint">Button_Switch_THT:SW_PUSH_6mm</field>
+        <field name="Datasheet"/>
+        <field name="Description">Push button switch, generic, two pins</field>
+      </fields>
+      <libsource lib="Switch" part="SW_Push" description="Push button switch, generic, two pins"/>
+      <property name="Sheetname" value="Root"/>
+      <property name="Sheetfile" value="sdiskII_stm32.kicad_sch"/>
+      <property name="ki_keywords" value="switch normally-open pushbutton push-button"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>2ccf63fe-a6bf-4acd-8b6b-7dd048f38e74</tstamps>
+    </comp>
+    <comp ref="ENTR1">
+      <value>SW_Push</value>
+      <footprint>Button_Switch_THT:SW_PUSH_6mm</footprint>
+      <description>Push button switch, generic, two pins</description>
+      <fields>
+        <field name="Footprint">Button_Switch_THT:SW_PUSH_6mm</field>
+        <field name="Datasheet"/>
+        <field name="Description">Push button switch, generic, two pins</field>
+      </fields>
+      <libsource lib="Switch" part="SW_Push" description="Push button switch, generic, two pins"/>
+      <property name="Sheetname" value="Root"/>
+      <property name="Sheetfile" value="sdiskII_stm32.kicad_sch"/>
+      <property name="ki_keywords" value="switch normally-open pushbutton push-button"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>948a6fa6-08f3-476a-9d4e-6c30c70c5017</tstamps>
+    </comp>
+    <comp ref="J1">
+      <value>PWR</value>
+      <footprint>Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical</footprint>
+      <description>Generic connector, single row, 01x02, script generated</description>
+      <fields>
+        <field name="Footprint">Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical</field>
+        <field name="Datasheet"/>
+        <field name="Description">Generic connector, single row, 01x02, script generated</field>
+      </fields>
+      <libsource lib="Connector" part="Conn_01x02_Pin" description="Generic connector, single row, 01x02, script generated"/>
+      <property name="Sheetname" value="Root"/>
+      <property name="Sheetfile" value="sdiskII_stm32.kicad_sch"/>
+      <property name="ki_keywords" value="connector"/>
+      <property name="ki_fp_filters" value="Connector*:*_1x??_*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>9b773655-7a01-4cbe-a8dd-e984fd165d9b</tstamps>
+    </comp>
+    <comp ref="J2">
+      <value>APPLE_SDISKII</value>
+      <footprint>Connector_IDC:IDC-Header_2x10_P2.54mm_Vertical</footprint>
+      <description>Generic connector, double row, 02x10, odd/even pin numbering scheme (row 1 odd numbers, row 2 even numbers), script generated (kicad-library-utils/schlib/autogen/connector/)</description>
+      <fields>
+        <field name="Footprint">Connector_IDC:IDC-Header_2x10_P2.54mm_Vertical</field>
+        <field name="Datasheet"/>
+        <field name="Description">Generic connector, double row, 02x10, odd/even pin numbering scheme (row 1 odd numbers, row 2 even numbers), script generated (kicad-library-utils/schlib/autogen/connector/)</field>
+      </fields>
+      <libsource lib="Connector_Generic" part="Conn_02x10_Odd_Even" description="Generic connector, double row, 02x10, odd/even pin numbering scheme (row 1 odd numbers, row 2 even numbers), script generated (kicad-library-utils/schlib/autogen/connector/)"/>
+      <property name="Sheetname" value="Root"/>
+      <property name="Sheetfile" value="sdiskII_stm32.kicad_sch"/>
+      <property name="ki_keywords" value="connector"/>
+      <property name="ki_fp_filters" value="Connector*:*_2x??_*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>916d1951-f8fe-4ca5-aa1e-7e3a693eaee6</tstamps>
+    </comp>
+    <comp ref="J3">
+      <value>DBG</value>
+      <footprint>Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical</footprint>
+      <description>Generic connector, single row, 01x05, script generated</description>
+      <fields>
+        <field name="Footprint">Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical</field>
+        <field name="Datasheet"/>
+        <field name="Description">Generic connector, single row, 01x05, script generated</field>
+      </fields>
+      <libsource lib="Connector" part="Conn_01x05_Pin" description="Generic connector, single row, 01x05, script generated"/>
+      <property name="Sheetname" value="Root"/>
+      <property name="Sheetfile" value="sdiskII_stm32.kicad_sch"/>
+      <property name="ki_keywords" value="connector"/>
+      <property name="ki_fp_filters" value="Connector*:*_1x??_*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>2c48a581-35f7-4e2d-897d-88f161fc0aa3</tstamps>
+    </comp>
+    <comp ref="J4">
+      <value>UART</value>
+      <footprint>Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical</footprint>
+      <description>Generic connector, single row, 01x03, script generated</description>
+      <fields>
+        <field name="Footprint">Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical</field>
+        <field name="Datasheet"/>
+        <field name="Description">Generic connector, single row, 01x03, script generated</field>
+      </fields>
+      <libsource lib="Connector" part="Conn_01x03_Pin" description="Generic connector, single row, 01x03, script generated"/>
+      <property name="Sheetname" value="Root"/>
+      <property name="Sheetfile" value="sdiskII_stm32.kicad_sch"/>
+      <property name="ki_keywords" value="connector"/>
+      <property name="ki_fp_filters" value="Connector*:*_1x??_*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>c94bc2b2-0242-41de-8af7-18d6afe89250</tstamps>
+    </comp>
+    <comp ref="J5">
+      <value>TIM</value>
+      <footprint>Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical</footprint>
+      <description>Generic connector, single row, 01x03, script generated</description>
+      <fields>
+        <field name="Footprint">Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical</field>
+        <field name="Datasheet"/>
+        <field name="Description">Generic connector, single row, 01x03, script generated</field>
+      </fields>
+      <libsource lib="Connector" part="Conn_01x03_Pin" description="Generic connector, single row, 01x03, script generated"/>
+      <property name="Sheetname" value="Root"/>
+      <property name="Sheetfile" value="sdiskII_stm32.kicad_sch"/>
+      <property name="ki_keywords" value="connector"/>
+      <property name="ki_fp_filters" value="Connector*:*_1x??_*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>e796fd4f-e995-4c6c-98a8-4450b09cac4f</tstamps>
+    </comp>
+    <comp ref="J6">
+      <value>STLINK</value>
+      <footprint>Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical</footprint>
+      <description>Generic connector, single row, 01x04, script generated</description>
+      <fields>
+        <field name="Footprint">Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical</field>
+        <field name="Datasheet"/>
+        <field name="Description">Generic connector, single row, 01x04, script generated</field>
+      </fields>
+      <libsource lib="Connector" part="Conn_01x04_Pin" description="Generic connector, single row, 01x04, script generated"/>
+      <property name="Sheetname" value="Root"/>
+      <property name="Sheetfile" value="sdiskII_stm32.kicad_sch"/>
+      <property name="ki_keywords" value="connector"/>
+      <property name="ki_fp_filters" value="Connector*:*_1x??_*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>d2ab7c54-30e5-4804-ab51-99e4b4c6d825</tstamps>
+    </comp>
+    <comp ref="R1">
+      <value>1k</value>
+      <footprint>Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal</footprint>
+      <description>Resistor</description>
+      <fields>
+        <field name="Footprint">Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal</field>
+        <field name="Datasheet"/>
+        <field name="Description">Resistor</field>
+      </fields>
+      <libsource lib="Device" part="R" description="Resistor"/>
+      <property name="Sheetname" value="Root"/>
+      <property name="Sheetfile" value="sdiskII_stm32.kicad_sch"/>
+      <property name="ki_keywords" value="R res resistor"/>
+      <property name="ki_fp_filters" value="R_*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>ff693535-7e8a-4806-bc32-a5d0740e596a</tstamps>
+    </comp>
+    <comp ref="R2">
+      <value>1k</value>
+      <footprint>Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal</footprint>
+      <description>Resistor</description>
+      <fields>
+        <field name="Footprint">Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal</field>
+        <field name="Datasheet"/>
+        <field name="Description">Resistor</field>
+      </fields>
+      <libsource lib="Device" part="R" description="Resistor"/>
+      <property name="Sheetname" value="Root"/>
+      <property name="Sheetfile" value="sdiskII_stm32.kicad_sch"/>
+      <property name="ki_keywords" value="R res resistor"/>
+      <property name="ki_fp_filters" value="R_*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>170e62cd-2c7a-4554-9277-68e065f97ac4</tstamps>
+    </comp>
+    <comp ref="R3">
+      <value>1k</value>
+      <footprint>Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal</footprint>
+      <description>Resistor</description>
+      <fields>
+        <field name="Footprint">Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal</field>
+        <field name="Datasheet"/>
+        <field name="Description">Resistor</field>
+      </fields>
+      <libsource lib="Device" part="R" description="Resistor"/>
+      <property name="Sheetname" value="Root"/>
+      <property name="Sheetfile" value="sdiskII_stm32.kicad_sch"/>
+      <property name="ki_keywords" value="R res resistor"/>
+      <property name="ki_fp_filters" value="R_*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>60ee2345-c60d-4334-84e2-3e474a66bd68</tstamps>
+    </comp>
+    <comp ref="RET1">
+      <value>SW_Push</value>
+      <footprint>Button_Switch_THT:SW_PUSH_6mm</footprint>
+      <description>Push button switch, generic, two pins</description>
+      <fields>
+        <field name="Footprint">Button_Switch_THT:SW_PUSH_6mm</field>
+        <field name="Datasheet"/>
+        <field name="Description">Push button switch, generic, two pins</field>
+      </fields>
+      <libsource lib="Switch" part="SW_Push" description="Push button switch, generic, two pins"/>
+      <property name="Sheetname" value="Root"/>
+      <property name="Sheetfile" value="sdiskII_stm32.kicad_sch"/>
+      <property name="ki_keywords" value="switch normally-open pushbutton push-button"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>77636ee6-78cb-43a3-a34f-22e06f37085d</tstamps>
+    </comp>
+    <comp ref="U2">
+      <value>MicroSD_SDIO</value>
+      <footprint>sdisk_stm32:GCT-MEM2055-00-190-01-A_VIB</footprint>
+      <description>MicroSD slot with card detect signal</description>
+      <fields>
+        <field name="Footprint">sdisk_stm32:GCT-MEM2055-00-190-01-A_VIB</field>
+        <field name="Datasheet"/>
+        <field name="Description">MicroSD slot with card detect signal</field>
+      </fields>
+      <libsource lib="microsd_spi_cd" part="MicroSD_SPI_CD" description="MicroSD slot with card detect signal"/>
+      <property name="Sheetname" value="Root"/>
+      <property name="Sheetfile" value="sdiskII_stm32.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>eaa8d53b-217f-42aa-8dc4-d4e9821f49ce</tstamps>
+    </comp>
+    <comp ref="U8">
+      <value>DM-OLED096-636</value>
+      <footprint>DM-OLED096-636:MODULE_DM-OLED096-636</footprint>
+      <fields>
+        <field name="MF">Display Module</field>
+        <field name="MAXIMUM_PACKAGE_HEIGHT">11.3 mm</field>
+        <field name="Package">Package</field>
+        <field name="Price">None</field>
+        <field name="Check_prices">https://www.snapeda.com/parts/DM-OLED096-636/Display+Module/view-part/?ref=eda</field>
+        <field name="STANDARD">Manufacturer Recommendations</field>
+        <field name="PARTREV">2018-09-10</field>
+        <field name="SnapEDA_Link">https://www.snapeda.com/parts/DM-OLED096-636/Display+Module/view-part/?ref=snap</field>
+        <field name="MP">DM-OLED096-636</field>
+        <field name="Description_1">
+0.96” 128 X 64 MONOCHROME GRAPHIC OLED DISPLAY MODULE - I2C
+</field>
+        <field name="Availability">Not in stock</field>
+        <field name="MANUFACTURER">Displaymodule</field>
+        <field name="Footprint">DM-OLED096-636:MODULE_DM-OLED096-636</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="DM-OLED096-636" part="DM-OLED096-636" description=""/>
+      <property name="MF" value="Display Module"/>
+      <property name="MAXIMUM_PACKAGE_HEIGHT" value="11.3 mm"/>
+      <property name="Package" value="Package"/>
+      <property name="Price" value="None"/>
+      <property name="Check_prices" value="https://www.snapeda.com/parts/DM-OLED096-636/Display+Module/view-part/?ref=eda"/>
+      <property name="STANDARD" value="Manufacturer Recommendations"/>
+      <property name="PARTREV" value="2018-09-10"/>
+      <property name="SnapEDA_Link" value="https://www.snapeda.com/parts/DM-OLED096-636/Display+Module/view-part/?ref=snap"/>
+      <property name="MP" value="DM-OLED096-636"/>
+      <property name="Description_1" value="&#xA;0.96” 128 X 64 MONOCHROME GRAPHIC OLED DISPLAY MODULE - I2C&#xA;"/>
+      <property name="Availability" value="Not in stock"/>
+      <property name="MANUFACTURER" value="Displaymodule"/>
+      <property name="Sheetname" value="Root"/>
+      <property name="Sheetfile" value="sdiskII_stm32.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>09a771c3-eb11-4dcd-9ac1-18e5bafdf5ed</tstamps>
+    </comp>
+    <comp ref="UP1">
+      <value>SW_Push</value>
+      <footprint>Button_Switch_THT:SW_PUSH_6mm</footprint>
+      <description>Push button switch, generic, two pins</description>
+      <fields>
+        <field name="Footprint">Button_Switch_THT:SW_PUSH_6mm</field>
+        <field name="Datasheet"/>
+        <field name="Description">Push button switch, generic, two pins</field>
+      </fields>
+      <libsource lib="Switch" part="SW_Push" description="Push button switch, generic, two pins"/>
+      <property name="Sheetname" value="Root"/>
+      <property name="Sheetfile" value="sdiskII_stm32.kicad_sch"/>
+      <property name="ki_keywords" value="switch normally-open pushbutton push-button"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>fb150bd5-d29d-42d7-91cd-18aa76ffefed</tstamps>
+    </comp>
+    <comp ref="μC1">
+      <value>BlackPill STMF4X1</value>
+      <footprint>acheron_Hardware.pretty-master:Mini_F4X1_STM32_VIB</footprint>
+      <fields>
+        <field name="Footprint">acheron_Hardware.pretty-master:Mini_F4X1_STM32_VIB</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="muControllers_other" part="BlackPill" description=""/>
+      <property name="Sheetname" value="Root"/>
+      <property name="Sheetfile" value="sdiskII_stm32.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>a18b9df0-f13f-4e55-a848-8e1861b197ba</tstamps>
+    </comp>
+  </components>
+  <libparts>
+    <libpart lib="Connector" part="Conn_01x02_Pin">
+      <description>Generic connector, single row, 01x02, script generated</description>
+      <docs>~</docs>
+      <footprints>
+        <fp>Connector*:*_1x??_*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">J</field>
+        <field name="Value">Conn_01x02_Pin</field>
+        <field name="Footprint"/>
+        <field name="Datasheet">~</field>
+        <field name="Description">Generic connector, single row, 01x02, script generated</field>
+      </fields>
+      <pins>
+        <pin num="1" name="Pin_1" type="passive"/>
+        <pin num="2" name="Pin_2" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Connector" part="Conn_01x03_Pin">
+      <description>Generic connector, single row, 01x03, script generated</description>
+      <docs>~</docs>
+      <footprints>
+        <fp>Connector*:*_1x??_*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">J</field>
+        <field name="Value">Conn_01x03_Pin</field>
+        <field name="Footprint"/>
+        <field name="Datasheet">~</field>
+        <field name="Description">Generic connector, single row, 01x03, script generated</field>
+      </fields>
+      <pins>
+        <pin num="1" name="Pin_1" type="passive"/>
+        <pin num="2" name="Pin_2" type="passive"/>
+        <pin num="3" name="Pin_3" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Connector" part="Conn_01x04_Pin">
+      <description>Generic connector, single row, 01x04, script generated</description>
+      <docs>~</docs>
+      <footprints>
+        <fp>Connector*:*_1x??_*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">J</field>
+        <field name="Value">Conn_01x04_Pin</field>
+        <field name="Footprint"/>
+        <field name="Datasheet">~</field>
+        <field name="Description">Generic connector, single row, 01x04, script generated</field>
+      </fields>
+      <pins>
+        <pin num="1" name="Pin_1" type="passive"/>
+        <pin num="2" name="Pin_2" type="passive"/>
+        <pin num="3" name="Pin_3" type="passive"/>
+        <pin num="4" name="Pin_4" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Connector" part="Conn_01x05_Pin">
+      <description>Generic connector, single row, 01x05, script generated</description>
+      <docs>~</docs>
+      <footprints>
+        <fp>Connector*:*_1x??_*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">J</field>
+        <field name="Value">Conn_01x05_Pin</field>
+        <field name="Footprint"/>
+        <field name="Datasheet">~</field>
+        <field name="Description">Generic connector, single row, 01x05, script generated</field>
+      </fields>
+      <pins>
+        <pin num="1" name="Pin_1" type="passive"/>
+        <pin num="2" name="Pin_2" type="passive"/>
+        <pin num="3" name="Pin_3" type="passive"/>
+        <pin num="4" name="Pin_4" type="passive"/>
+        <pin num="5" name="Pin_5" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Connector_Generic" part="Conn_02x10_Odd_Even">
+      <description>Generic connector, double row, 02x10, odd/even pin numbering scheme (row 1 odd numbers, row 2 even numbers), script generated (kicad-library-utils/schlib/autogen/connector/)</description>
+      <docs>~</docs>
+      <footprints>
+        <fp>Connector*:*_2x??_*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">J</field>
+        <field name="Value">Conn_02x10_Odd_Even</field>
+        <field name="Footprint"/>
+        <field name="Datasheet">~</field>
+        <field name="Description">Generic connector, double row, 02x10, odd/even pin numbering scheme (row 1 odd numbers, row 2 even numbers), script generated (kicad-library-utils/schlib/autogen/connector/)</field>
+      </fields>
+      <pins>
+        <pin num="1" name="Pin_1" type="passive"/>
+        <pin num="2" name="Pin_2" type="passive"/>
+        <pin num="3" name="Pin_3" type="passive"/>
+        <pin num="4" name="Pin_4" type="passive"/>
+        <pin num="5" name="Pin_5" type="passive"/>
+        <pin num="6" name="Pin_6" type="passive"/>
+        <pin num="7" name="Pin_7" type="passive"/>
+        <pin num="8" name="Pin_8" type="passive"/>
+        <pin num="9" name="Pin_9" type="passive"/>
+        <pin num="10" name="Pin_10" type="passive"/>
+        <pin num="11" name="Pin_11" type="passive"/>
+        <pin num="12" name="Pin_12" type="passive"/>
+        <pin num="13" name="Pin_13" type="passive"/>
+        <pin num="14" name="Pin_14" type="passive"/>
+        <pin num="15" name="Pin_15" type="passive"/>
+        <pin num="16" name="Pin_16" type="passive"/>
+        <pin num="17" name="Pin_17" type="passive"/>
+        <pin num="18" name="Pin_18" type="passive"/>
+        <pin num="19" name="Pin_19" type="passive"/>
+        <pin num="20" name="Pin_20" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="DM-OLED096-636" part="DM-OLED096-636">
+      <fields>
+        <field name="Reference">U</field>
+        <field name="Value">DM-OLED096-636</field>
+        <field name="Footprint">DM-OLED096-636:MODULE_DM-OLED096-636</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+        <field name="MF">Display Module</field>
+        <field name="MAXIMUM_PACKAGE_HEIGHT">11.3 mm</field>
+        <field name="Package">Package</field>
+        <field name="Price">None</field>
+        <field name="Check_prices">https://www.snapeda.com/parts/DM-OLED096-636/Display+Module/view-part/?ref=eda</field>
+        <field name="STANDARD">Manufacturer Recommendations</field>
+        <field name="PARTREV">2018-09-10</field>
+        <field name="SnapEDA_Link">https://www.snapeda.com/parts/DM-OLED096-636/Display+Module/view-part/?ref=snap</field>
+        <field name="MP">DM-OLED096-636</field>
+        <field name="Description_1">
+0.96” 128 X 64 MONOCHROME GRAPHIC OLED DISPLAY MODULE - I2C
+</field>
+        <field name="Availability">Not in stock</field>
+        <field name="MANUFACTURER">Displaymodule</field>
+      </fields>
+      <pins>
+        <pin num="1" name="GND" type="power_in"/>
+        <pin num="2" name="VCC_IN" type="power_in"/>
+        <pin num="3" name="SCL" type="input"/>
+        <pin num="4" name="SDA" type="bidirectional"/>
+      </pins>
+    </libpart>
+    <libpart lib="Device" part="R">
+      <description>Resistor</description>
+      <docs>~</docs>
+      <footprints>
+        <fp>R_*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">R</field>
+        <field name="Value">R</field>
+        <field name="Footprint"/>
+        <field name="Datasheet">~</field>
+        <field name="Description">Resistor</field>
+      </fields>
+      <pins>
+        <pin num="1" name="" type="passive"/>
+        <pin num="2" name="" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Switch" part="SW_Push">
+      <description>Push button switch, generic, two pins</description>
+      <docs>~</docs>
+      <fields>
+        <field name="Reference">SW</field>
+        <field name="Value">SW_Push</field>
+        <field name="Footprint"/>
+        <field name="Datasheet">~</field>
+        <field name="Description">Push button switch, generic, two pins</field>
+      </fields>
+      <pins>
+        <pin num="1" name="1" type="passive"/>
+        <pin num="2" name="2" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="microsd_spi_cd" part="MicroSD_SPI_CD">
+      <description>MicroSD slot with card detect signal</description>
+      <fields>
+        <field name="Reference">U2</field>
+        <field name="Value">MicroSD_SDIO</field>
+        <field name="Footprint">sdisk_stm32:GCT-MEM2055-00-190-01-A</field>
+        <field name="Datasheet"/>
+        <field name="Description">MicroSD slot with card detect signal</field>
+      </fields>
+      <pins>
+        <pin num="1" name="D2" type="input"/>
+        <pin num="2" name="D3" type="input"/>
+        <pin num="3" name="CMD" type="input"/>
+        <pin num="4" name="VDD" type="input"/>
+        <pin num="5" name="SCLK" type="input"/>
+        <pin num="6" name="GND" type="input"/>
+        <pin num="7" name="DO" type="input"/>
+        <pin num="8" name="D1" type="input"/>
+        <pin num="9" name="CD" type="input"/>
+        <pin num="10" name="GND" type="input"/>
+        <pin num="~" name="" type="input"/>
+      </pins>
+    </libpart>
+    <libpart lib="muControllers_other" part="BlackPill">
+      <fields>
+        <field name="Reference">μC1</field>
+        <field name="Value">BlackPill STMF4X1</field>
+        <field name="Footprint">acheron_Hardware.pretty-master:Mini_F4X1_STM32</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <pins>
+        <pin num="1" name="B12" type="bidirectional"/>
+        <pin num="2" name="B13" type="bidirectional"/>
+        <pin num="3" name="B14" type="bidirectional"/>
+        <pin num="4" name="B15" type="bidirectional"/>
+        <pin num="5" name="A8" type="bidirectional"/>
+        <pin num="6" name="A9" type="bidirectional"/>
+        <pin num="7" name="A10" type="bidirectional"/>
+        <pin num="8" name="A11" type="bidirectional"/>
+        <pin num="9" name="A12" type="bidirectional"/>
+        <pin num="10" name="A15" type="bidirectional"/>
+        <pin num="11" name="B3" type="bidirectional"/>
+        <pin num="12" name="B4" type="bidirectional"/>
+        <pin num="13" name="B5" type="bidirectional"/>
+        <pin num="14" name="B6" type="bidirectional"/>
+        <pin num="15" name="B7" type="bidirectional"/>
+        <pin num="16" name="B8" type="bidirectional"/>
+        <pin num="17" name="B9" type="bidirectional"/>
+        <pin num="18" name="5Vi" type="power_in"/>
+        <pin num="19" name="GNDi" type="power_in"/>
+        <pin num="20" name="3.3i" type="power_in"/>
+        <pin num="21" name="VB" type="bidirectional"/>
+        <pin num="22" name="C13" type="bidirectional"/>
+        <pin num="23" name="C14" type="bidirectional"/>
+        <pin num="24" name="C15" type="bidirectional"/>
+        <pin num="25" name="R" type="input"/>
+        <pin num="26" name="A0" type="bidirectional"/>
+        <pin num="27" name="A1" type="bidirectional"/>
+        <pin num="28" name="A2" type="bidirectional"/>
+        <pin num="29" name="A3" type="bidirectional"/>
+        <pin num="30" name="A4" type="bidirectional"/>
+        <pin num="31" name="A5" type="bidirectional"/>
+        <pin num="32" name="A6" type="bidirectional"/>
+        <pin num="33" name="A7" type="bidirectional"/>
+        <pin num="34" name="B0" type="bidirectional"/>
+        <pin num="35" name="B1" type="bidirectional"/>
+        <pin num="36" name="B2" type="bidirectional"/>
+        <pin num="37" name="B10" type="bidirectional"/>
+        <pin num="38" name="3.3ii" type="power_in"/>
+        <pin num="39" name="GNDii" type="power_in"/>
+        <pin num="40" name="5Vii" type="power_in"/>
+        <pin num="41" name="3.3V" type="power_in"/>
+        <pin num="42" name="SDIO" type="bidirectional"/>
+        <pin num="43" name="SCK" type="bidirectional"/>
+        <pin num="44" name="GND" type="power_in"/>
+      </pins>
+    </libpart>
+  </libparts>
+  <libraries>
+    <library logical="Connector">
+      <uri>/Applications/KiCad/KiCad.app/Contents/SharedSupport/symbols//Connector.kicad_sym</uri>
+    </library>
+    <library logical="Connector_Generic">
+      <uri>/Applications/KiCad/KiCad.app/Contents/SharedSupport/symbols//Connector_Generic.kicad_sym</uri>
+    </library>
+    <library logical="DM-OLED096-636">
+      <uri>/Users/vincent.besson/SynologyDrive/20.Pro/41.TechProjects/02.Apple_II/06.Apple SDISK II/AppleIISDiskII_stm32f411_sdio/hardware/ssd1306.pretty/DM-OLED096-636/DM-OLED096-636.kicad_sym</uri>
+    </library>
+    <library logical="Device">
+      <uri>/Applications/KiCad/KiCad.app/Contents/SharedSupport/symbols//Device.kicad_sym</uri>
+    </library>
+    <library logical="Switch">
+      <uri>/Applications/KiCad/KiCad.app/Contents/SharedSupport/symbols//Switch.kicad_sym</uri>
+    </library>
+    <library logical="microsd_spi_cd">
+      <uri>/Users/vincent.besson/Downloads/Apple2Card-main/Apple2Card/microsd_spi_cd.lib</uri>
+    </library>
+    <library logical="muControllers_other">
+      <uri>/Users/vincent.besson/Downloads/muControllers-main/symbols/muControllers_other.kicad_sym</uri>
+    </library>
+  </libraries>
+  <nets>
+    <net code="1" name="+3.3V">
+      <node ref="DOWN1" pin="1" pinfunction="1" pintype="passive"/>
+      <node ref="ENTR1" pin="1" pinfunction="1" pintype="passive"/>
+      <node ref="J6" pin="1" pinfunction="Pin_1" pintype="passive"/>
+      <node ref="RET1" pin="1" pinfunction="1" pintype="passive"/>
+      <node ref="U2" pin="4" pinfunction="VDD" pintype="input"/>
+      <node ref="U8" pin="2" pinfunction="VCC_IN" pintype="power_in"/>
+      <node ref="UP1" pin="1" pinfunction="1" pintype="passive"/>
+      <node ref="μC1" pin="20" pinfunction="3.3i" pintype="power_in"/>
+      <node ref="μC1" pin="41" pinfunction="3.3V" pintype="power_in"/>
+    </net>
+    <net code="2" name="BTN_DOWN">
+      <node ref="DOWN1" pin="2" pinfunction="2" pintype="passive"/>
+      <node ref="μC1" pin="22" pinfunction="C13" pintype="bidirectional"/>
+    </net>
+    <net code="3" name="BTN_ENTR">
+      <node ref="ENTR1" pin="2" pinfunction="2" pintype="passive"/>
+      <node ref="μC1" pin="24" pinfunction="C15" pintype="bidirectional"/>
+    </net>
+    <net code="4" name="BTN_RET">
+      <node ref="RET1" pin="2" pinfunction="2" pintype="passive"/>
+      <node ref="μC1" pin="1" pinfunction="B12" pintype="bidirectional"/>
+    </net>
+    <net code="5" name="BTN_UP">
+      <node ref="UP1" pin="2" pinfunction="2" pintype="passive"/>
+      <node ref="μC1" pin="23" pinfunction="C14" pintype="bidirectional"/>
+    </net>
+    <net code="6" name="DEBUG">
+      <node ref="J5" pin="3" pinfunction="Pin_3" pintype="passive"/>
+      <node ref="μC1" pin="3" pinfunction="B14" pintype="bidirectional"/>
+    </net>
+    <net code="7" name="DEVICE_ENABLE">
+      <node ref="J2" pin="14" pinfunction="Pin_14" pintype="passive"/>
+      <node ref="J3" pin="3" pinfunction="Pin_3" pintype="passive"/>
+      <node ref="R3" pin="2" pintype="passive"/>
+      <node ref="μC1" pin="30" pinfunction="A4" pintype="bidirectional"/>
+    </net>
+    <net code="8" name="GND">
+      <node ref="J2" pin="1" pinfunction="Pin_1" pintype="passive"/>
+      <node ref="J2" pin="3" pinfunction="Pin_3" pintype="passive"/>
+      <node ref="J2" pin="5" pinfunction="Pin_5" pintype="passive"/>
+      <node ref="J2" pin="7" pinfunction="Pin_7" pintype="passive"/>
+      <node ref="J4" pin="3" pinfunction="Pin_3" pintype="passive"/>
+      <node ref="J6" pin="4" pinfunction="Pin_4" pintype="passive"/>
+      <node ref="U2" pin="" pintype="input"/>
+      <node ref="U2" pin="10" pinfunction="GND" pintype="input"/>
+      <node ref="U2" pin="6" pinfunction="GND" pintype="input"/>
+      <node ref="U8" pin="1" pinfunction="GND" pintype="power_in"/>
+      <node ref="μC1" pin="19" pinfunction="GNDi" pintype="power_in"/>
+      <node ref="μC1" pin="39" pinfunction="GNDii" pintype="power_in"/>
+      <node ref="μC1" pin="44" pinfunction="GND" pintype="power_in"/>
+    </net>
+    <net code="9" name="I2C_SCL">
+      <node ref="U8" pin="3" pinfunction="SCL" pintype="input"/>
+      <node ref="μC1" pin="14" pinfunction="B6" pintype="bidirectional"/>
+    </net>
+    <net code="10" name="I2C_SDA">
+      <node ref="U8" pin="4" pinfunction="SDA" pintype="bidirectional"/>
+      <node ref="μC1" pin="15" pinfunction="B7" pintype="bidirectional"/>
+    </net>
+    <net code="11" name="PWR_IN">
+      <node ref="J1" pin="2" pinfunction="Pin_2" pintype="passive"/>
+      <node ref="μC1" pin="18" pinfunction="5Vi" pintype="power_in"/>
+    </net>
+    <net code="12" name="RD_DATA">
+      <node ref="J2" pin="16" pinfunction="Pin_16" pintype="passive"/>
+      <node ref="J3" pin="5" pinfunction="Pin_5" pintype="passive"/>
+      <node ref="μC1" pin="34" pinfunction="B0" pintype="bidirectional"/>
+    </net>
+    <net code="13" name="SCK">
+      <node ref="J6" pin="3" pinfunction="Pin_3" pintype="passive"/>
+      <node ref="μC1" pin="43" pinfunction="SCK" pintype="bidirectional"/>
+    </net>
+    <net code="14" name="SDIO">
+      <node ref="J6" pin="2" pinfunction="Pin_2" pintype="passive"/>
+      <node ref="μC1" pin="42" pinfunction="SDIO" pintype="bidirectional"/>
+    </net>
+    <net code="15" name="SDIO_CK">
+      <node ref="U2" pin="5" pinfunction="SCLK" pintype="input"/>
+      <node ref="μC1" pin="4" pinfunction="B15" pintype="bidirectional"/>
+    </net>
+    <net code="16" name="SDIO_CMD">
+      <node ref="U2" pin="3" pinfunction="CMD" pintype="input"/>
+      <node ref="μC1" pin="32" pinfunction="A6" pintype="bidirectional"/>
+    </net>
+    <net code="17" name="SDIO_D1">
+      <node ref="U2" pin="8" pinfunction="D1" pintype="input"/>
+      <node ref="μC1" pin="5" pinfunction="A8" pintype="bidirectional"/>
+    </net>
+    <net code="18" name="SDIO_D2">
+      <node ref="U2" pin="1" pinfunction="D2" pintype="input"/>
+      <node ref="μC1" pin="6" pinfunction="A9" pintype="bidirectional"/>
+    </net>
+    <net code="19" name="SDIO_D3">
+      <node ref="U2" pin="2" pinfunction="D3" pintype="input"/>
+      <node ref="μC1" pin="13" pinfunction="B5" pintype="bidirectional"/>
+    </net>
+    <net code="20" name="SDIO_DO">
+      <node ref="U2" pin="7" pinfunction="DO" pintype="input"/>
+      <node ref="μC1" pin="12" pinfunction="B4" pintype="bidirectional"/>
+    </net>
+    <net code="21" name="SD_EJECT">
+      <node ref="U2" pin="9" pinfunction="CD" pintype="input"/>
+      <node ref="μC1" pin="2" pinfunction="B13" pintype="bidirectional"/>
+    </net>
+    <net code="22" name="STEP0">
+      <node ref="J2" pin="2" pinfunction="Pin_2" pintype="passive"/>
+      <node ref="μC1" pin="26" pinfunction="A0" pintype="bidirectional"/>
+    </net>
+    <net code="23" name="STEP1">
+      <node ref="J2" pin="4" pinfunction="Pin_4" pintype="passive"/>
+      <node ref="μC1" pin="27" pinfunction="A1" pintype="bidirectional"/>
+    </net>
+    <net code="24" name="STEP2">
+      <node ref="J2" pin="6" pinfunction="Pin_6" pintype="passive"/>
+      <node ref="μC1" pin="28" pinfunction="A2" pintype="bidirectional"/>
+    </net>
+    <net code="25" name="STEP3">
+      <node ref="J2" pin="8" pinfunction="Pin_8" pintype="passive"/>
+      <node ref="μC1" pin="29" pinfunction="A3" pintype="bidirectional"/>
+    </net>
+    <net code="26" name="TIM2_CH3">
+      <node ref="J5" pin="1" pinfunction="Pin_1" pintype="passive"/>
+      <node ref="μC1" pin="37" pinfunction="B10" pintype="bidirectional"/>
+    </net>
+    <net code="27" name="TIM3_CH4">
+      <node ref="J5" pin="2" pinfunction="Pin_2" pintype="passive"/>
+      <node ref="μC1" pin="35" pinfunction="B1" pintype="bidirectional"/>
+    </net>
+    <net code="28" name="USART1_RX">
+      <node ref="J4" pin="2" pinfunction="Pin_2" pintype="passive"/>
+      <node ref="μC1" pin="11" pinfunction="B3" pintype="bidirectional"/>
+    </net>
+    <net code="29" name="USART1_TX">
+      <node ref="J4" pin="1" pinfunction="Pin_1" pintype="passive"/>
+      <node ref="μC1" pin="10" pinfunction="A15" pintype="bidirectional"/>
+    </net>
+    <net code="30" name="VCC">
+      <node ref="J1" pin="1" pinfunction="Pin_1" pintype="passive"/>
+      <node ref="J2" pin="12" pinfunction="Pin_12" pintype="passive"/>
+      <node ref="R1" pin="2" pintype="passive"/>
+      <node ref="R2" pin="1" pintype="passive"/>
+      <node ref="R3" pin="1" pintype="passive"/>
+    </net>
+    <net code="31" name="WR_DATA">
+      <node ref="J2" pin="18" pinfunction="Pin_18" pintype="passive"/>
+      <node ref="J3" pin="1" pinfunction="Pin_1" pintype="passive"/>
+      <node ref="μC1" pin="31" pinfunction="A5" pintype="bidirectional"/>
+      <node ref="μC1" pin="33" pinfunction="A7" pintype="bidirectional"/>
+    </net>
+    <net code="32" name="WR_PROTECT">
+      <node ref="J2" pin="20" pinfunction="Pin_20" pintype="passive"/>
+      <node ref="J3" pin="2" pinfunction="Pin_2" pintype="passive"/>
+      <node ref="R1" pin="1" pintype="passive"/>
+      <node ref="μC1" pin="36" pinfunction="B2" pintype="bidirectional"/>
+    </net>
+    <net code="33" name="WR_REQ">
+      <node ref="J2" pin="10" pinfunction="Pin_10" pintype="passive"/>
+      <node ref="J3" pin="4" pinfunction="Pin_4" pintype="passive"/>
+      <node ref="R2" pin="2" pintype="passive"/>
+      <node ref="μC1" pin="17" pinfunction="B9" pintype="bidirectional"/>
+    </net>
+    <net code="34" name="unconnected-(J2-Pin_9-Pad9)">
+      <node ref="J2" pin="9" pinfunction="Pin_9" pintype="passive+no_connect"/>
+    </net>
+    <net code="35" name="unconnected-(J2-Pin_11-Pad11)">
+      <node ref="J2" pin="11" pinfunction="Pin_11" pintype="passive+no_connect"/>
+    </net>
+    <net code="36" name="unconnected-(J2-Pin_13-Pad13)">
+      <node ref="J2" pin="13" pinfunction="Pin_13" pintype="passive+no_connect"/>
+    </net>
+    <net code="37" name="unconnected-(J2-Pin_15-Pad15)">
+      <node ref="J2" pin="15" pinfunction="Pin_15" pintype="passive+no_connect"/>
+    </net>
+    <net code="38" name="unconnected-(J2-Pin_17-Pad17)">
+      <node ref="J2" pin="17" pinfunction="Pin_17" pintype="passive+no_connect"/>
+    </net>
+    <net code="39" name="unconnected-(J2-Pin_19-Pad19)">
+      <node ref="J2" pin="19" pinfunction="Pin_19" pintype="passive+no_connect"/>
+    </net>
+    <net code="40" name="unconnected-(μC1-3.3ii-Pad38)">
+      <node ref="μC1" pin="38" pinfunction="3.3ii" pintype="power_in+no_connect"/>
+    </net>
+    <net code="41" name="unconnected-(μC1-5Vii-Pad40)">
+      <node ref="μC1" pin="40" pinfunction="5Vii" pintype="power_in+no_connect"/>
+    </net>
+    <net code="42" name="unconnected-(μC1-A10-Pad7)">
+      <node ref="μC1" pin="7" pinfunction="A10" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="43" name="unconnected-(μC1-A11-Pad8)">
+      <node ref="μC1" pin="8" pinfunction="A11" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="44" name="unconnected-(μC1-A12-Pad9)">
+      <node ref="μC1" pin="9" pinfunction="A12" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="45" name="unconnected-(μC1-B8-Pad16)">
+      <node ref="μC1" pin="16" pinfunction="B8" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="46" name="unconnected-(μC1-R-Pad25)">
+      <node ref="μC1" pin="25" pinfunction="R" pintype="input+no_connect"/>
+    </net>
+    <net code="47" name="unconnected-(μC1-VB-Pad21)">
+      <node ref="μC1" pin="21" pinfunction="VB" pintype="bidirectional+no_connect"/>
+    </net>
+  </nets>
+</export>

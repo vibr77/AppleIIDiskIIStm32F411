@@ -18,7 +18,7 @@
         "STM32F411xE",
         "USE_HAL_DRIVER"
       ],
-      "compilerPath": "/Applications/ArmGNUToolchain/13.2.Rel1/arm-none-eabi/bin/arm-none-eabi-gcc"
+      "compilerPath": "/Applications/ArmGNUToolchain/13.3.Rel1/arm-none-eabi/bin/arm-none-eabi-gcc"
     }
   ],
   "version": 4
