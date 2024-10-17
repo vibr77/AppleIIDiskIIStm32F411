@@ -6,7 +6,8 @@ screenshot/*
 imageFiles/*
 Drivers
 .stm32env*
-.DS_Store
+.DS_Store*
 .osx*
 CMake*
 AppleIISDiskII_stm32f411.ioc*
+STM32F411CEUX_FLASH_bkp*
