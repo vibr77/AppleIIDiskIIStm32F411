@@ -6,6 +6,9 @@ This hardware emulator tries to replicate the behaviour of a real DISK II and th
 
 The project is still in beta mode, progress thread is on [AppleFritter Apple II Disk emulator using STM32]( https://www.applefritter.com/content/apple-ii-disk-emulator-using-stm32).
 
+<img src="https://github.com/vibr77/AppleIIDiskIIStm32F411/blob/main/resources/PCB_REV_1_FILELST.jpeg?raw=true" width="400px" />
+
+
 If you decide to build one, please note that hardware design might evolve and new software releases might not work with the current hardware design.  
  
 This project relies on a STM32F411(BlackPill) with SDIO Port.
