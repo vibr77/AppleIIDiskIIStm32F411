@@ -43,6 +43,11 @@ The list of features currently supported in this project:
 - Read mounted image file on Apple II
 - Write (experimental)
 
+<img src="https://github.com/vibr77/AppleIIDiskIIStm32F411/blob/main/resources/PCB_REV_1_MONTING.jpeg?raw=true" width="400px" />
+
+<img src="https://github.com/vibr77/AppleIIDiskIIStm32F411/blob/main/resources/PCB_REV_1_IMAGE.jpeg?raw=true" width="400px" />
+
+
 
 ### Supported disk image format:
 
