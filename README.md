@@ -212,7 +212,7 @@ weakBitTank uint_8 array & fakeBitTank char array are used to manage some copy p
 
 Please note that you will need to have a STLINK32 to upload the firmware to the STM32F411
 
-
+<img src="https://github.com/vibr77/AppleIIDiskIIStm32F411/blob/main/resources/STLINK.jpg?raw=true" width="400px" />
 
 
 ## Recommanded reading 
