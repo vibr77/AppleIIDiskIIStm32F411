@@ -251,9 +251,9 @@ enum STATUS initIMAGEScreen(char * imageName,int type){
 }
 
 void updateIMAGEScreen(uint8_t status,uint8_t trk){
-  unsigned long t1,t2,diff1;  
-   DWT->CYCCNT = 0;
-   t1 = DWT->CYCCNT; 
+  //unsigned long t1,t2,/*diff1*/;  
+   //DWT->CYCCNT = 0;
+   //t1 = DWT->CYCCNT; 
   if (currentTrk!=trk || status!=currentStatus){
 
     char tmp[32];
@@ -264,8 +264,8 @@ void updateIMAGEScreen(uint8_t status,uint8_t trk){
       displayStringAtPosition(5,3*9,tmp);
       currentTrk=trk;
     }
-        t2 = DWT->CYCCNT;
-    diff1 = t2 - t1;
+     //   t2 = DWT->CYCCNT;
+    //diff1 = t2 - t1;
     //log_info("diff Str: %d",diff1);
     
     if (status==0){
@@ -280,6 +280,73 @@ void updateIMAGEScreen(uint8_t status,uint8_t trk){
 
   }
   return;
+}
+
+void initMainMenuScreen(int i){
+  
+  const char * menuItem[5];
+  u_int8_t numItems=3;
+
+  if (i>numItems)
+    i=0;
+
+  menuItem[0]="Favorite";
+  menuItem[1]="File manager";
+  menuItem[2]="Config";
+  
+  clearScreen();
+
+  ssd1306_SetColor(White);
+  for (int j=0;j<numItems;j++){
+    displayStringAtPosition(30,(2+j)*9,menuItem[j]);
+  }
+
+  ssd1306_SetColor(Inverse);
+  displayStringAtPosition(30,(2+i)*9,menuItem[i]);
+
+  ssd1306_UpdateScreen();
+
+}
+
+void initConfigMenuScreen(int i){
+
+  const char * menuItem[5];
+  u_int8_t numItems=2;
+
+  if (i>numItems)
+    i=0;
+
+  menuItem[0]="AutoMount";
+  menuItem[1]="Format FS";
+
+  
+  clearScreen();
+
+  ssd1306_SetColor(White);
+  for (int j=0;j<numItems;j++){
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
+    displayStringAtPosition(30,(2+j)*9,menuItem[j]);
+
+  }
+
+  ssd1306_SetColor(Inverse);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
+  displayStringAtPosition(30,(2+i)*9,menuItem[i]);
+#pragma GCC diagnostic pop
+
+  ssd1306_UpdateScreen();
+
+}
+
+void toggleMainMenuOption(int i){
+  
+
+  ssd1306_SetColor(Inverse);
+  ssd1306_FillRect(30-5,4*9-1,50,9);
+  ssd1306_FillRect(30-5,5*9-1,50,9);
+  ssd1306_UpdateScreen();
 }
 
 void initSdEjectScreen(){

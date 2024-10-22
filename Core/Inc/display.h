@@ -14,6 +14,9 @@ enum STATUS initIMAGEScreen(char * imageName,int type);
 
 void updateIMAGEScreen(uint8_t status,uint8_t trk);
 
+void initMainMenuScreen(int i);
+void initConfigMenuScreen(int i);
+
 void initSdEjectScreen();
 void initFSScreen(char * path);
 

@@ -106,9 +106,6 @@
                                                      This value must be a multiple of 0x200. */
 #define VECT_TAB_OFFSET         0x00000000U     /*!< Vector Table base offset field.
 
-// Mod By VIB ORIG => #define VECT_TAB_OFFSET         0x00000000U     /*!< Vector Table base offset field.
-
-
                                                      This value must be a multiple of 0x200. */
 #endif /* VECT_TAB_SRAM */
 

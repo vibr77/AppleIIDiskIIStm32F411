@@ -1179,6 +1179,31 @@ void processDiskHeadMoveInterrupt(uint16_t GPIO_Pin){
 }
 
 /**
+  * @brief  Make a new FS on the SDCARD 
+  * @param  void
+  * @retval STATUS RET_ERR/RET_OK
+*/
+enum STATUS makeSDFS(){
+
+ FRESULT fr;
+ MKFS_PARM fmt_opt = {FM_FAT32, 1, 0, 0, 32768};
+ BYTE work[FF_MAX_SS];
+ fr = f_mkfs("0:", &fmt_opt,  work, sizeof work);
+
+    if (fr==FR_OK){
+      f_mount(&fs, "", 1);
+      return RET_OK;
+    }else{
+      log_error("makeSDFS error %d",fr);
+    }
+
+    /* Give a work area to the default drive */
+    
+
+return RET_ERR;
+}
+
+/**
   * @brief  Mount the image 
   * @param  filename: full path to the image file
   * @retval STATUS RET_ERR/RET_OK
@@ -1337,9 +1362,9 @@ int main(void)
   /* USER CODE END Init */
 
   /* Configure the system clock */
-#ifndef USE_BOOTLOADER
+//#ifndef USE_BOOTLOADER
   SystemClock_Config();
-#endif
+//#endif
   /* USER CODE BEGIN SysInit */
 
   /* USER CODE END SysInit */
@@ -1352,7 +1377,18 @@ int main(void)
   MX_TIM3_Init();
   MX_FATFS_Init();
   MX_TIM4_Init();
+
   MX_SDIO_SD_Init();
+
+/*
+  makeSDFS();
+  while(1){
+    HAL_Delay(500);
+    log_info("test");
+  };
+
+  */
+
   MX_TIM2_Init();
 
   /* Initialize interrupts */
@@ -1424,7 +1460,7 @@ int main(void)
 
   if (fres == FR_OK) {
 
-    //f_unlink("/sdiskConfig.json");                               // <!> TODO : to be removed in production 
+    //f_unlink("/sdiskConfig.json");                                              // <!> TODO : to be removed in production 
 
     if (loadConfigFile()==RET_ERR){
       log_error("loading configFile error");
@@ -1539,7 +1575,7 @@ int main(void)
   volatile int newBitSize=0;
   volatile uint32_t oldBitSize=0;
   volatile uint32_t oldBitCounter=0;
-  volatile uint32_t newBitCounter=0;
+  //volatile uint32_t newBitCounter=0;
 
 /* 
   // Use to test a specific track
@@ -1611,7 +1647,7 @@ int main(void)
       oldBitCounter=bitCounter;
       newBitSize=getTrackSize(trk); 
           
-      newBitCounter = (oldBitCounter * oldBitSize) / newBitSize;          // TODO Fix this Long long computation
+      //newBitCounter = (oldBitCounter * oldBitSize) / newBitSize;          // TODO Fix this Long long computation
       bitSize=newBitSize;
 
       prevTrk=trk;
