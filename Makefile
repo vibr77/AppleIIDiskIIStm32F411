@@ -38,10 +38,6 @@ BUILD_DIR = build
 C_SOURCES =  \
 Core/Src/main.c \
 Core/Src/ll_library.c \
-Core/Src/log.c \
-Core/Src/dma_printf.c \
-Core/Src/dma_scanf.c \
-Core/Src/dma_ring.c \
 Core/Src/driver_nic.c \
 Core/Src/driver_woz.c \
 Core/Src/log.c \
@@ -84,8 +80,6 @@ Middlewares/Third_Party/cJSON/cJSON.c \
 Middlewares/Third_Party/cJSON/cJSON_Utils.c \
 Core/Src/sysmem.c \
 Core/Src/syscalls.c \
-Middlewares/Third_Party/FatFs/src/option/syscall.c \
-Middlewares/Third_Party/FatFs/src/option/ccsbcs.c \
 FATFS/Target/bsp_driver_sd.c \
 FATFS/Target/sd_diskio.c \
 FATFS/Target/fatfs_platform.c \
@@ -142,8 +136,11 @@ AS_DEFS =
 # C defines
 C_DEFS =  \
 -DUSE_HAL_DRIVER \
--DSTM32F411xE
+-DSTM32F411xE 
 
+ifdef USE_BOOTLOADER
+C_DEFS += -DUSE_BOOTLOADER
+endif
 
 # AS includes
 AS_INCLUDES = 
@@ -180,12 +177,18 @@ CFLAGS += -MMD -MP -MF"$(@:%.o=%.d)"
 # LDFLAGS
 #######################################
 # link script
-LDSCRIPT = STM32F411CEUx_FLASH.ld
+ifdef USE_BOOTLOADER
+LDSCRIPT = STM32F411CEUx_FLASH_BOOT.ld
+else
+LDSCRIPT = STM32F411CEUx_FLASH_LEGACY.ld
+endif 
 
 # libraries
 LIBS = -lc -lm -lnosys 
 LIBDIR = 
-LDFLAGS = $(MCU) -specs=nano.specs -T$(LDSCRIPT) $(LIBDIR) $(LIBS) -Wl,-Map=$(BUILD_DIR)/$(TARGET).map,--cref -Wl,--gc-sections
+LDFLAGS = $(MCU)  -specs=nano.specs -T$(LDSCRIPT) $(LIBDIR) $(LIBS) -Wl,-Map=$(BUILD_DIR)/$(TARGET).map,--cref -Wl,--gc-sections,--print-memory-usage
+
+OPENOCD ?= openocd
 
 # default action: build all
 all: $(BUILD_DIR)/$(TARGET).elf $(BUILD_DIR)/$(TARGET).hex $(BUILD_DIR)/$(TARGET).bin
@@ -229,7 +232,15 @@ $(BUILD_DIR):
 #######################################
 clean:
 	-rm -fR $(BUILD_DIR)
-  
+
+
+
+flash: $(BUILD_DIR)/$(TARGET).elf
+	"$(OPENOCD)" -f ./openocd.cfg -c "program $(BUILD_DIR)/$(TARGET).elf verify reset exit"
+
+erase: $(BUILD_DIR)/$(TARGET).elf
+	"$(OPENOCD)" -f ./openocd.cfg -c "init; reset halt; stm32f4x mass_erase 0; exit"
+ 
 #######################################
 # dependencies
 #######################################

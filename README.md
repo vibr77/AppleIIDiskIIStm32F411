@@ -83,6 +83,8 @@ The first PCB and software are available for testing purpose only.
 ## What is coming next ## 
 
 - Creation of a PCB with the STM32 chip directly,
+- add root panel and config panel
+- Add mkfs in the config panel
 - Addition of protection to 20 pin connector inversion,
 - Support of dsk,po image format for reading,
 - Support of nic,woz 1.x -> 2.1 for writing,
