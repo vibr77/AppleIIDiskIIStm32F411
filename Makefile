@@ -40,6 +40,7 @@ Core/Src/main.c \
 Core/Src/ll_library.c \
 Core/Src/driver_nic.c \
 Core/Src/driver_woz.c \
+Core/Src/driver_dsk.c \
 Core/Src/log.c \
 Core/Src/display.c \
 Core/Src/parson.c \
