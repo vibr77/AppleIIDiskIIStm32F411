@@ -1,8 +1,8 @@
 /* USER CODE BEGIN Header */
 /*
 __   _____ ___ ___        Author: Vincent BESSON
- \ \ / /_ _| _ ) _ \      Release: 0.63
-  \ V / | || _ \   /      Date: 2024.09.24
+ \ \ / /_ _| _ ) _ \      Release: 0.64
+  \ V / | || _ \   /      Date: 2024.10.23
    \_/ |___|___/_|_\      Description: Apple Disk II Emulator on STM32F4x
                 2024      Licence: Creative Commons
 ______________________
@@ -91,6 +91,17 @@ UART
   - PB3 RX
 
 */ 
+
+// Changelog
+/*
+24.10.24: 
+  +Change Makefile, 
+  +Add option for bootloader,
+  +Modifiy issue with button order,
+  +Change timer setting to match USB max setting / 96Mhz
+  +Add UF2 file management with dedicated bootloader
+  +Add (experimental mkfs option)
+*/
 
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
@@ -877,14 +888,15 @@ char processDeviceEnableInterrupt(uint16_t GPIO_Pin){
   
   GPIO_InitTypeDef GPIO_InitStruct = {0};
 
-  if (a==0){
+  if (a==0 && flgBeaming==1){                                         // <!> TO BE TESTED 24/10
     flgDeviceEnable=1;
 
     GPIO_InitStruct.Pin   = RD_DATA_Pin;
     GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull  = GPIO_PULLDOWN;
-    HAL_GPIO_Init(RD_DATA_GPIO_Port, &GPIO_InitStruct);    
-    HAL_TIM_PWM_Start_IT(&htim3,TIM_CHANNEL_4);
+    HAL_GPIO_Init(RD_DATA_GPIO_Port, &GPIO_InitStruct);
+
+      HAL_TIM_PWM_Start_IT(&htim3,TIM_CHANNEL_4);
 
     GPIO_InitStruct.Pin   = WR_PROTECT_Pin;
     GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP;
@@ -996,19 +1008,26 @@ void processNextFSItem(){
 
 void processUpdirFSItem(){
   
+  if (currentFullPath[0]==0x0){
+    // we are at the ROOT -> Disp General Menu
+    switchPage(MENU,NULL);
+    return;
+  }
+
+
   int len=strlen(currentFullPath);
   for (int i=len-1;i!=-1;i--){
-      if (currentFullPath[i]=='/'){
-        snprintf(currentPath,128,"%s",currentFullPath+i);
-        currentFullPath[i]=0x0;
-        dispSelectedIndx=0;
-        currentClistPos=0;
-        nextAction=FSDISP;
-        break;
-      }
-      if (i==0)
-        currentFullPath[0]=0x0;
+    if (currentFullPath[i]=='/'){
+      snprintf(currentPath,128,"%s",currentFullPath+i);
+      currentFullPath[i]=0x0;
+      dispSelectedIndx=0;
+      currentClistPos=0;
+      nextAction=FSDISP;
+      break;
     }
+    if (i==0)
+      currentFullPath[0]=0x0;
+  }
 }
 
 void processSelectFSItem(){
@@ -1100,6 +1119,13 @@ enum STATUS switchPage(enum page newPage,void * arg){
       currentPage=FS;
       break;
     case MENU:
+      initMainMenuScreen(0);
+      ptrbtnUp=processPreviousMainMenuScreen;
+      ptrbtnDown=processNextMainMenuScreen;
+      ptrbtnEntr=processActiveMainMenuScreen;
+      ptrbtnRet=nothing;
+
+      currentPage=MENU;
       break;
     case IMAGE:
       initIMAGEScreen(arg,0);
@@ -1301,6 +1327,7 @@ enum STATUS mountImagefile(char * filename){
 enum STATUS initeBeaming(){
   
   if (flgImageMounted!=1){
+    log_error("initeBeaming error imageFile is not mounted");
     return RET_ERR;
   }
 
@@ -1334,7 +1361,11 @@ enum STATUS initeBeaming(){
   log_info("initeBeaming optimalBitTiming:%d",mountImageInfo.optimalBitTiming);
   
   flgBeaming=1;
-  return RET_OK; 
+
+  //if (flgDeviceEnable==1)                                 // TO BE TESTED
+  //   HAL_TIM_PWM_Start_IT(&htim3,TIM_CHANNEL_4);
+
+  return RET_OK;
 }
 
 
@@ -1436,7 +1467,8 @@ int main(void)
   processSdEject(SD_EJECT_Pin);
   
   processDeviceEnableInterrupt(DEVICE_ENABLE_Pin);
-  flgDeviceEnable=1;
+ 
+  //flgDeviceEnable=1;                                                              //<!> TO BE TESTED 
 
   dirChainedList = list_new();                                                      // ChainedList to manage File list in current path
   currentClistPos=0;                                                                // Current index in the chained List
@@ -1499,9 +1531,9 @@ int main(void)
     
     switchPage(IMAGE,currentImageFilename);
 
-    if (flgImageMounted==1){
-      initeBeaming();
-      processDeviceEnableInterrupt(DEVICE_ENABLE_Pin);
+    if (flgImageMounted==1){                                            // <!> TO BE TESTED
+      if (initeBeaming()==RET_OK)
+        processDeviceEnableInterrupt(DEVICE_ENABLE_Pin);
     }
   
   }else{
@@ -1563,8 +1595,8 @@ int main(void)
     }
     */
 
-    if (flgImageMounted==1){
-      initeBeaming();
+    if (flgBeaming==1){
+      //initeBeaming();
       switchPage(IMAGE,currentImageFilename);
     }
 
@@ -1573,8 +1605,8 @@ int main(void)
   unsigned long cAlive=0;
   
   volatile int newBitSize=0;
-  volatile uint32_t oldBitSize=0;
-  volatile uint32_t oldBitCounter=0;
+  //volatile uint32_t oldBitSize=0;
+  //volatile uint32_t oldBitCounter=0;
   //volatile uint32_t newBitCounter=0;
 
 /* 
@@ -1591,7 +1623,7 @@ int main(void)
 
   while (1){
 
-    if (flgDeviceEnable==1 && prevTrk!=intTrk && flgImageMounted==1){
+    if (flgDeviceEnable==1 && prevTrk!=intTrk && flgBeaming==1){              // <!> TO Be tested
 
       trk=intTrk;                                   // Track has changed, but avoid new change during the process
       DWT->CYCCNT = 0;                              // Reset cpu cycle counter
@@ -1618,7 +1650,6 @@ int main(void)
       HAL_NVIC_EnableIRQ(SDIO_IRQn);
       HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
       HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
-      //HAL_NVIC_DisableIRQ(DMA1_Stream6_IRQn);
     
       getTrackBitStream(trk,read_track_data_bloc);
         
@@ -1627,7 +1658,7 @@ int main(void)
       HAL_NVIC_DisableIRQ(SDIO_IRQn);
       HAL_NVIC_DisableIRQ(DMA2_Stream3_IRQn);
       HAL_NVIC_DisableIRQ(DMA2_Stream6_IRQn);
-      //HAL_NVIC_EnableIRQ(DMA1_Stream6_IRQn);
+
 
       memcpy((unsigned char *)&DMA_BIT_TX_BUFFER,read_track_data_bloc,RawSDTrackSize);
       
@@ -1642,12 +1673,11 @@ int main(void)
 
       //t2 = DWT->CYCCNT;
       //diff1 = t2 - t1;
-      
-      oldBitSize=bitSize;
-      oldBitCounter=bitCounter;
+      //oldBitSize=bitSize;                                               // TODO Fixe Index calculation on Big Long
+      //oldBitCounter=bitCounter;
       newBitSize=getTrackSize(trk); 
           
-      //newBitCounter = (oldBitCounter * oldBitSize) / newBitSize;          // TODO Fix this Long long computation
+      //newBitCounter = (oldBitCounter * oldBitSize) / newBitSize;       // TODO Fix this Long long computation
       bitSize=newBitSize;
 
       prevTrk=trk;
@@ -1656,6 +1686,8 @@ int main(void)
     }else if (nextAction!=NONE){                                         // Several action can not be done on Interrupt
       
       switch(nextAction){
+        //case MENUDISP:
+
         case UPDIMGDISP:
           updateIMAGEScreen(WR_REQ_PHASE,trk);
         case WRITE_TRK:
@@ -1691,6 +1723,7 @@ int main(void)
 
           nextAction=NONE;
           break;
+
         case FSDISP:
           log_info("FSDISP fsState:%d",fsState);
           list_destroy(dirChainedList);
@@ -1706,7 +1739,7 @@ int main(void)
         
         case IMG_MOUNT:
           flgImageMounted=0;
-          int len=strlen(currentFullPath)+strlen(selItem)+1;
+          int len=strlen(currentFullPath)+strlen(selItem)+1;                      // Ugly malloc to be fixed 
           char * tmp=(char *)malloc(len*sizeof(char));
           sprintf(tmp,"%s/%s",currentFullPath,selItem+2);
           
@@ -1714,31 +1747,32 @@ int main(void)
           sprintf(currentImageFilename,"%s",selItem+2);
           
           if (setConfigParamStr("lastFile",tmp)==RET_ERR){
-            log_error("Error in saving param to configFie:lastImageFile %s",tmp);
+            log_error("Error in setting param to configFie:lastImageFile %s",tmp);
           }
 
-          log_info("tmp:%s",tmp);
           mountImagefile(tmp);
-          initeBeaming();
-          
+          if (initeBeaming()==RET_OK){                                         // <!> TO Be tested
+            processDeviceEnableInterrupt(DEVICE_ENABLE_Pin);
+            switchPage(IMAGE,tmp);
+          }
           dumpConfigParams();
           if (saveConfigFile()==RET_ERR){
             log_error("Error in saving JSON to file");
+          }else{
+            log_info("saving configFile: OK");
           }
 
           log_info("current:%s",currentImageFilename);
-          switchPage(IMAGE,tmp);
+          
           free(tmp);
           nextAction=NONE;
           break;
+
         default:
           break;
       }
     }else{
       cAlive++;
-      //if (currentPage==IMAGE)
-      //  updateIMAGEScreen(0,trk);
-
       if (cAlive==50000000){
         printf(".\n");
         cAlive=0;
@@ -1749,12 +1783,11 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
-    /* USER CODE END WHILE */
 
-    /* USER CODE BEGIN 3 */
-  }
+  /* USER CODE END WHILE */
+
+  /* USER CODE BEGIN 3 */
+  
   /* USER CODE END 3 */
 }
 
@@ -1912,10 +1945,10 @@ static void MX_SDIO_SD_Init(void)
   /* USER CODE BEGIN SDIO_Init 2 */
   hsd.Init.BusWide = SDIO_BUS_WIDE_1B;
   if (HAL_SD_Init(&hsd) != HAL_OK){
-    log_error("MX_SDIO_SD_Init: error HAL_SD_Init");
+    log_error("MX_SDIO_SD_Init: error HAL_SD_Init code:%d",hsd.ErrorCode);
   }
   if (HAL_SD_ConfigWideBusOperation(&hsd, SDIO_BUS_WIDE_4B) != HAL_OK){
-    log_error("MX_SDIO_SD_Init: HAL_SD_ConfigWideBusOperation error");
+    log_error("MX_SDIO_SD_Init: HAL_SD_ConfigWideBusOperation error code:%d",hsd.ErrorCode);
   }
 
   /* USER CODE BEGIN SDIO_Init 2 */

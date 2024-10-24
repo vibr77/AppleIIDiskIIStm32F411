@@ -282,6 +282,35 @@ void updateIMAGEScreen(uint8_t status,uint8_t trk){
   return;
 }
 
+u_int8_t currentMainMenuItem=0;
+
+void processNextMainMenuScreen(){
+  currentMainMenuItem++;
+  initMainMenuScreen(currentMainMenuItem);
+}
+
+void processPreviousMainMenuScreen(){
+  currentMainMenuItem--;
+  initMainMenuScreen(currentMainMenuItem);
+}
+
+void processActiveMainMenuScreen(){
+  switch(currentMainMenuItem){
+    
+    case 0:
+      log_info("favorite screen to be done");
+      break;
+    case 1:
+      switchPage(FS,0x0);
+      break;
+    case 2:
+      log_info("config screen to be done");
+    default:
+      break;
+  }
+  return;
+}
+
 void initMainMenuScreen(int i){
   
   const char * menuItem[5];
@@ -289,6 +318,9 @@ void initMainMenuScreen(int i){
 
   if (i>numItems)
     i=0;
+
+  if (i<0)
+    i=numItems-1;
 
   menuItem[0]="Favorite";
   menuItem[1]="File manager";
@@ -305,6 +337,8 @@ void initMainMenuScreen(int i){
   displayStringAtPosition(30,(2+i)*9,menuItem[i]);
 
   ssd1306_UpdateScreen();
+  currentMainMenuItem=i;
+  return;
 
 }
 
