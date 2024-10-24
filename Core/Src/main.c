@@ -1,7 +1,7 @@
 /* USER CODE BEGIN Header */
 /*
 __   _____ ___ ___        Author: Vincent BESSON
- \ \ / /_ _| _ ) _ \      Release: 0.64
+ \ \ / /_ _| _ ) _ \      Release: 0.65
   \ V / | || _ \   /      Date: 2024.10.23
    \_/ |___|___/_|_\      Description: Apple Disk II Emulator on STM32F4x
                 2024      Licence: Creative Commons
@@ -94,13 +94,19 @@ UART
 
 // Changelog
 /*
-24.10.24: 
+24.10.24:
+  + Modification of the flow from mount to beaming
+  + Remove hardcoded critical variable
+  + Adding new MainMenu screen 
+
+24.10.23: 
   +Change Makefile, 
   +Add option for bootloader,
   +Modifiy issue with button order,
   +Change timer setting to match USB max setting / 96Mhz
   +Add UF2 file management with dedicated bootloader
   +Add (experimental mkfs option)
+
 */
 
 /* USER CODE END Header */
