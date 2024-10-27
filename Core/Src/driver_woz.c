@@ -32,7 +32,7 @@ unsigned int getWozTrackSize(int trk){
   return B;
 }
 
-long getSDAddrWoz(int trk,int block,int csize, long database){
+long getWozSDAddr(int trk,int block,int csize, long database){
   long rSector=-1;
   if (wozFile.version==2){
     int long_sector = TRK_startingBlockOffset[trk] + block;
@@ -83,7 +83,7 @@ enum STATUS getWozTrackBitStream_fopen(int trk,unsigned char * buffer){
 
 enum STATUS getWozTrackBitStream(int trk,unsigned char * buffer){
   const unsigned int blockNumber=13; 
-  int addr=getSDAddrWoz(trk,0,csize,database);
+  int addr=getWozSDAddr(trk,0,csize,database);
   
   if (addr==-1){
     printf("%s:Error getting SDCard Address for woz\n",logPrefix);
@@ -113,7 +113,7 @@ enum STATUS getWozTrackBitStream(int trk,unsigned char * buffer){
 
 enum STATUS setWozTrackBitStream(int trk,unsigned char * buffer){
   const unsigned int blockNumber=13; 
-  int addr=getSDAddrWoz(trk,0,csize,database);
+  int addr=getWozSDAddr(trk,0,csize,database);
   
   if (addr==-1){
     log_error("Error getting SDCard Address for woz");

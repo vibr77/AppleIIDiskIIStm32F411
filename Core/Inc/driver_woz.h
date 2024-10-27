@@ -10,7 +10,7 @@
 int getWozTrackFromPh(int phtrack);
 unsigned int getWozTrackSize(int trk);
 
-long getSDAddrWoz(int trk,int block,int csize, long database);
+long getWozSDAddr(int trk,int block,int csize, long database);
 enum STATUS getWozTrackBitStream_fopen(int trk,unsigned char * buffer);
 enum STATUS getWozTrackBitStream(int trk,unsigned char * buffer);
 enum STATUS setWozTrackBitStream(int trk,unsigned char * buffer);

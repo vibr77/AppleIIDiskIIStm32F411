@@ -282,7 +282,7 @@ void updateIMAGEScreen(uint8_t status,uint8_t trk){
   return;
 }
 
-u_int8_t currentMainMenuItem=0;
+int8_t currentMainMenuItem=0;
 
 void processNextMainMenuScreen(){
   currentMainMenuItem++;
@@ -316,7 +316,7 @@ void initMainMenuScreen(int i){
   const char * menuItem[5];
   u_int8_t numItems=3;
 
-  if (i>numItems)
+  if (i>=numItems)
     i=0;
 
   if (i<0)
@@ -329,12 +329,19 @@ void initMainMenuScreen(int i){
   clearScreen();
 
   ssd1306_SetColor(White);
+  displayStringAtPosition(0,0,"Main Menu");
+  ssd1306_DrawLine(0,8,127,8);
+  //ssd1306_DrawLine(0,6*9-1,127,6*9-1);
+
+  ssd1306_SetColor(White);
   for (int j=0;j<numItems;j++){
-    displayStringAtPosition(30,(2+j)*9,menuItem[j]);
+    displayStringAtPosition(10,(2+j)*9,menuItem[j]);
   }
 
   ssd1306_SetColor(Inverse);
-  displayStringAtPosition(30,(2+i)*9,menuItem[i]);
+  ssd1306_FillRect(10-5,(2+i)*9-1,80,9);
+
+  //displayStringAtPosition(30,(2+i)*9,menuItem[i]);
 
   ssd1306_UpdateScreen();
   currentMainMenuItem=i;
