@@ -1,4 +1,134 @@
 {
     "version": "2.0.0",
-    "tasks": []
+    "tasks": [
+        {
+            "label": "BuildMake",
+            "type": "shell",
+            "command": "make -f Makefile",
+            "presentation": {
+                "reveal": "never"
+            },
+            "options": {
+                "cwd": "${workspaceRoot}"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "BuildMake Bootloader",
+            "type": "shell",
+            "command": "make -f Makefile USE_BOOTLOADER=1",
+            "presentation": {
+                "reveal": "never"
+            },
+            "options": {
+                "cwd": "${workspaceRoot}"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "BuildClean",
+            "type": "shell",
+            "command": "make -f Makefile clean",
+            "presentation": {
+                "reveal": "never"
+            },
+            "options": {
+                "cwd": "${workspaceRoot}"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "BuildMakeClean",
+            "type": "shell",
+            "command": "make -f Makefile",
+            "presentation": {
+                "reveal": "never"
+            },
+            "options": {
+                "cwd": "${workspaceRoot}"
+            },
+            "dependsOn": "BuildClean",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "BuildMakeFlash",
+            "type": "shell",
+            "command": "make -f Makefile flash",
+            "presentation": {
+                "reveal": "never"
+            },
+            "options": {
+                "cwd": "${workspaceRoot}"
+            },
+            "dependsOn": "BuildMake",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "BuildHex",
+            "type": "shell",
+            "command": "arm-none-eabi-objcopy -O ihex ./build/AppleIISDiskII_stm32f411_sdio.elf ./build/AppleIISDiskII_stm32f411_sdio.hex",
+            "presentation": {
+                "reveal": "never"
+            },
+            "options": {
+                "cwd": "${workspaceRoot}"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "BuildUF2",
+            "type": "shell",
+            "command": "python3 ./uf2conv/uf2conv.py -c -f 0x57755a57 ./build/AppleIISDiskII_stm32f411_sdio.hex -o ./build/AppleIISDiskII_stm32f411_sdio.UF2",
+            "dependsOn": "BuildHex",
+            "presentation": {
+                "reveal": "never"
+            },
+            "options": {
+                "cwd": "${workspaceRoot}"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [
+                "$gcc"
+            ]
+        }
+    ]
 }

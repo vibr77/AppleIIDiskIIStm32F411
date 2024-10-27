@@ -194,12 +194,14 @@ AS_DEFS =
 # C defines
 C_DEFS =  \
 -DSTM32F411xE \
+-DUSE_BOOTLOADER \
 -DUSE_HAL_DRIVER
 
 
 # CXX defines
 CXX_DEFS =  \
 -DSTM32F411xE \
+-DUSE_BOOTLOADER \
 -DUSE_HAL_DRIVER
 
 
@@ -247,7 +249,7 @@ CXXFLAGS += $(ASSEMBLER_LIST_OUTPUT_FLAG)
 # LDFLAGS
 #######################################
 # link script
-LDSCRIPT = STM32F411CEUx_FLASH.ld
+LDSCRIPT = 
 
 # libraries
 LIBS = -lc -lm -lnosys 

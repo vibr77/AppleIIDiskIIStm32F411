@@ -16,6 +16,7 @@
       ],
       "defines": [
         "STM32F411xE",
+        "USE_BOOTLOADER",
         "USE_HAL_DRIVER"
       ],
       "compilerPath": "/Applications/ArmGNUToolchain/13.3.Rel1/arm-none-eabi/bin/arm-none-eabi-gcc"

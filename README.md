@@ -79,6 +79,12 @@ The list of features currently supported in this project:
 
 The first PCB and software are available for testing purpose only. 
 
+## Release
+
+There are 2 releases type :
+- BIN : classic binary to be uploaded via stlink and starting at 0x08000000
+- UF2 : first you need to upload via stlink the custom bootloader, and then using USB and double click on NRST button, you can easily drag and drop UF2 release file to the stm32. WARNING if using the bootloader, the flash memory from 0x0800000 to 0x80100000 will become read-only (you need to use st-tool to change the stm32 register to reverse).
+
 
 ## What is coming next ## 
 
