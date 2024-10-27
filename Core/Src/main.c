@@ -125,8 +125,7 @@ UART
 #include "driver_nic.h"
 #include "configFile.h"
 #include "log.h"
-#include "dma_printf.h"
-#include "dma_scanf.h"
+
 
 
 //#include "parson.h"
@@ -1300,7 +1299,7 @@ enum STATUS mountImagefile(char * filename){
     if (mountWozFile(filename)!=RET_OK)
       return RET_ERR;
 
-    getSDAddr=getSDAddrWoz;
+    getSDAddr=getWozSDAddr;
     getTrackBitStream=getWozTrackBitStream;
     //getTrackBitStream=getWozTrackBitStream_fopen;
     setTrackBitStream=setWozTrackBitStream;
@@ -1399,9 +1398,8 @@ int main(void)
   /* USER CODE END Init */
 
   /* Configure the system clock */
-//#ifndef USE_BOOTLOADER
   SystemClock_Config();
-//#endif
+
   /* USER CODE BEGIN SysInit */
 
   /* USER CODE END SysInit */
@@ -1409,23 +1407,19 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_DMA_Init();
-  MX_I2C1_Init();
+  
+  
   MX_USART1_UART_Init();
+  
   MX_TIM3_Init();
+  
   MX_FATFS_Init();
-  MX_TIM4_Init();
-
   MX_SDIO_SD_Init();
 
-/*
-  makeSDFS();
-  while(1){
-    HAL_Delay(500);
-    log_info("test");
-  };
+  MX_I2C1_Init();
 
-  */
 
+  MX_TIM4_Init();
   MX_TIM2_Init();
 
   /* Initialize interrupts */
@@ -1456,7 +1450,7 @@ int main(void)
   dier|=TIM_DIER_CC1IE;
   dier|=TIM_DIER_UIE;
   TIM3->DIER=dier;
-
+  HAL_Delay(1000);
   initScreen();                                                                     // I2C Screen init
   HAL_Delay(1000);
 /*
@@ -1790,9 +1784,9 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
-  /* USER CODE END WHILE */
+    /* USER CODE END WHILE */
 
-  /* USER CODE BEGIN 3 */
+    /* USER CODE BEGIN 3 */
   
   /* USER CODE END 3 */
 }
@@ -1818,14 +1812,13 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-  RCC_OscInitStruct.PLL.PLLM = 25;                  //15
-  RCC_OscInitStruct.PLL.PLLN = 384;                 // 240
+  RCC_OscInitStruct.PLL.PLLM = 25;
+  RCC_OscInitStruct.PLL.PLLN = 384;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV4;
-  RCC_OscInitStruct.PLL.PLLQ = 8;                   //9
+  RCC_OscInitStruct.PLL.PLLQ = 8;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
-    
-    log_error("HAL_RCC_OscConfig()");
+    Error_Handler();
   }
 
   /** Initializes the CPU, AHB and APB buses clocks
@@ -1839,8 +1832,7 @@ void SystemClock_Config(void)
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_3) != HAL_OK)
   {
-    //Error_Handler();
-    log_error("HAL_RCC_ClockConfig() error");
+    Error_Handler();
   }
 
   /** Enables the Clock Security System
@@ -1855,37 +1847,37 @@ void SystemClock_Config(void)
 static void MX_NVIC_Init(void)
 {
   /* EXTI0_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(EXTI0_IRQn, 2, 2);
+  HAL_NVIC_SetPriority(EXTI0_IRQn, 2, 0);
   HAL_NVIC_EnableIRQ(EXTI0_IRQn);
   /* EXTI1_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(EXTI1_IRQn, 2, 2);
+  HAL_NVIC_SetPriority(EXTI1_IRQn, 2, 0);
   HAL_NVIC_EnableIRQ(EXTI1_IRQn);
   /* EXTI2_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(EXTI2_IRQn, 2, 2);
+  HAL_NVIC_SetPriority(EXTI2_IRQn, 2, 0);
   HAL_NVIC_EnableIRQ(EXTI2_IRQn);
   /* EXTI3_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(EXTI3_IRQn, 2, 2);
+  HAL_NVIC_SetPriority(EXTI3_IRQn, 2, 0);
   HAL_NVIC_EnableIRQ(EXTI3_IRQn);
   /* EXTI4_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(EXTI4_IRQn, 2, 2);
+  HAL_NVIC_SetPriority(EXTI4_IRQn, 2, 0);
   HAL_NVIC_EnableIRQ(EXTI4_IRQn);
   /* TIM3_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(TIM3_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(TIM3_IRQn);
   /* SDIO_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(SDIO_IRQn, 6, 6);
+  HAL_NVIC_SetPriority(SDIO_IRQn, 6, 0);
   HAL_NVIC_EnableIRQ(SDIO_IRQn);
   /* DMA2_Stream3_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 6, 6);
+  HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 6, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
   /* DMA2_Stream6_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream6_IRQn, 6, 6);
+  HAL_NVIC_SetPriority(DMA2_Stream6_IRQn, 6, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
   /* EXTI9_5_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 4, 4);
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 4, 0);
   HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
   /* EXTI15_10_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 13, 13);
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 13, 0);
   HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
   /* TIM2_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(TIM2_IRQn, 0, 0);
@@ -1947,12 +1939,16 @@ static void MX_SDIO_SD_Init(void)
   hsd.Init.ClockPowerSave = SDIO_CLOCK_POWER_SAVE_DISABLE;
   hsd.Init.BusWide = SDIO_BUS_WIDE_4B;
   hsd.Init.HardwareFlowControl = SDIO_HARDWARE_FLOW_CONTROL_DISABLE;
-  hsd.Init.ClockDiv = 8;
+  
+  hsd.Init.ClockDiv = 2;
+  
   /* USER CODE BEGIN SDIO_Init 2 */
   hsd.Init.BusWide = SDIO_BUS_WIDE_1B;
-  if (HAL_SD_Init(&hsd) != HAL_OK){
+  int i=0;
+  if (i=HAL_SD_Init(&hsd) != HAL_OK){
     log_error("MX_SDIO_SD_Init: error HAL_SD_Init code:%d",hsd.ErrorCode);
   }
+
   if (HAL_SD_ConfigWideBusOperation(&hsd, SDIO_BUS_WIDE_4B) != HAL_OK){
     log_error("MX_SDIO_SD_Init: HAL_SD_ConfigWideBusOperation error code:%d",hsd.ErrorCode);
   }
@@ -1985,7 +1981,7 @@ static void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 0;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 4*96-1;                          //399
+  htim2.Init.Period = 399;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -2016,7 +2012,7 @@ static void MX_TIM2_Init(void)
     Error_Handler();
   }
   sConfigOC.OCMode = TIM_OCMODE_TIMING;
-  sConfigOC.Pulse = 96*2;   //200
+  sConfigOC.Pulse = 200;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   if (HAL_TIM_OC_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
@@ -2056,7 +2052,7 @@ static void MX_TIM3_Init(void)
   htim3.Instance = TIM3;
   htim3.Init.Prescaler = 0;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 96*4-1;
+  htim3.Init.Period = 399;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_OC_Init(&htim3) != HAL_OK)
@@ -2074,7 +2070,7 @@ static void MX_TIM3_Init(void)
     Error_Handler();
   }
   sConfigOC.OCMode = TIM_OCMODE_TIMING;
-  sConfigOC.Pulse = 127;        //132
+  sConfigOC.Pulse = 132;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   if (HAL_TIM_OC_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
@@ -2083,7 +2079,7 @@ static void MX_TIM3_Init(void)
   }
   __HAL_TIM_ENABLE_OCxPRELOAD(&htim3, TIM_CHANNEL_1);
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 125;
+  sConfigOC.Pulse = 120;
   if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_4) != HAL_OK)
   {
     Error_Handler();
@@ -2116,7 +2112,7 @@ static void MX_TIM4_Init(void)
   htim4.Instance = TIM4;
   htim4.Init.Prescaler = 50000;
   htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim4.Init.Period = 384;            //400
+  htim4.Init.Period = 400;
   htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_OC_Init(&htim4) != HAL_OK)
@@ -2217,8 +2213,8 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, RD_DATA_Pin|WR_PROTECT_Pin|DEBUG_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : BTN_DOWN_Pin BTN_ENTR_Pin BTN_UP_Pin */
-  GPIO_InitStruct.Pin = BTN_DOWN_Pin|BTN_ENTR_Pin|BTN_UP_Pin;
+  /*Configure GPIO pins : BTN_UP_Pin BTN_DOWN_Pin BTN_ENTR_Pin */
+  GPIO_InitStruct.Pin = BTN_UP_Pin|BTN_DOWN_Pin|BTN_ENTR_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
