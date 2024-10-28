@@ -67,14 +67,14 @@ uint8_t ssd1306_Init(void)
   /* Check if LCD connected to I2C */
   if (HAL_I2C_IsDeviceReady(&SSD1306_I2C_PORT, SSD1306_I2C_ADDR, 5, 1000) != HAL_OK)
   {
+    log_error("ssd1306_Init I2C device not ready");
     SSD1306.Initialized = 0;
     /* Return false */
     return 0;
   }
-
+  log_info("ssd1306_Init I2C device ready");
   // Wait for the screen to boot
   HAL_Delay(100);
-
   /* Init LCD */
   ssd1306_WriteCommand(DISPLAYOFF);
   ssd1306_WriteCommand(SETDISPLAYCLOCKDIV);

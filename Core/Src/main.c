@@ -1,7 +1,7 @@
 /* USER CODE BEGIN Header */
 /*
 __   _____ ___ ___        Author: Vincent BESSON
- \ \ / /_ _| _ ) _ \      Release: 0.66
+ \ \ / /_ _| _ ) _ \      Release: 0.67
   \ V / | || _ \   /      Date: 2024.10.28
    \_/ |___|___/_|_\      Description: Apple Disk II Emulator on STM32F4x
                 2024      Licence: Creative Commons
@@ -95,7 +95,11 @@ UART
 // Changelog
 /*
 
-28.10.24:
+28.10.24: v0.67
+  + Fix Reset on startup
+  + Fix Lack of display at startup (same issue as Reset)
+  + Fix lost mount ref (due to IRQ disable between read)
+28.10.24: v0.66
   + Fix NIC Drive not handling the right number of block to read
   + Mod the readme 
 24.10.24:
@@ -193,7 +197,7 @@ extern __uint32_t TRK_BitCount[160];
 
 volatile int ph_track=0;                                    // SDISK Physical track 0 - 139
 volatile int intTrk=0;                                      // InterruptTrk                                    
-unsigned char prevTrk=0;                                    // prevTrk to keep track of the last head track
+unsigned char prevTrk=35;                                    // prevTrk to keep track of the last head track
 
 unsigned int RawSDTrackSize=8192;                           // Maximuum track size on NIC & WOZ to load from SD
 unsigned char read_track_data_bloc[8192];                   // 3 adjacent track 3 x RawSDTrackSize
@@ -489,6 +493,7 @@ void irqWriteTrack(){
   HAL_NVIC_DisableIRQ(TIM3_IRQn);
   HAL_NVIC_DisableIRQ(TIM4_IRQn);
   HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
+  
 }
 
 /**
@@ -502,6 +507,7 @@ void irqWIdle(){
   HAL_NVIC_EnableIRQ(TIM3_IRQn);
   HAL_NVIC_EnableIRQ(TIM4_IRQn);
   HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
+
 }
 
 
@@ -779,6 +785,10 @@ enum STATUS walkDir(char * path){
 
   processPath(path);
 
+  HAL_NVIC_EnableIRQ(SDIO_IRQn);
+  HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
+  HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
+
   while(fsState!=READY){};
 
   fres = f_opendir(&dir, path);
@@ -918,7 +928,7 @@ char processDeviceEnableInterrupt(uint16_t GPIO_Pin){
       HAL_GPIO_WritePin(WR_PROTECT_GPIO_Port,WR_PROTECT_Pin,GPIO_PIN_RESET);
   
   }else if (flgDeviceEnable==1 && a==1 ){
-    
+
     flgDeviceEnable=0;
     
     GPIO_InitStruct.Pin   = RD_DATA_Pin;
@@ -1195,7 +1205,7 @@ void processDiskHeadMoveInterrupt(uint16_t GPIO_Pin){
 
   volatile unsigned char stp=(GPIOA->IDR&0b0000000000001111);
   volatile int newPosition=magnet2Position[stp];
-
+  //return;
   if (newPosition>=0){
       
     int lastPosition=ph_track&7;
@@ -1207,8 +1217,9 @@ void processDiskHeadMoveInterrupt(uint16_t GPIO_Pin){
       ph_track=0;
     else if (ph_track>160)                                                                 
       ph_track=160;                                             
-                                          
-    intTrk=getTrackFromPh(ph_track);                                        // Get the current track from the accroding driver                   
+
+    if (flgBeaming==1)                                     
+      intTrk=getTrackFromPh(ph_track);                                        // Get the current track from the accroding driver                   
   }
   return;
 }
@@ -1253,6 +1264,11 @@ enum STATUS mountImagefile(char * filename){
   FRESULT fr;
   FILINFO fno;
   
+ 
+  HAL_NVIC_EnableIRQ(SDIO_IRQn);
+  HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
+  HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
+ 
   log_info("Mounting image: %s",filename);
   while(fsState!=READY){};
   fsState=BUSY;
@@ -1407,7 +1423,7 @@ int main(void)
   /* USER CODE BEGIN SysInit */
 
   /* USER CODE END SysInit */
-
+  
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_DMA_Init();
@@ -1422,20 +1438,29 @@ int main(void)
   MX_TIM4_Init();
   MX_TIM2_Init();
 
-   MX_I2C1_Init();
+  MX_I2C1_Init();
   /* Initialize interrupts */
   MX_NVIC_Init();
   /* USER CODE BEGIN 2 */
 
   log_set_level(LOG_INFO);
 
+
+  int trk=35;
+  ph_track=160;
+
+
   log_info("************** BOOTING ****************");                      // Data to send
   log_info("**     This is the sound of sea !    **");
   log_info("***************************************");
   
-  EnableTiming();                                                          // Enable WatchDog to get precise CPU Cycle counting
-  memset((unsigned char *)&DMA_BIT_TX_BUFFER,0,6656*sizeof(char));
+ 
+  initScreen();                         // I2C Screen init                  
+                                            
+  HAL_Delay(750);
 
+  EnableTiming();                                                          // Enable WatchDog to get precise CPU Cycle counting
+   
   int T2_DIER=0x0;
   T2_DIER|=TIM_DIER_CC2IE;
   T2_DIER|=TIM_DIER_UIE;
@@ -1451,8 +1476,6 @@ int main(void)
   dier|=TIM_DIER_UIE;
   TIM3->DIER=dier;
   
-  initScreen();                                                                     // I2C Screen init
-  HAL_Delay(1000);
 /*
   DWT->CYCCNT = 0;                              // Reset cpu cycle counter
   t1 = DWT->CYCCNT; 
@@ -1464,18 +1487,13 @@ int main(void)
 
   }
 */
+
   processSdEject(SD_EJECT_Pin);
-  
   processDeviceEnableInterrupt(DEVICE_ENABLE_Pin);
  
-  //flgDeviceEnable=1;                                                              //<!> TO BE TESTED 
-
   dirChainedList = list_new();                                                      // ChainedList to manage File list in current path
   currentClistPos=0;                                                                // Current index in the chained List
   lastlistPos=0;                                                                    // Last index in the chained list
-
-  int trk=35;
-  ph_track=160;
 
   mountImageInfo.optimalBitTiming=32;
   mountImageInfo.writeProtected=0;
@@ -1596,7 +1614,6 @@ int main(void)
     */
 
     if (flgBeaming==1){
-      //initeBeaming();
       switchPage(IMAGE,currentImageFilename);
     }
 
@@ -2312,7 +2329,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 
   } else if (GPIO_Pin == WR_REQ_Pin){
 
-    if (WR_REQ_PHASE==0){                                           // WR_REQUEST IS ACTIVE LOW
+    if (WR_REQ_PHASE==0 && flgImageMounted==1){                                           // WR_REQUEST IS ACTIVE LOW
       irqWriteTrack();  
       HAL_TIM_PWM_Stop_IT(&htim3,TIM_CHANNEL_4);
       HAL_TIM_PWM_Start_IT(&htim2,TIM_CHANNEL_3);           // start the timer1
@@ -2323,7 +2340,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
       wrStartPtr=wrBitCounter;                                      // start pointer
       printf("Write started wrBitCounter:%d\n",wrBitCounter);             
       
-    }else{
+    }else if (WR_REQ_PHASE==0 && flgImageMounted==1){
       WR_REQ_PHASE=0;                                 // Write has just stopped
 
       HAL_TIM_PWM_Stop_IT(&htim2,TIM_CHANNEL_3); 
@@ -2335,7 +2352,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
       bitCounter=wrBitCounter;
       
       memcpy((unsigned char *)&DMA_BIT_TX_BUFFER,(unsigned char *)&DMA_BIT_RX_BUFFER,RawSDTrackSize);
-      memset((unsigned char *)&DMA_BIT_RX_BUFFER,0,6656);
+      memset((unsigned char *)&DMA_BIT_RX_BUFFER,0,RawSDTrackSize);
       
       // nextAction=WRITE_TRK;
       nextAction=DUMP_TX;
