@@ -1,8 +1,8 @@
 /* USER CODE BEGIN Header */
 /*
 __   _____ ___ ___        Author: Vincent BESSON
- \ \ / /_ _| _ ) _ \      Release: 0.65
-  \ V / | || _ \   /      Date: 2024.10.23
+ \ \ / /_ _| _ ) _ \      Release: 0.66
+  \ V / | || _ \   /      Date: 2024.10.28
    \_/ |___|___/_|_\      Description: Apple Disk II Emulator on STM32F4x
                 2024      Licence: Creative Commons
 ______________________

@@ -38,7 +38,7 @@ enum STATUS getNicTrackBitStream(int trk,unsigned  char* buffer){
   const unsigned int blockNumber=16; 
   
   if (addr==-1){
-    log_error("Error getting SDCard Address for woz\n");
+    log_error("Error getting SDCard Address for nic\n");
     return RET_ERR;
   }
 
