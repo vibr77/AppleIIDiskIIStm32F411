@@ -24,6 +24,13 @@ This project relies on a STM32F411(BlackPill) with SDIO Port.
 | ./FATFS   | fatfs wrapper  |
 | ./doc   | documentation used as reference  |
 
+## IMPORTANT NOTE ##
+
+The ST-Link programmer should never be connected at the same time with either USB or the Apple II. The ST-link has some very fragile voltage regulator. 
+
+The J1 PWR located at top right of the PCB enable +5V from the Apple II to the STM32.
+
+R1,R2,R3 are not neeeded. 
 
 ## <!> SDCARD <!> ##
 

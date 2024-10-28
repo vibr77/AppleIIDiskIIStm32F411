@@ -94,6 +94,10 @@ UART
 
 // Changelog
 /*
+
+28.10.24:
+  + Fix NIC Drive not handling the right number of block to read
+  + Mod the readme 
 24.10.24:
   + Modification of the flow from mount to beaming
   + Remove hardcoded critical variable
@@ -191,11 +195,11 @@ volatile int ph_track=0;                                    // SDISK Physical tr
 volatile int intTrk=0;                                      // InterruptTrk                                    
 unsigned char prevTrk=0;                                    // prevTrk to keep track of the last head track
 
-unsigned int RawSDTrackSize=6656;                           // Maximuum track size on NIC & WOZ to load from SD
-unsigned char read_track_data_bloc[6656];                   // 3 adjacent track 3 x RawSDTrackSize
+unsigned int RawSDTrackSize=8192;                           // Maximuum track size on NIC & WOZ to load from SD
+unsigned char read_track_data_bloc[8192];                   // 3 adjacent track 3 x RawSDTrackSize
   
-volatile unsigned char DMA_BIT_TX_BUFFER[6656];             // DMA Buffer for READ Track
-volatile unsigned char DMA_BIT_RX_BUFFER[6656];             // DMA Buffer for WRITE Track
+volatile unsigned char DMA_BIT_TX_BUFFER[8192];             // DMA Buffer for READ Track
+volatile unsigned char DMA_BIT_RX_BUFFER[8192];             // DMA Buffer for WRITE Track
 
 uint8_t optimalBitTiming=32;
 
@@ -1280,7 +1284,7 @@ enum STATUS mountImagefile(char * filename){
     if (mountNicFile(filename)!=RET_OK)
         return RET_ERR;
     
-    getSDAddr=getSDAddrNic;
+    getSDAddr=getNicSDAddr;
     getTrackBitStream=getNicTrackBitStream;
     getTrackFromPh=getNicTrackFromPh;
     getTrackSize=getNicTrackSize;
@@ -1408,7 +1412,6 @@ int main(void)
   MX_GPIO_Init();
   MX_DMA_Init();
   
-  
   MX_USART1_UART_Init();
   
   MX_TIM3_Init();
@@ -1416,12 +1419,10 @@ int main(void)
   MX_FATFS_Init();
   MX_SDIO_SD_Init();
 
-  MX_I2C1_Init();
-
-
   MX_TIM4_Init();
   MX_TIM2_Init();
 
+   MX_I2C1_Init();
   /* Initialize interrupts */
   MX_NVIC_Init();
   /* USER CODE BEGIN 2 */
@@ -1432,7 +1433,6 @@ int main(void)
   log_info("**     This is the sound of sea !    **");
   log_info("***************************************");
   
-
   EnableTiming();                                                          // Enable WatchDog to get precise CPU Cycle counting
   memset((unsigned char *)&DMA_BIT_TX_BUFFER,0,6656*sizeof(char));
 
@@ -1450,7 +1450,7 @@ int main(void)
   dier|=TIM_DIER_CC1IE;
   dier|=TIM_DIER_UIE;
   TIM3->DIER=dier;
-  HAL_Delay(1000);
+  
   initScreen();                                                                     // I2C Screen init
   HAL_Delay(1000);
 /*
