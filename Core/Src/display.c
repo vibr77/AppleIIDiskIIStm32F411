@@ -299,7 +299,8 @@ void processActiveMainMenuScreen(){
       switchPage(FS,0x0);
       break;
     case 2:
-      switchPage(IMAGE);
+      //switchPage(IMAGE);
+      break;
     default:
       break;
   }

@@ -37,7 +37,7 @@ long getWozSDAddr(int trk,int block,int csize, long database){
   if (wozFile.version==2){
     int long_sector = TRK_startingBlockOffset[trk] + block;
     //int long_sector=3+trk*13;
-    log_debug("long_sector: %d",long_sector);                         // <!> TODO debug To be removed in production
+    //log_debug("long_sector: %d",long_sector);                         // <!> TODO debug To be removed in production
     int long_cluster = long_sector >> 6;
     int ft = fatWozCluster[long_cluster];
     rSector=database+(ft-2)*csize+(long_sector & (csize-1));
@@ -86,7 +86,7 @@ enum STATUS getWozTrackBitStream(int trk,unsigned char * buffer){
   int addr=getWozSDAddr(trk,0,csize,database);
   
   if (addr==-1){
-    printf("%s:Error getting SDCard Address for woz\n",logPrefix);
+    log_error("Error getting SDCard Address for woz\n");
     return RET_ERR;
   }
   
@@ -95,13 +95,16 @@ enum STATUS getWozTrackBitStream(int trk,unsigned char * buffer){
     getDataBlocksBareMetal(addr,buffer,blockNumber);
 
   }else if (wozFile.version==1){
+    
     unsigned char * tmp2=(unsigned char*)malloc((blockNumber+1)*512*sizeof(char));
     if (tmp2==NULL){
-      log_error("Error memory alloaction getNicTrackBitStream: tmp2:8192 Bytes",logPrefix);
+      log_error("Error memory alloaction getWozTrackBitStream: tmp2:8192 Bytes");
       return RET_ERR;
     }
+
     getDataBlocksBareMetal(addr,tmp2,blockNumber+1);
-    while (fsState!=READY){}                                                          // we need to wait here... with the DMA
+    while (fsState!=READY){} 
+                                                                                      // we need to wait here... with the DMA
     memcpy(buffer,tmp2+256,blockNumber*512-10);                                       // Last 10 Bytes are not Data Stream Bytes
     woz1_256B_prologue=malloc(256*sizeof(char));
     memcpy(woz1_256B_prologue,tmp2,256);                                              // we need this to speed up the write process
@@ -199,7 +202,6 @@ enum STATUS mountWozFile(char * filename){
         
        /* wozFile.disk_type=(uint8_t)info_chunk[1+8];
         log_info("woz file disk type:%d",wozFile.disk_type);
-        
         
         wozFile.is_write_protected=info_chunk[2+8];
         log_info("woz file write protected:%d",wozFile.is_write_protected);

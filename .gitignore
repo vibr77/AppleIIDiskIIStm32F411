@@ -4,12 +4,14 @@ tools/*
 dump/*
 screenshot/*
 imageFiles/*
+hardware/sdiskII_stm32-backups
+releases/*
 Drivers
 .stm32env*
 .DS_Store*
 .osx*
 CMake*
-AppleIISDiskII_stm32f411.ioc*
+*.lck
 STM32F411CEUX_FLASH_bkp*
 .DS_Store
 blink.ino.uf2
