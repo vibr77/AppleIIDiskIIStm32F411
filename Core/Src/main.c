@@ -1130,10 +1130,9 @@ enum STATUS switchPage(enum page newPage,void * arg){
     case FS:
       initFSScreen(arg);
       updateFSDisplay(-1);
-      ptrbtnUp=processNextFSItem;
-      ptrbtnDown=processPrevFSItem;
+      ptrbtnUp=processPrevFSItem;
+      ptrbtnDown=processNextFSItem;
       ptrbtnEntr=processSelectFSItem;
-      //ptrbtnRet=nothing;
       ptrbtnRet=processUpdirFSItem;
       currentPage=FS;
       break;
@@ -1264,7 +1263,16 @@ enum STATUS mountImagefile(char * filename){
   FRESULT fr;
   FILINFO fno;
   
- 
+  int len=strlen(filename);
+  int i=0;
+
+  for (i=len-1;i!=0;i--){
+    if (filename[i]=='/')
+      break;
+  }
+
+  snprintf(mountImageInfo.title,20,"%s",filename+i+1);
+
   HAL_NVIC_EnableIRQ(SDIO_IRQn);
   HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
   HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
@@ -1312,6 +1320,7 @@ enum STATUS mountImagefile(char * filename){
     mountImageInfo.type=0;
 
     flgWriteProtected=0;
+    
   }else if (l>4 && 
       (!memcmp(filename+(l-4),"\x2E\x57\x4F\x5A",4)  ||           // .WOZ
        !memcmp(filename+(l-4),"\x2E\x77\x6F\x7A",4))) {           // .woz

@@ -114,6 +114,7 @@ enum STATUS mountImagefile(char * filename);
 enum STATUS initeBeaming();
 
 typedef struct image_info_s {
+  char title[32];
   uint8_t type;
   uint8_t version;
   uint8_t writeProtected;
@@ -126,10 +127,10 @@ typedef struct image_info_s {
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define BTN_UP_Pin GPIO_PIN_13
+#define BTN_UP_Pin GPIO_PIN_14
 #define BTN_UP_GPIO_Port GPIOC
 #define BTN_UP_EXTI_IRQn EXTI15_10_IRQn
-#define BTN_DOWN_Pin GPIO_PIN_14
+#define BTN_DOWN_Pin GPIO_PIN_13
 #define BTN_DOWN_GPIO_Port GPIOC
 #define BTN_DOWN_EXTI_IRQn EXTI15_10_IRQn
 #define BTN_ENTR_Pin GPIO_PIN_15

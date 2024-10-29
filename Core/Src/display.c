@@ -188,37 +188,32 @@ void initScreen(){
 
 enum STATUS initIMAGEScreen(char * imageName,int type){
   
+  /*
   if (imageName==NULL){
     log_error("imageName is null");
     return RET_ERR;
   }
-    
+  */
 
   char tmp[32];
   clearScreen();
   ssd1306_SetColor(White);
   
-  int len=strlen(imageName);
-  int i=0;
+  /*
+    int len=strlen(imageName);
+    int i=0;
 
-  for (i=len-1;i!=0;i--){
-    if (imageName[i]=='/')
-      break;
-  }
-
-  snprintf(tmp,20,"%s",imageName+i+1);
-  len=strlen(tmp);
-
-  if (len<20){
     for (i=len-1;i!=0;i--){
-      if (tmp[i]=='.')
+      if (imageName[i]=='/')
         break;
     }
-    if (i!=0)
-      tmp[i]=0x0;
-  }
+
+    snprintf(tmp,20,"%s",imageName+i+1);
+    len=strlen(tmp);
+  */
+  
   char CL,WP,SYN;
-  displayStringAtPosition(5,1*9,tmp);
+  displayStringAtPosition(5,1*9,mountImageInfo.title);
   if (mountImageInfo.type==0)
     displayStringAtPosition(5,2*9,"type: NIC");
   else if (mountImageInfo.type==1)
@@ -304,7 +299,7 @@ void processActiveMainMenuScreen(){
       switchPage(FS,0x0);
       break;
     case 2:
-      log_info("config screen to be done");
+      switchPage(IMAGE);
     default:
       break;
   }
@@ -314,7 +309,8 @@ void processActiveMainMenuScreen(){
 void initMainMenuScreen(int i){
   
   const char * menuItem[5];
-  u_int8_t numItems=3;
+  u_int8_t numItems=4;
+  uint8_t h_offset=10;
 
   if (i>=numItems)
     i=0;
@@ -324,18 +320,19 @@ void initMainMenuScreen(int i){
 
   menuItem[0]="Favorite";
   menuItem[1]="File manager";
-  menuItem[2]="Config";
+  menuItem[2]="Mounted image";
+  menuItem[3]="Config";
   
   clearScreen();
 
   ssd1306_SetColor(White);
   displayStringAtPosition(0,0,"Main Menu");
   ssd1306_DrawLine(0,8,127,8);
-  //ssd1306_DrawLine(0,6*9-1,127,6*9-1);
+
 
   ssd1306_SetColor(White);
   for (int j=0;j<numItems;j++){
-    displayStringAtPosition(10,(2+j)*9,menuItem[j]);
+    displayStringAtPosition(1+h_offset,(2+j)*9,menuItem[j]);
   }
 
   ssd1306_SetColor(Inverse);
