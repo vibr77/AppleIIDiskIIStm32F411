@@ -1,8 +1,8 @@
 /* USER CODE BEGIN Header */
 /*
 __   _____ ___ ___        Author: Vincent BESSON
- \ \ / /_ _| _ ) _ \      Release: 0.67
-  \ V / | || _ \   /      Date: 2024.10.28
+ \ \ / /_ _| _ ) _ \      Release: 0.68
+  \ V / | || _ \   /      Date: 2024.10.30
    \_/ |___|___/_|_\      Description: Apple Disk II Emulator on STM32F4x
                 2024      Licence: Creative Commons
 ______________________
@@ -11,7 +11,6 @@ ______________________
 Todo:
 - Add the screen PWR on a pin and not directly on the +3.3V
 - Add 74LS125 to protect the STM32 against AII over current
-- Check floating device_enable even with pup resistor on the STM32
 
 Note 
 + CubeMX is needed to generate the code not included such as drivers folders and ...
@@ -94,7 +93,8 @@ UART
 
 // Changelog
 /*
-
+30.10.24: v0.68
+  + Fix Woz v1.0 file reading (wrong offset to read the double byte and conversion to uint_16)
 28.10.24: v0.67
   + Fix Reset on startup
   + Fix Lack of display at startup (same issue as Reset)
@@ -673,7 +673,7 @@ void Custom_SD_ReadCpltCallback(void){
     fsState=READY;                                                                                       // Reset cpu cycle counter
     t2 = DWT->CYCCNT;
     diff1 = t2 - t1;
-    //log_info(" Custom_SD_ReadCpltCallback diff %ld",diff1);
+    log_info(" Custom_SD_ReadCpltCallback diff %ld",diff1);
   }
 }
 
@@ -1320,7 +1320,7 @@ enum STATUS mountImagefile(char * filename){
     mountImageInfo.type=0;
 
     flgWriteProtected=0;
-    
+
   }else if (l>4 && 
       (!memcmp(filename+(l-4),"\x2E\x57\x4F\x5A",4)  ||           // .WOZ
        !memcmp(filename+(l-4),"\x2E\x77\x6F\x7A",4))) {           // .woz
@@ -1646,6 +1646,20 @@ int main(void)
 */
 
   HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_RESET);
+
+/*
+  if (flgBeaming==1){
+    for (int i=0;i<10;i++){
+
+      trk=i;
+      getTrackBitStream(trk,read_track_data_bloc);
+      dumpBuf(read_track_data_bloc,1,1024);
+      newBitSize=getTrackSize(trk);
+      log_info("woz1.0 trk:%d bitsize:%ld",trk,newBitSize);
+  }
+    while(1);
+  }
+*/
 
   while (1){
 

@@ -292,8 +292,10 @@ enum STATUS mountWozFile(char * filename){
 
           f_lseek(&fil,256+i*6656+6646);
           f_read(&fil,trk_chunk,10,&pt);
-
-          TRK_BitCount[i] = ((trk_chunk[1] << 8) | trk_chunk[0])*8;
+          //for (int i=0;i<10;i++){
+          //  log_info("%2X;",trk_chunk[i]);
+          //}
+          TRK_BitCount[i] = ((trk_chunk[3] << 8) | trk_chunk[2]);
           //log_info("woz trk file offset trk:%03d offset:%02dx512 BlkCount:%d BitCount:%ld",i,TRK_startingBlockOffset[i],TRK_BlockCount[i],TRK_BitCount[i]);
           free(trk_chunk);
         }
