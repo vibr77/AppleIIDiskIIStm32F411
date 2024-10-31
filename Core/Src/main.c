@@ -131,6 +131,7 @@ UART
 #include "list.h"
 #include "driver_woz.h"
 #include "driver_nic.h"
+#include "driver_dsk.h"
 #include "configFile.h"
 #include "log.h"
 
@@ -831,10 +832,12 @@ enum STATUS walkDir(char * path){
         if (((fno.fattrib & AM_DIR) && 
             !(fno.fattrib & AM_HID) && len>2 && fno.fname[0]!='.' ) ||     // Listing Directories & File with NIC extension
             (len>5 &&
-            (!memcmp(fno.fname+(len-4),"\x2E\x4E\x49\x43",4)  ||           // .NIC
-             !memcmp(fno.fname+(len-4),"\x2E\x6E\x69\x63",4)  ||           // .nic
-             !memcmp(fno.fname+(len-4),"\x2E\x57\x4F\x5A",4)  ||           // .WOZ
-             !memcmp(fno.fname+(len-4),"\x2E\x77\x6F\x7A",4)) &&           // .woz
+            (!memcmp(fno.fname+(len-4),".NIC",4)  ||           // .NIC
+             !memcmp(fno.fname+(len-4),".nic",4)  ||           // .nic
+             !memcmp(fno.fname+(len-4),".WOZ",4)  ||           // .WOZ
+             !memcmp(fno.fname+(len-4),".woz",4)  ||           // .woz
+             !memcmp(fno.fname+(len-4),".DSK",4)  ||           // .DSK
+             !memcmp(fno.fname+(len-4),".dsk",4)) &&           // .dsk
              !(fno.fattrib & AM_SYS) &&                                    // Not System file
              !(fno.fattrib & AM_HID)                                       // Not Hidden file
             )
@@ -1302,8 +1305,8 @@ enum STATUS mountImagefile(char * filename){
   fsState=READY;
   l=strlen(filename);
   if (l>4 && 
-      (!memcmp(filename+(l-4),"\x2E\x4E\x49\x43",4)  ||           // .NIC
-       !memcmp(filename+(l-4),"\x2E\x6E\x69\x63",4))){            // .nic
+      (!memcmp(filename+(l-4),".NIC",4)  ||           // .NIC
+       !memcmp(filename+(l-4),".nic",4))){            // .nic
 
     if (mountNicFile(filename)!=RET_OK)
         return RET_ERR;
@@ -1322,8 +1325,8 @@ enum STATUS mountImagefile(char * filename){
     flgWriteProtected=0;
 
   }else if (l>4 && 
-      (!memcmp(filename+(l-4),"\x2E\x57\x4F\x5A",4)  ||           // .WOZ
-       !memcmp(filename+(l-4),"\x2E\x77\x6F\x7A",4))) {           // .woz
+      (!memcmp(filename+(l-4),".WOZ",4)  ||           // .WOZ
+       !memcmp(filename+(l-4),".woz",4))) {           // .woz
 
     if (mountWozFile(filename)!=RET_OK)
       return RET_ERR;
@@ -1344,6 +1347,28 @@ enum STATUS mountImagefile(char * filename){
 
     flgWriteProtected=wozFile.is_write_protected;
     
+  }else if (l>4 && 
+      (!memcmp(filename+(l-4),".DSK",4)  ||           // .DSK
+      !memcmp(filename+(l-4),".dsk",4))) { 
+  
+    if (mountDskFile(filename)!=RET_OK)
+      return RET_ERR;
+
+    getSDAddr=getDskSDAddr;
+    getTrackBitStream=getDskTrackBitStream;
+    setTrackBitStream=setDskTrackBitStream;
+    getTrackFromPh=getDskTrackFromPh;
+    getTrackSize=getDskTrackSize;
+    
+    mountImageInfo.optimalBitTiming=32;
+    mountImageInfo.writeProtected=0;
+    mountImageInfo.synced=0;
+    mountImageInfo.version=0;
+    mountImageInfo.cleaned=0;
+    mountImageInfo.type=0;
+
+    flgWriteProtected=0;
+
   }else{
     return RET_ERR;
   }
@@ -1647,19 +1672,20 @@ int main(void)
 
   HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_RESET);
 
-/*
+
   if (flgBeaming==1){
-    for (int i=0;i<10;i++){
+      int i=0;
+    //for (int i=0;i<10;i++){
 
       trk=i;
       getTrackBitStream(trk,read_track_data_bloc);
       dumpBuf(read_track_data_bloc,1,1024);
-      newBitSize=getTrackSize(trk);
-      log_info("woz1.0 trk:%d bitsize:%ld",trk,newBitSize);
-  }
+      //newBitSize=getTrackSize(trk);
+      //log_info("woz1.0 trk:%d bitsize:%ld",trk,newBitSize);
+  //}
     while(1);
   }
-*/
+
 
   while (1){
 

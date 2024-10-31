@@ -69,7 +69,7 @@ enum STATUS getNicTrackBitStream(int trk,unsigned  char* buffer){
 }
 
 enum STATUS mountNicFile(char * filename){
-   
+
   FRESULT fres; 
   FIL fil;  
 
@@ -77,7 +77,6 @@ enum STATUS mountNicFile(char * filename){
 
   if(fres != FR_OK){
     log_error("File open Error: (%i)\r\n", fres);
-   
     return -1;
   }
 
