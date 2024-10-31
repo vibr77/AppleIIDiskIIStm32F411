@@ -1365,7 +1365,7 @@ enum STATUS mountImagefile(char * filename){
     mountImageInfo.synced=0;
     mountImageInfo.version=0;
     mountImageInfo.cleaned=0;
-    mountImageInfo.type=0;
+    mountImageInfo.type=2;                                // DSK type
 
     flgWriteProtected=0;
 
@@ -1488,13 +1488,13 @@ int main(void)
   log_info("**     This is the sound of sea !    **");
   log_info("***************************************");
   
- 
+
   initScreen();                         // I2C Screen init                  
                                             
   HAL_Delay(750);
 
   EnableTiming();                                                          // Enable WatchDog to get precise CPU Cycle counting
-   
+
   int T2_DIER=0x0;
   T2_DIER|=TIM_DIER_CC2IE;
   T2_DIER|=TIM_DIER_UIE;

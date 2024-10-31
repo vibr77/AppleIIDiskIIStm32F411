@@ -218,6 +218,8 @@ enum STATUS initIMAGEScreen(char * imageName,int type){
     displayStringAtPosition(5,2*9,"type: NIC");
   else if (mountImageInfo.type==1)
     displayStringAtPosition(5,2*9,"type: WOZ");
+  else if (mountImageInfo.type==2)
+    displayStringAtPosition(5,2*9,"type: DSK");
   
   displayStringAtPosition(5,3*9,"Track: 0");
 

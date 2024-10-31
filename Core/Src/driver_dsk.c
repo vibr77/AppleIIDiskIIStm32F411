@@ -14,10 +14,15 @@ extern int csize;
 extern volatile enum FS_STATUS fsState;
 unsigned int fatDskCluster[20];
 
-
+/*
 static const unsigned char scramble[] = {
 		0, 7, 14, 6, 13, 5, 12, 4, 11, 3, 10, 2, 9, 1, 8, 15
 	};
+*/
+
+static const unsigned char   dsk2nicSectorMap[] = {0, 0x7, 0xe, 0x6, 0xd, 0x5, 0xc, 0x4, 0xb, 0x3, 0xa, 0x2, 0x9, 0x1, 0x8, 0xf};
+static const unsigned char   po2nicSectorMap[] = {0, 0x8, 0x1, 0x9, 0x2, 0xa, 0x3, 0xb, 0x4, 0xc, 0x5, 0xd, 0x6, 0xe, 0x7, 0xf};
+
 const char encTable[] = {
 	0x96,0x97,0x9A,0x9B,0x9D,0x9E,0x9F,0xA6,
 	0xA7,0xAB,0xAC,0xAD,0xAE,0xAF,0xB2,0xB3,
@@ -80,7 +85,8 @@ enum STATUS getDskTrackBitStream(int trk,unsigned char * buffer){
 
     char * tmp=(char *)malloc(4096*sizeof(char));
     getDataBlocksBareMetal(addr,tmp,blockNumber);          // Needs to be improved and to remove the zeros
-    while (fsState!=READY){} 
+    while (fsState!=READY){}
+     
     dsk2Nic(tmp,buffer,trk);
     free(tmp);
     return RET_OK;
@@ -127,7 +133,7 @@ enum STATUS dsk2Nic(char *rawByte,unsigned char *buffer,uint8_t trk){
     char src[256];
 
     for (u_int8_t sector=0;sector<16;sector++){
-        memcpy(src,rawByte+ scramble[sector] * 256,256);
+        memcpy(src,rawByte+dsk2nicSectorMap[sector] * 256,256);
 
         for (i=0; i<0x16; i++) 
             dst[i]=0xff;
@@ -202,7 +208,7 @@ enum STATUS dsk2Nic(char *rawByte,unsigned char *buffer,uint8_t trk){
 
 
 enum STATUS nic2dsk(char *rawByte,unsigned char *buffer,uint8_t trk){
-    
+
 }
 
 
