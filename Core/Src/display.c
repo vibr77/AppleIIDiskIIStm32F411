@@ -220,6 +220,10 @@ enum STATUS initIMAGEScreen(char * imageName,int type){
     displayStringAtPosition(5,2*9,"type: WOZ");
   else if (mountImageInfo.type==2)
     displayStringAtPosition(5,2*9,"type: DSK");
+  else if (mountImageInfo.type==3)
+    displayStringAtPosition(5,2*9,"type: PO ");
+  else
+    displayStringAtPosition(5,2*9,"type: ERR ");
   
   displayStringAtPosition(5,3*9,"Track: 0");
 
@@ -311,7 +315,7 @@ void processActiveMainMenuScreen(){
 
 void initMainMenuScreen(int i){
   
-  const char * menuItem[5];
+  char * menuItem[5];
   u_int8_t numItems=4;
   uint8_t h_offset=10;
 

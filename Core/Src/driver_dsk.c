@@ -13,6 +13,7 @@ extern long database;                                            // start of the
 extern int csize;  
 extern volatile enum FS_STATUS fsState;
 unsigned int fatDskCluster[20];
+extern image_info_t mountImageInfo;
 
 /*
 static const unsigned char scramble[] = {
@@ -20,8 +21,8 @@ static const unsigned char scramble[] = {
 	};
 */
 
-static const unsigned char   dsk2nicSectorMap[] = {0, 0x7, 0xe, 0x6, 0xd, 0x5, 0xc, 0x4, 0xb, 0x3, 0xa, 0x2, 0x9, 0x1, 0x8, 0xf};
-static const unsigned char   po2nicSectorMap[] = {0, 0x8, 0x1, 0x9, 0x2, 0xa, 0x3, 0xb, 0x4, 0xc, 0x5, 0xd, 0x6, 0xe, 0x7, 0xf};
+static  unsigned char   dsk2nicSectorMap[] = {0, 0x7, 0xe, 0x6, 0xd, 0x5, 0xc, 0x4, 0xb, 0x3, 0xa, 0x2, 0x9, 0x1, 0x8, 0xf};
+static  unsigned char   po2nicSectorMap[] = {0, 0x8, 0x1, 0x9, 0x2, 0xa, 0x3, 0xb, 0x4, 0xc, 0x5, 0xd, 0x6, 0xe, 0x7, 0xf};
 
 const char encTable[] = {
 	0x96,0x97,0x9A,0x9B,0x9D,0x9E,0x9F,0xA6,
@@ -83,10 +84,10 @@ enum STATUS getDskTrackBitStream(int trk,unsigned char * buffer){
         return RET_ERR;
     }
 
-    char * tmp=(char *)malloc(4096*sizeof(char));
+    unsigned char * tmp=(unsigned char *)malloc(4096*sizeof(char));
     getDataBlocksBareMetal(addr,tmp,blockNumber);          // Needs to be improved and to remove the zeros
     while (fsState!=READY){}
-     
+
     dsk2Nic(tmp,buffer,trk);
     free(tmp);
     return RET_OK;
@@ -94,6 +95,7 @@ enum STATUS getDskTrackBitStream(int trk,unsigned char * buffer){
 
 enum STATUS setDskTrackBitStream(int trk,unsigned char * buffer){
 
+return RET_OK;
 }
 
 enum STATUS mountDskFile(char * filename){
@@ -124,16 +126,27 @@ enum STATUS mountDskFile(char * filename){
     return 0;
 }
 
-enum STATUS dsk2Nic(char *rawByte,unsigned char *buffer,uint8_t trk){
+enum STATUS dsk2Nic(unsigned char *rawByte,unsigned char *buffer,uint8_t trk){
 
     const unsigned char volume = 0xfe;
 
     int i=0;
     char dst[512];
     char src[256];
+    unsigned char * sectorMap;
+    if (mountImageInfo.type==2)
+        sectorMap=dsk2nicSectorMap;
+    else if (mountImageInfo.type==3)
+        sectorMap=po2nicSectorMap;
+    else{
+        log_error("Unable to match sectorMap with mountImageInfo.type");
+        return RET_ERR;
+    }
+        
+    
 
     for (u_int8_t sector=0;sector<16;sector++){
-        memcpy(src,rawByte+dsk2nicSectorMap[sector] * 256,256);
+        memcpy(src,rawByte+sectorMap[sector] * 256,256);
 
         for (i=0; i<0x16; i++) 
             dst[i]=0xff;
@@ -200,7 +213,7 @@ enum STATUS dsk2Nic(char *rawByte,unsigned char *buffer,uint8_t trk){
             dst[i+0x8e] = encTable[(x ^ ox) & 0x3f];
             ox = x;
         }
-        dst[0x18e]=encTable+ox;
+        dst[0x18e]=encTable[ox];
         memcpy(buffer+sector*512,dst,512);
     }
     return RET_OK;
@@ -208,7 +221,7 @@ enum STATUS dsk2Nic(char *rawByte,unsigned char *buffer,uint8_t trk){
 
 
 enum STATUS nic2dsk(char *rawByte,unsigned char *buffer,uint8_t trk){
-
+return RET_OK;
 }
 
 

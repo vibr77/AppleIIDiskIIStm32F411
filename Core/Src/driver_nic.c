@@ -33,7 +33,7 @@ long getNicSDAddr(int trk,int block,int csize, long database){
 enum STATUS getNicTrackBitStream(int trk,unsigned  char* buffer){
   int addr=getNicSDAddr(trk,0,csize,database);
   const unsigned int blockNumber=16; 
-  const char startSector[]= {
+  /*const char startSector[]= {
                             0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,\
                             0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,\
                             0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0x03,0xFC,\
@@ -45,20 +45,20 @@ enum STATUS getNicTrackBitStream(int trk,unsigned  char* buffer){
                             0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
                             0xFF
                             } ;
-
+  */
   
   if (addr==-1){
     log_error("Error getting SDCard Address for nic\n");
     return RET_ERR;
   }
 
-  char * tmp=(char *)malloc(8192*sizeof(char));
+  //char * tmp=(char *)malloc(8192*sizeof(char));
   getDataBlocksBareMetal(addr,buffer,blockNumber);          // Needs to be improved and to remove the zeros
   /*
   getDataBlocksBareMetal(addr,tmp,blockNumber); 
   int NIBBLE_BLOCK_SIZE=416;
   int SECTOR_SIZE=512;
- 
+
   for (int i=0;i<blockNumber;i++){
     memcpy(buffer+(i*NIBBLE_BLOCK_SIZE),tmp+(i*SECTOR_SIZE),NIBBLE_BLOCK_SIZE);
   }

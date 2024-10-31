@@ -1348,8 +1348,10 @@ enum STATUS mountImagefile(char * filename){
     flgWriteProtected=wozFile.is_write_protected;
     
   }else if (l>4 && 
-      (!memcmp(filename+(l-4),".DSK",4)  ||           // .DSK
-      !memcmp(filename+(l-4),".dsk",4))) { 
+      (!memcmp(filename+(l-4),".DSK",4)  ||           // .DSK & PO
+      !memcmp(filename+(l-4),".dsk",4) ||
+      !memcmp(filename+(l-3),".po",3) ||
+      !memcmp(filename+(l-3),".PO",3))){ 
   
     if (mountDskFile(filename)!=RET_OK)
       return RET_ERR;
@@ -1365,7 +1367,10 @@ enum STATUS mountImagefile(char * filename){
     mountImageInfo.synced=0;
     mountImageInfo.version=0;
     mountImageInfo.cleaned=0;
-    mountImageInfo.type=2;                                // DSK type
+    if (!memcmp(filename+(l-4),".DSK",4) || !memcmp(filename+(l-4),".dsk",4))
+      mountImageInfo.type=2;                                // DSK type
+    else
+      mountImageInfo.type=3; 
 
     flgWriteProtected=0;
 
@@ -2010,8 +2015,8 @@ static void MX_SDIO_SD_Init(void)
   
   /* USER CODE BEGIN SDIO_Init 2 */
   hsd.Init.BusWide = SDIO_BUS_WIDE_1B;
-  int i=0;
-  if (i=HAL_SD_Init(&hsd) != HAL_OK){
+
+  if (HAL_SD_Init(&hsd) != HAL_OK){
     log_error("MX_SDIO_SD_Init: error HAL_SD_Init code:%d",hsd.ErrorCode);
   }
 
