@@ -11,6 +11,7 @@ ______________________
 Todo:
 - Add the screen PWR on a pin and not directly on the +3.3V
 - Add 74LS125 to protect the STM32 against AII over current
+- Find a way to manage button repeat with debouncer
 
 Note 
 + CubeMX is needed to generate the code not included such as drivers folders and ...
@@ -2018,7 +2019,7 @@ static void MX_SDIO_SD_Init(void)
   hsd.Init.BusWide = SDIO_BUS_WIDE_4B;
   hsd.Init.HardwareFlowControl = SDIO_HARDWARE_FLOW_CONTROL_DISABLE;
   
-  hsd.Init.ClockDiv = 2;
+  hsd.Init.ClockDiv = 1;
   
   /* USER CODE BEGIN SDIO_Init 2 */
   hsd.Init.BusWide = SDIO_BUS_WIDE_1B;
