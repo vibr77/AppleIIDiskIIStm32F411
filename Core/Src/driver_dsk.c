@@ -68,7 +68,7 @@ unsigned int getDskTrackSize(int trk){
 }
 
 long getDskSDAddr(int trk,int block,int csize, long database){
-    int long_sector = trk*16;
+    int long_sector = trk*8;                    // DSK & PO are 256 long and not 512 a track is 4096
     int long_cluster = long_sector >> 6;
     int ft = fatDskCluster[long_cluster];
     long rSector=database+(ft-2)*csize+(long_sector & (csize-1));
@@ -117,7 +117,7 @@ enum STATUS mountDskFile(char * filename){
     while (clusty!=1 && i<30){
         i++;
         clusty=get_fat((FFOBJID*)&fil,clusty);
-        log_info("file cluster %d:%ld\n",i,clusty);
+        log_info("file cluster %d:%ld",i,clusty);
         fatDskCluster[i]=clusty;
     }
 

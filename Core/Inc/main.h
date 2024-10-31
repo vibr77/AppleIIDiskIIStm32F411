@@ -34,6 +34,8 @@ extern "C" {
 #include "list.h"
 #include "defines.h"
 
+#define VERSION "v0.69 "
+
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/

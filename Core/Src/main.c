@@ -1,8 +1,8 @@
 /* USER CODE BEGIN Header */
 /*
 __   _____ ___ ___        Author: Vincent BESSON
- \ \ / /_ _| _ ) _ \      Release: 0.68
-  \ V / | || _ \   /      Date: 2024.10.30
+ \ \ / /_ _| _ ) _ \      Release: 0.69
+  \ V / | || _ \   /      Date: 2024.10.31
    \_/ |___|___/_|_\      Description: Apple Disk II Emulator on STM32F4x
                 2024      Licence: Creative Commons
 ______________________
@@ -93,6 +93,9 @@ UART
 
 // Changelog
 /*
+31.10.24: v0.69
+  +Add PO file support
+  +Fix DSK driver getSdAddr 8*512 instead of 16*512, a track in DSK is 4096,8192
 30.10.24: v0.68
   + Fix Woz v1.0 file reading (wrong offset to read the double byte and conversion to uint_16)
 28.10.24: v0.67
@@ -1149,6 +1152,11 @@ enum STATUS switchPage(enum page newPage,void * arg){
       currentPage=MENU;
       break;
     case IMAGE:
+      if (flgImageMounted==0){
+        log_error("No image mounted");
+        return RET_ERR;
+      }
+
       initIMAGEScreen(arg,0);
       ptrbtnUp=nothing;
       ptrbtnDown=nothing;
@@ -1494,16 +1502,16 @@ int main(void)
   log_info("***************************************");
   
 
-  initScreen();                         // I2C Screen init                  
+  initScreen();                                                             // I2C Screen init                  
                                             
   HAL_Delay(750);
 
-  EnableTiming();                                                          // Enable WatchDog to get precise CPU Cycle counting
+  EnableTiming();                                                           // Enable WatchDog to get precise CPU Cycle counting
 
   int T2_DIER=0x0;
   T2_DIER|=TIM_DIER_CC2IE;
   T2_DIER|=TIM_DIER_UIE;
-  TIM2->DIER|=T2_DIER;                                                     // Enable Output compare Interrupt
+  TIM2->DIER|=T2_DIER;                                                      // Enable Output compare Interrupt
   
   int T4_DIER=0x0;
   T4_DIER|=TIM_DIER_CC2IE;
@@ -1540,7 +1548,6 @@ int main(void)
   mountImageInfo.cleaned=0;
   mountImageInfo.type=0;
 
-
   fres = f_mount(&fs, "", 1);                                       
   
   csize=fs.csize;
@@ -1549,7 +1556,7 @@ int main(void)
 
   if (fres == FR_OK) {
 
-    //f_unlink("/sdiskConfig.json");                                              // <!> TODO : to be removed in production 
+    //f_unlink("/sdiskConfig.json");                                                // <!> TODO : to be removed in production 
 
     if (loadConfigFile()==RET_ERR){
       log_error("loading configFile error");
@@ -1659,7 +1666,6 @@ int main(void)
     //switchPage(FS,NULL);
     
   unsigned long cAlive=0;
-  
   volatile int newBitSize=0;
   //volatile uint32_t oldBitSize=0;
   //volatile uint32_t oldBitCounter=0;
@@ -1677,20 +1683,21 @@ int main(void)
 
   HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_RESET);
 
-
+/*
   if (flgBeaming==1){
       int i=0;
-    //for (int i=0;i<10;i++){
+    for (int i=1;i<2;i++){
 
       trk=i;
       getTrackBitStream(trk,read_track_data_bloc);
       dumpBuf(read_track_data_bloc,1,1024);
-      //newBitSize=getTrackSize(trk);
-      //log_info("woz1.0 trk:%d bitsize:%ld",trk,newBitSize);
-  //}
+      newBitSize=getTrackSize(trk);
+      log_info("woz1.0 trk:%d bitsize:%ld",trk,newBitSize);
+    }
     while(1);
   }
 
+*/
 
   while (1){
 
@@ -1740,7 +1747,7 @@ int main(void)
       }else{
         HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_RESET);
       }
-      /*    End of debug       */
+      /* End of debug       */
 
       //t2 = DWT->CYCCNT;
       //diff1 = t2 - t1;
@@ -1775,8 +1782,8 @@ int main(void)
           HAL_NVIC_DisableIRQ(DMA2_Stream6_IRQn);
 
           nextAction=NONE;
-
           break;
+
         case DUMP_TX:
           char filename[128];
           sprintf(filename,"dump_rx_trk_%d_%d.bin",intTrk,wr_attempt);
@@ -1855,9 +1862,9 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
-    /* USER CODE END WHILE */
+  /* USER CODE END WHILE */
 
-    /* USER CODE BEGIN 3 */
+  /* USER CODE BEGIN 3 */
   
   /* USER CODE END 3 */
 }

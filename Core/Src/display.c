@@ -117,14 +117,17 @@ void updateFSDisplay(int init){
   ssd1306_UpdateScreen();
 
 }
-
+// Icon converter BMP ->  https://mischianti.org/ssd1306-oled-display-draw-images-splash-and-animations-2/
+// <!> Generate Vertical 1 bit per pixel
 void dispIcon(int x,int y,int indx){
   const unsigned char icon_set[]  = {
-    // 'folder, 8x8px indx=0
-  0x00, 0x70, 0x7e, 0x7e, 0x7e, 0x7e, 0x7e, 0x00,
-  //  File, 8x8px indx=1
-  0x00, 0x7c, 0x54, 0x4c, 0x44, 0x44, 0x7c, 0x00
-  };
+    0x00, 0x7e, 0x7e, 0x7e, 0x7c, 0x7c, 0x7c, 0x00,   // indx=0 'folderb', 8x8px 
+    0x00, 0x7e, 0x42, 0x46, 0x4a, 0x7e, 0x00, 0x00,   // indx=1 'file2', 8x8px
+    0x08, 0xd8, 0x7c, 0x3f, 0x3f, 0x7c, 0xd8, 0x08,   // indx=2 'star', 8x8px
+    0x00, 0x6c, 0x7c, 0x3e, 0x7c, 0x7c, 0x10, 0x00,   // indx=3 'config', 8x8px
+    0x00, 0x60, 0x68, 0x1c, 0x3e, 0x1e, 0x0e, 0x00,   // indx=4 'launch', 8x8px
+    0x00, 0x1c, 0x3e, 0x7c, 0x7c, 0x3e, 0x1c, 0x00    // indx=5 'favorite', 8x8px
+};
 
   ssd1306_DrawBitmap(x,y,8,8,icon_set+8*indx);
 }
@@ -181,7 +184,7 @@ void initScreen(){
   
   ssd1306_Clear();
   ssd1306_SetColor(White);
-  displayStringAtPosition(30,3*9,"SmartDiskII");
+  displayStringAtPosition(30,3*9,"SmartDisk ][");
   ssd1306_UpdateScreen();
 }
 
@@ -305,7 +308,7 @@ void processActiveMainMenuScreen(){
       switchPage(FS,0x0);
       break;
     case 2:
-      //switchPage(IMAGE);
+      switchPage(IMAGE,NULL);
       break;
     default:
       break;
@@ -330,6 +333,12 @@ void initMainMenuScreen(int i){
   menuItem[2]="Mounted image";
   menuItem[3]="Config";
   
+uint8_t menuIcon[5];
+menuIcon[0]=5;
+menuIcon[1]=0;
+menuIcon[2]=4;
+menuIcon[3]=3;
+
   clearScreen();
 
   ssd1306_SetColor(White);
@@ -339,14 +348,18 @@ void initMainMenuScreen(int i){
 
   ssd1306_SetColor(White);
   for (int j=0;j<numItems;j++){
-    displayStringAtPosition(1+h_offset,(2+j)*9,menuItem[j]);
+    displayStringAtPosition(1+h_offset,(1+j)*9+5,menuItem[j]);
+
+    dispIcon(1,(1+j)*9+5,menuIcon[j]);
   }
 
   ssd1306_SetColor(Inverse);
-  ssd1306_FillRect(10-5,(2+i)*9-1,80,9);
+  ssd1306_FillRect(1,(1+i)*9-1+5,126,9);
+  
+  ssd1306_SetColor(White);
+  ssd1306_DrawLine(0,6*9-1,127,6*9-1);
 
-  //displayStringAtPosition(30,(2+i)*9,menuItem[i]);
-
+  displayStringAtPosition(1,6*9+1,VERSION);
   ssd1306_UpdateScreen();
   currentMainMenuItem=i;
   return;
