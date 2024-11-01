@@ -146,6 +146,8 @@ enum STATUS buildLstFromFavorites(){
 }
 
 void printChainedList(){
+    if (favoritesChainedList==NULL)
+        return;
     uint8_t len=favoritesChainedList->len;
     list_node_t *cItem;
     for (uint8_t i=0;i<len;i++){

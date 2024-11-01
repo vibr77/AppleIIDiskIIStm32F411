@@ -1210,11 +1210,16 @@ void processBtnRet(){
 }
 
 void toggleAddToFavorite(){
- /* if (isFavorite()==0)
-    addToFavorites()
-  else
-    removeFromFavorites();
-  */
+  if (isFavorite(currentFullPathImageFilename)==0){
+    log_info("add from Favorite:%s",currentFullPathImageFilename);
+    addToFavorites(currentFullPathImageFilename);
+  }
+  else{
+    log_info("remove from Favorite:%s",currentFullPathImageFilename);
+    removeFromFavorites(currentFullPathImageFilename);
+  }
+  buildLstFromFavorites();
+  saveConfigFile();
 }
 
 enum STATUS switchPage(enum page newPage,void * arg){
@@ -1489,6 +1494,8 @@ enum STATUS mountImagefile(char * filename){
 
   log_info("Mount image:OK");
   flgImageMounted=1;
+  sprintf(currentFullPathImageFilename,"%s",filename);
+  log_info("currentFullPathImageFilename:%s",currentFullPathImageFilename);
   return RET_OK;
 }
 
@@ -1672,15 +1679,17 @@ int main(void)
     }
 
     getFavorites();
-    addToFavorites("F|test2.nic");
-    addToFavorites("F|test4.nic");
-    addToFavorites("test5");
+    //addToFavorites("F|test2.nic");
+    //addToFavorites("F|test4.nic");
+    //addToFavorites("test5");
     //removeFromFavorites("test2");
-    removeFromFavorites("test3");
+    //removeFromFavorites("test3");
     buildLstFromFavorites();
     printChainedList();
     buildLstFromFavorites();
     printChainedList();
+    //wipeFavorites();
+    saveConfigFile();
 
    // while(1);
       
