@@ -54,8 +54,6 @@ enum STATUS loadConfigFile(){
     
     free(jsonBuffer);
     
-    const cJSON *name = NULL;
-
     if (json == NULL){
         const char *error_ptr = cJSON_GetErrorPtr();
         if (error_ptr != NULL){
@@ -63,21 +61,10 @@ enum STATUS loadConfigFile(){
         } 
     }
 
-    
-
     return RET_OK;
 }
 
-void dumpConfigParams(){
-    /*for (size_t j=0;j<json_object_get_count(configParams);j++){
-        JSON_Value * val=json_object_get_value_at(configParams,j);
-        log_info("key:%s ",json_object_get_name(configParams,j));
-        if (json_value_get_type(val)==JSONNumber)
-            log_info("value %f\n",json_value_get_number(val));
-        else 
-            log_info("value %s\n",json_value_get_string(val));
-    }*/
-}
+
 void setConfigFileDefaultValues(){
     json = cJSON_CreateObject();
     cJSON_AddStringToObject(json, "currentPath", "");   

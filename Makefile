@@ -43,7 +43,6 @@ Core/Src/driver_woz.c \
 Core/Src/driver_dsk.c \
 Core/Src/log.c \
 Core/Src/display.c \
-Core/Src/parson.c \
 Core/Src/configFile.c \
 Core/Src/list.c \
 Core/Src/list_node.c \

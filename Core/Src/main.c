@@ -1,7 +1,7 @@
 /* USER CODE BEGIN Header */
 /*
 __   _____ ___ ___        Author: Vincent BESSON
- \ \ / /_ _| _ ) _ \      Release: 0.69
+ \ \ / /_ _| _ ) _ \      Release: 0.70
   \ V / | || _ \   /      Date: 2024.10.31
    \_/ |___|___/_|_\      Description: Apple Disk II Emulator on STM32F4x
                 2024      Licence: Creative Commons
@@ -11,7 +11,6 @@ ______________________
 Todo:
 - Add the screen PWR on a pin and not directly on the +3.3V
 - Add 74LS125 to protect the STM32 against AII over current
-- Find a way to manage button repeat with debouncer
 - Relocate all display function & Ux navigation from main.c to display.c
 
 Note 
@@ -105,15 +104,18 @@ UART
 /*
 01.11.24: v0.70
   +Add btn repetition for up/down (end of debouncer timer, check for btn state)
-  +Adjust TIMER4 period on repeat and back to 400
+  +Adjust TIM4 period on repeat and back to 400
   +Change SDIO precaler to 1 (instead of 2) for performance purpose
   +Add favorites primitives functions
   +rationnalization of display function
   +add toggle add/remove favorite from image screen
-  -issue with SDIO IRQ on saveConfiguration
-  -issue with SDIO IRQ on favoriteSaveConfiguration
-  -issue with favorite filename displaying full path
-  -missing icon for favorite in ImageScreen
+  +add favorite parsing on Image Mounting
+  +fix issue with SDIO IRQ on saveConfiguration
+  +fix issue with SDIO IRQ on favoriteSaveConfiguration
+  +fix issue with favorite filename displaying full path
+  +fix missing icon for favorite in ImageScreen
+  +add define.h
+  +fix init chainedlist based screen with 0 and first row selected
 
 31.10.24: v0.69
   +Add PO file support
@@ -260,8 +262,8 @@ void (*ptrbtnEntr)(void *);
 void (*ptrbtnRet)(void *);
 
 char selItem[MAX_FILENAME_LENGTH];                                            // select from chainedlist item;
-char currentFullPath[MAX_PATH_LENGTH];                                   // current path from root
-char currentPath[128];                                        // current directory name max 128 char
+char currentFullPath[MAX_FULLPATH_LENGTH];                                   // current path from root
+char currentPath[MAX_PATH_LENGTH];                                        // current directory name max 128 char
 char * currentImageFilename;                                  // current mounted image filename;
 char currentFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];  // fullpath from root image filename
 
@@ -1098,7 +1100,7 @@ void processPrevFSItem(){
       dispSelectedIndx--;
     }
     log_info("currentClistPos:%d, dispSelectedIndx:%d",currentClistPos,dispSelectedIndx);
-    //updateFSDisplay(-1);
+    
     updateChainedListDisplay(-1,dirChainedList);
 }
 
@@ -1114,7 +1116,7 @@ void processNextFSItem(){
       dispSelectedIndx++;
     }
     log_info("currentClistPos:%d, dispSelectedIndx:%d",currentClistPos,dispSelectedIndx);
-    updateFSDisplay(-1);
+    
     updateChainedListDisplay(-1,dirChainedList);
 }
 
@@ -1240,7 +1242,7 @@ enum STATUS switchPage(enum page newPage,void * arg){
   switch(newPage){
     case FAVORITE:
       initFavoriteScreen();
-      updateChainedListDisplay(-1, favoritesChainedList);
+      updateChainedListDisplay(0, favoritesChainedList);
 
       ptrbtnUp=processPrevFavoriteItem;
       ptrbtnDown=processNextFavoriteItem;
@@ -1252,7 +1254,7 @@ enum STATUS switchPage(enum page newPage,void * arg){
     case FS:
       initFSScreen(arg);
       
-      updateChainedListDisplay(-1,dirChainedList);
+      updateChainedListDisplay(0,dirChainedList);
       ptrbtnUp=processPrevFSItem;
       ptrbtnDown=processNextFSItem;
       ptrbtnEntr=processSelectFSItem;
