@@ -48,6 +48,7 @@ Core/Src/configFile.c \
 Core/Src/list.c \
 Core/Src/list_node.c \
 Core/Src/list_iterator.c \
+Core/Src/favorites.c \
 Core/Src/stm32f4xx_it.c \
 Core/Src/stm32f4xx_hal_msp.c \
 FATFS/App/fatfs.c \

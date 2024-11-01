@@ -12,12 +12,21 @@ Todo:
 - Add the screen PWR on a pin and not directly on the +3.3V
 - Add 74LS125 to protect the STM32 against AII over current
 - Find a way to manage button repeat with debouncer
+- Relocate all display function & Ux navigation from main.c to display.c
 
 Note 
 + CubeMX is needed to generate the code not included such as drivers folders and ...
 + An update of fatfs is required to manage long filename otherwise it crashes, v0.15 
 + stm32f411 blackpill v3 if SDIO Sdcard Management otherwise, any STM32fx would work with SPI / DMA,
 
+Navigation:
+- Config items:
+  - makefs
+  - boot last or boot favorite
+  - fs save current dir
+  - wipe favorites
+  - wipe config
+  
 Lessons learned:
 - Warning screen update with DMA while SDIO is running can perform SDIO error
 - When SDIO appears one way is to investigate is to disable all interrupt & renable one by one
@@ -94,6 +103,12 @@ UART
 
 // Changelog
 /*
+01.11.24: v0.70
+  +Add btn repetition for up/down (end of debouncer timer, check for btn state)
+  +Adjust TIMER4 period on repeat and back to 400
+  +Change SDIO precaler to 1 (instead of 2) for performance purpose
+  +Add favorites primitives functions
+  +rationnalization of display function
 31.10.24: v0.69
   +Add PO file support
   +Fix DSK driver getSdAddr 8*512 instead of 16*512, a track in DSK is 4096,8192
@@ -118,7 +133,6 @@ UART
   +Change timer setting to match USB max setting / 96Mhz
   +Add UF2 file management with dedicated bootloader
   +Add (experimental mkfs option)
-
 */
 
 /* USER CODE END Header */
@@ -137,9 +151,8 @@ UART
 #include "driver_nic.h"
 #include "driver_dsk.h"
 #include "configFile.h"
+#include "favorites.h"
 #include "log.h"
-
-
 
 //#include "parson.h"
 /* USER CODE END Includes */
@@ -255,6 +268,7 @@ list_t * dirChainedList;
 
 unsigned long t1,t2,diff1;   
 
+extern list_t * favoritesChainedList;
 
 int wrStartPtr=0;
 int wrEndPtr=0;
@@ -348,11 +362,22 @@ void TIM4_IRQHandler(void){
   if (TIM4->SR & TIM_SR_UIF){
     buttonDebounceState = true;
     log_debug("debounced\n");
+    if(HAL_GPIO_ReadPin(BTN_UP_GPIO_Port, BTN_UP_Pin)){
+      debounceBtn(BTN_UP_Pin);
+      TIM4->ARR=200;                                      // Manage repeat acceleration
+    }       
+    else if(HAL_GPIO_ReadPin(BTN_DOWN_GPIO_Port, BTN_DOWN_Pin)){
+      debounceBtn(BTN_DOWN_Pin);
+      TIM4->ARR=200;                                      // Manage repeat acceleration
+    }
+    else{
+      TIM4->ARR=400;                                      // No repeat back to normal timer value
+    }
   }
   TIM4->SR = 0;
 }
 
-volatile int zeroBits=0;
+volatile int zeroBits=0;                                  // Count number of consecutives zero bits
 
 /**
   * @brief TIMER 3 IRQ Interrupt is handling the reading process
@@ -999,6 +1024,59 @@ extern uint8_t dispSelectedIndx;
 extern uint8_t selectedFsIndx;
 
 #define MAX_LINE_ITEM 4
+
+void processPrevFavoriteItem(){
+    
+    uint8_t lstCount=dirChainedList->len;
+    
+    if (lstCount<=MAX_LINE_ITEM && dispSelectedIndx==0){
+      dispSelectedIndx=lstCount-1;
+    }else if (dispSelectedIndx==0)
+      if (currentClistPos==0)
+        currentClistPos=lstCount-1;
+      else
+        currentClistPos=(currentClistPos-1)%lstCount;
+    else{
+      dispSelectedIndx--;
+    }
+    log_info("currentClistPos:%d, dispSelectedIndx:%d",currentClistPos,dispSelectedIndx);
+    //updateFSDisplay(-1);
+    updateChainedListDisplay(-1,favoritesChainedList);
+}
+
+void processNextFavoriteItem(){ 
+
+    uint8_t lstCount=dirChainedList->len;
+    
+    if (lstCount<=MAX_LINE_ITEM && dispSelectedIndx==lstCount-1){
+      dispSelectedIndx=0;
+    }else if (dispSelectedIndx==(MAX_LINE_ITEM-1))
+      currentClistPos=(currentClistPos+1)%lstCount;
+    else{
+      dispSelectedIndx++;
+    }
+    log_info("currentClistPos:%d, dispSelectedIndx:%d",currentClistPos,dispSelectedIndx);
+    updateChainedListDisplay(-1,favoritesChainedList);
+}
+
+void processUpdirFavoriteItem(){
+    // we are at the ROOT -> Disp General Menu
+  switchPage(MENU,NULL);
+}
+
+void processSelectFavoriteItem(){
+  // Warning Interrupt can not trigger Filesystem action otherwise deadlock can occured !!!
+  
+  list_node_t *pItem=NULL;
+  
+  pItem=list_at(favoritesChainedList, selectedFsIndx);
+  sprintf(selItem,"%s",(char*)pItem->val);
+  switchPage(MOUNT,selItem);
+
+  log_debug("result |%s|",currentFullPath);
+  
+}
+
 void processPrevFSItem(){
     
     uint8_t lstCount=dirChainedList->len;
@@ -1014,7 +1092,8 @@ void processPrevFSItem(){
       dispSelectedIndx--;
     }
     log_info("currentClistPos:%d, dispSelectedIndx:%d",currentClistPos,dispSelectedIndx);
-    updateFSDisplay(-1);
+    //updateFSDisplay(-1);
+    updateChainedListDisplay(-1,dirChainedList);
 }
 
 void processNextFSItem(){ 
@@ -1030,6 +1109,7 @@ void processNextFSItem(){
     }
     log_info("currentClistPos:%d, dispSelectedIndx:%d",currentClistPos,dispSelectedIndx);
     updateFSDisplay(-1);
+    updateChainedListDisplay(-1,dirChainedList);
 }
 
 void processUpdirFSItem(){
@@ -1129,14 +1209,34 @@ void processBtnRet(){
   }
 }
 
+void toggleAddToFavorite(){
+ /* if (isFavorite()==0)
+    addToFavorites()
+  else
+    removeFromFavorites();
+  */
+}
+
 enum STATUS switchPage(enum page newPage,void * arg){
 
 // Manage with page to display and the attach function to button Interrupt  
   
   switch(newPage){
+    case FAVORITE:
+      initFavoriteScreen();
+      updateChainedListDisplay(-1, favoritesChainedList);
+
+      ptrbtnUp=processPrevFavoriteItem;
+      ptrbtnDown=processNextFavoriteItem;
+      ptrbtnEntr=processSelectFavoriteItem;
+      ptrbtnRet=processUpdirFavoriteItem;
+      currentPage=FAVORITE;
+      
+      break;
     case FS:
       initFSScreen(arg);
-      updateFSDisplay(-1);
+      
+      updateChainedListDisplay(-1,dirChainedList);
       ptrbtnUp=processPrevFSItem;
       ptrbtnDown=processNextFSItem;
       ptrbtnEntr=processSelectFSItem;
@@ -1161,7 +1261,7 @@ enum STATUS switchPage(enum page newPage,void * arg){
       initIMAGEScreen(arg,0);
       ptrbtnUp=nothing;
       ptrbtnDown=nothing;
-      ptrbtnEntr=nothing;
+      ptrbtnEntr=toggleAddToFavorite;
       ptrbtnRet=processBtnRet;
       currentPage=IMAGE;
       break;
@@ -1570,6 +1670,19 @@ int main(void)
     }else{
       log_info("loading configFile: OK");
     }
+
+    getFavorites();
+    addToFavorites("F|test2.nic");
+    addToFavorites("F|test4.nic");
+    addToFavorites("test5");
+    //removeFromFavorites("test2");
+    removeFromFavorites("test3");
+    buildLstFromFavorites();
+    printChainedList();
+    buildLstFromFavorites();
+    printChainedList();
+
+   // while(1);
       
     imgFile=(char*)getConfigParamStr("lastFile");
     char * tmp=(char*)getConfigParamStr("currentPath");
@@ -1812,7 +1925,7 @@ int main(void)
           saveConfigFile();
           currentClistPos=0;
           initFSScreen(currentPath);
-          updateFSDisplay(-1); 
+          updateChainedListDisplay(-1,dirChainedList);
           nextAction=NONE;
           break;
         
@@ -1829,18 +1942,18 @@ int main(void)
             log_error("Error in setting param to configFie:lastImageFile %s",tmp);
           }
 
-          mountImagefile(tmp);
-          if (initeBeaming()==RET_OK){                                         // <!> TO Be tested
-            processDeviceEnableInterrupt(DEVICE_ENABLE_Pin);
-            switchPage(IMAGE,tmp);
+          if(mountImagefile(tmp)==RET_OK){
+            if (initeBeaming()==RET_OK){                                         // <!> TO Be tested
+              processDeviceEnableInterrupt(DEVICE_ENABLE_Pin);
+              switchPage(IMAGE,tmp);
+            }
+            dumpConfigParams();
+            if (saveConfigFile()==RET_ERR){
+              log_error("Error in saving JSON to file");
+            }else{
+              log_info("saving configFile: OK");
+            }
           }
-          dumpConfigParams();
-          if (saveConfigFile()==RET_ERR){
-            log_error("Error in saving JSON to file");
-          }else{
-            log_info("saving configFile: OK");
-          }
-
           log_info("current:%s",currentImageFilename);
           
           free(tmp);

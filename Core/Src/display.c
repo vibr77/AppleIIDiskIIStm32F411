@@ -6,8 +6,10 @@
 #include "list.h"
 #include "main.h"
 #include "log.h"
+#include "favorites.h"
 
 extern list_t * dirChainedList;
+extern list_t * favoritesChainedList;
 extern char currentFullPath[1024]; 
 extern char currentPath[128];
 extern int currentClistPos;
@@ -33,6 +35,95 @@ FSDISPITEM_t fsDispItem[MAX_LINE_ITEM];
 
 int currentTrk=0;
 int currentStatus=0;
+
+
+void updateChainedListDisplay(int init, list_t * lst ){
+  int offset=5;
+  int h_offset=10;
+
+  char tmp[32];
+  char * value;
+
+  list_node_t *fsItem; 
+  uint8_t fsIndx=0;
+  uint8_t lstCount=lst->len;
+
+  log_info("lst_count:%d init:%d",lstCount,init);
+
+  if (init!=-1)
+    currentClistPos=init;
+
+  for (int i=0;i<MAX_LINE_ITEM;i++){
+    
+    fsDispItem[i].status=1;                   // starting with item status =0, if an error then status = -1;
+    fsDispItem[i].displayPos=i;               // corresponding line on the screen
+    fsDispItem[i].update=1;
+    
+    if (i>lstCount-1){                          // End of the list before the MAX_LINE_ITEM
+      fsDispItem[i].status=0;
+      continue;
+    }
+
+    fsIndx=(currentClistPos+i)%lstCount;
+    fsItem=list_at(lst, fsIndx);
+    if (fsDispItem[i].selected==1 && i!=dispSelectedIndx){    // It was selected (inversed, thus we need to reinverse)
+        fsDispItem[i].selected=0;
+    }else if (i==dispSelectedIndx){
+      fsDispItem[i].selected=1;                // first item of the list is selected
+      selectedFsIndx=fsIndx;
+    }  
+      
+    if (fsItem!=NULL)
+      fsDispItem[i].chainedListPosition=fsIndx;
+    else{
+      fsDispItem[i].status=0;
+      continue;
+    }
+
+    value=fsItem->val;
+    if (value!=NULL){
+      if (value[0]=='D' && value[1]=='|'){
+        fsDispItem[i].icon=0;   
+        fsDispItem[i].type=0;                 // 0 -> Directory
+        snprintf(fsDispItem[i].title,24,"%s",value+2); 
+      }else if (value[0]=='F' && value[1]=='|'){
+        fsDispItem[i].icon=1; 
+        fsDispItem[i].type=1;                // 1 -> file
+        snprintf(fsDispItem[i].title,24,"%s",value+2);  
+      }else{
+        fsDispItem[i].icon=1; 
+        fsDispItem[i].type=1;                // 1 -> file
+        snprintf(fsDispItem[i].title,24,"%s",value);  
+      }
+                  
+    }else{
+      fsDispItem[i].status=-1;
+    }
+  }
+
+  // Render Part
+  for (int i=0;i<MAX_LINE_ITEM;i++){
+
+    clearLineStringAtPosition(1+i,offset);
+    if (fsDispItem[i].status!=0){
+      
+      ssd1306_SetColor(White);
+      dispIcon(1,(1+i)*9+offset,fsDispItem[i].icon);
+
+      ssd1306_SetColor(White);
+      displayStringAtPosition(1+h_offset,(1+i)*9+offset,fsDispItem[i].title);
+      if (fsDispItem[i].selected==1){
+        inverseStringAtPosition(1+i,offset);
+      }
+    }
+  }
+
+  ssd1306_SetColor(White);
+  sprintf(tmp,"%02d/%02d",selectedFsIndx+1,lstCount);
+  displayStringAtPosition(96,6*9+1,tmp);
+
+  ssd1306_UpdateScreen();
+}
 
 void updateFSDisplay(int init){
   
@@ -117,6 +208,12 @@ void updateFSDisplay(int init){
   ssd1306_UpdateScreen();
 
 }
+
+
+
+
+
+
 // Icon converter BMP ->  https://mischianti.org/ssd1306-oled-display-draw-images-splash-and-animations-2/
 // <!> Generate Vertical 1 bit per pixel
 void dispIcon(int x,int y,int indx){
@@ -302,7 +399,8 @@ void processActiveMainMenuScreen(){
   switch(currentMainMenuItem){
     
     case 0:
-      log_info("favorite screen to be done");
+      switchPage(FAVORITE,NULL);
+
       break;
     case 1:
       switchPage(FS,0x0);
@@ -328,7 +426,7 @@ void initMainMenuScreen(int i){
   if (i<0)
     i=numItems-1;
 
-  menuItem[0]="Favorite";
+  menuItem[0]="Favorites";
   menuItem[1]="File manager";
   menuItem[2]="Mounted image";
   menuItem[3]="Config";
@@ -433,6 +531,25 @@ void initFSScreen(char * path){
   snprintf(tmp,18,"%s",currentPath);
 #pragma GCC diagnostic pop
   displayStringAtPosition(0,6*9+1,tmp);
+
+  ssd1306_UpdateScreen();
+
+}
+
+
+
+void initFavoriteScreen(){
+
+  clearScreen();
+  
+  ssd1306_SetColor(White);
+  displayStringAtPosition(0,0,"Favorites");
+  ssd1306_DrawLine(0,8,127,8);
+  ssd1306_DrawLine(0,6*9-1,127,6*9-1);
+  
+  char tmp[32];
+  sprintf(tmp,"xx/10");
+  displayStringAtPosition(96,6*9+1,tmp);
 
   ssd1306_UpdateScreen();
 
