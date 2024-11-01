@@ -19,8 +19,12 @@ cJSON *json;
 
 enum STATUS loadConfigFile(){
 
-    FIL fil; 		  //File handle
-    FRESULT fres; //Result after operations
+    FIL fil; 		                            //File handle
+    FRESULT fres;                               //Result after operations
+    
+    HAL_NVIC_EnableIRQ(SDIO_IRQn);
+    HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
+    HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
     
     while(fsState!=READY){};
     fsState=BUSY;
@@ -31,7 +35,7 @@ enum STATUS loadConfigFile(){
         return RET_ERR;
     }
     
-    char * jsonBuffer=(char *)malloc(1024*sizeof(char));
+    char * jsonBuffer=(char *)malloc(JSON_BUFFER_SIZE*sizeof(char));
     unsigned int pt;
     
     
@@ -46,7 +50,8 @@ enum STATUS loadConfigFile(){
     fsState=READY;
     
     json = cJSON_Parse(jsonBuffer);
-    log_info("Config JSON:%s\n",jsonBuffer);
+    log_debug("Config JSON:%s\n",jsonBuffer);
+    
     free(jsonBuffer);
     
     const cJSON *name = NULL;
@@ -58,10 +63,7 @@ enum STATUS loadConfigFile(){
         } 
     }
 
-    name = cJSON_GetObjectItemCaseSensitive(json, "name");
-    if (cJSON_IsString(name) && (name->valuestring != NULL)){
-        printf("Checking monitor \"%s\"\n", name->valuestring);
-    }
+    
 
     return RET_OK;
 }
@@ -78,14 +80,18 @@ void dumpConfigParams(){
 }
 void setConfigFileDefaultValues(){
     json = cJSON_CreateObject();
-    cJSON_AddStringToObject(json, "currentPath", "");
-    
+    cJSON_AddStringToObject(json, "currentPath", "");   
 }
 
 enum STATUS saveConfigFile(){
     
     FIL fil; 		                            //File handle
     FRESULT fres;                               //Result after operations
+
+    HAL_NVIC_EnableIRQ(SDIO_IRQn);
+    HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
+    HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
+
     while(fsState!=READY){};
 
     fsState=BUSY;

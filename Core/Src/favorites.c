@@ -30,8 +30,17 @@ enum STATUS addToFavorites(char * fullpathImageName){
         return RET_ERR;
     }
 
-    if (favorites==NULL && getFavorites()==RET_ERR)
+    if (favorites==NULL && getFavorites()==RET_ERR){
+        log_error("get favorites error");
         return RET_ERR;
+    }
+        
+
+    if (cJSON_GetArraySize(favorites)==MAX_FAVORITES){
+        log_error("too many favorites");
+        return RET_ERR;
+    }
+        
 
     cJSON_ArrayForEach(item, favorites){
         filename = cJSON_GetObjectItemCaseSensitive(item, "filename");

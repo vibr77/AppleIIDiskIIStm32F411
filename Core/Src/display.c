@@ -36,7 +36,22 @@ FSDISPITEM_t fsDispItem[MAX_LINE_ITEM];
 int currentTrk=0;
 int currentStatus=0;
 
+char * getImageNameFromFullPath(char * fullPathImageName){
+  
+  if (fullPathImageName==NULL)
+    return NULL;
 
+  int len=strlen(fullPathImageName);
+  int i=0;
+
+  for (i=len-1;i!=0;i--){
+    if (fullPathImageName[i]=='/')
+      break;
+  }
+
+  return fullPathImageName+i+1;
+
+}
 void updateChainedListDisplay(int init, list_t * lst ){
   int offset=5;
   int h_offset=10;
@@ -93,7 +108,8 @@ void updateChainedListDisplay(int init, list_t * lst ){
       }else{
         fsDispItem[i].icon=1; 
         fsDispItem[i].type=1;                // 1 -> file
-        snprintf(fsDispItem[i].title,24,"%s",value);  
+        char * title=getImageNameFromFullPath(value);
+        snprintf(fsDispItem[i].title,24,"%s",title);  
       }
                   
     }else{
@@ -216,6 +232,20 @@ void updateFSDisplay(int init){
 
 // Icon converter BMP ->  https://mischianti.org/ssd1306-oled-display-draw-images-splash-and-animations-2/
 // <!> Generate Vertical 1 bit per pixel
+
+void dispIcon12x12(int x,int y,int indx){
+  const unsigned char icon12x12[]={
+
+    // 'fav_full_12x12', 12x12px
+0x00, 0x70, 0xf8, 0xfc, 0xfc, 0xf8, 0xf8, 0xfc, 0xfc, 0xf8, 0x70, 0x00, 0x00, 0x00, 0x00, 0x01, 
+0x03, 0x07, 0x07, 0x03, 0x01, 0x00, 0x00, 0x00,
+// 'fav_empty_12x12', 12x12px
+0x00, 0x70, 0xf8, 0x9c, 0x0c, 0x08, 0x08, 0x0c, 0x9c, 0xf8, 0x70, 0x00, 0x00, 0x00, 0x00, 0x01, 
+0x03, 0x06, 0x06, 0x03, 0x01, 0x00, 0x00, 0x00
+  };
+  ssd1306_DrawBitmap(x,y,12,12,icon12x12+24*indx);
+}
+
 void dispIcon(int x,int y,int indx){
   const unsigned char icon_set[]  = {
     0x00, 0x7e, 0x7e, 0x7e, 0x7c, 0x7c, 0x7c, 0x00,   // indx=0 'folderb', 8x8px 
@@ -224,7 +254,7 @@ void dispIcon(int x,int y,int indx){
     0x00, 0x6c, 0x7c, 0x3e, 0x7c, 0x7c, 0x10, 0x00,   // indx=3 'config', 8x8px
     0x00, 0x60, 0x68, 0x1c, 0x3e, 0x1e, 0x0e, 0x00,   // indx=4 'launch', 8x8px
     0x00, 0x1c, 0x3e, 0x7c, 0x7c, 0x3e, 0x1c, 0x00    // indx=5 'favorite', 8x8px
-};
+  };
 
   ssd1306_DrawBitmap(x,y,8,8,icon_set+8*indx);
 }
@@ -347,6 +377,10 @@ enum STATUS initIMAGEScreen(char * imageName,int type){
 
   sprintf(tmp,"WP:%c SYN:%c V:%d",WP,SYN,mountImageInfo.version);
   displayStringAtPosition(5,6*9,tmp);
+  if (mountImageInfo.favorite==1)
+    dispIcon12x12(115,18,0);
+  else
+    dispIcon12x12(115,18,1);
   ssd1306_UpdateScreen();
   return RET_OK;
 }

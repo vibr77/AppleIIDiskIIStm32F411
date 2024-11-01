@@ -83,12 +83,12 @@ enum STATUS mountNicFile(char * filename){
   long clusty=fil.obj.sclust;
   int i=0;
   fatNicCluster[i]=clusty;
-  log_info("file cluster %d:%ld\n",i,clusty);
+  log_info("file cluster %d:%ld",i,clusty);
   
   while (clusty!=1 && i<30){
     i++;
     clusty=get_fat((FFOBJID*)&fil,clusty);
-    log_info("file cluster %d:%ld\n",i,clusty);
+    log_info("file cluster %d:%ld",i,clusty);
     fatNicCluster[i]=clusty;
   }
 

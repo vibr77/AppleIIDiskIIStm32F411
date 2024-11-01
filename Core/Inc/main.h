@@ -117,6 +117,7 @@ enum STATUS initeBeaming();
 
 typedef struct image_info_s {
   char title[32];
+  uint8_t favorite;
   uint8_t type;
   uint8_t version;
   uint8_t writeProtected;

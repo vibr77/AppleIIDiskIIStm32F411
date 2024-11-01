@@ -4,8 +4,11 @@
 #ifndef disp
 #define disp
 
+
+char * getImageNameFromFullPath(char * fullPathImageName);
 void updateFSDisplay(int init);
 void updateChainedListDisplay(int init, list_t * lst );
+void dispIcon12x12(int x,int y,int indx);
 void dispIcon(int x,int y,int indx);
 void mountImageScreen(char * filename);
 void toggleMountOption(int i); 

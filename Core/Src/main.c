@@ -109,6 +109,12 @@ UART
   +Change SDIO precaler to 1 (instead of 2) for performance purpose
   +Add favorites primitives functions
   +rationnalization of display function
+  +add toggle add/remove favorite from image screen
+  -issue with SDIO IRQ on saveConfiguration
+  -issue with SDIO IRQ on favoriteSaveConfiguration
+  -issue with favorite filename displaying full path
+  -missing icon for favorite in ImageScreen
+
 31.10.24: v0.69
   +Add PO file support
   +Fix DSK driver getSdAddr 8*512 instead of 16*512, a track in DSK is 4096,8192
@@ -253,11 +259,13 @@ void (*ptrbtnDown)(void *);
 void (*ptrbtnEntr)(void *);
 void (*ptrbtnRet)(void *);
 
-char selItem[256];                                           // select from chainedlist item;
-char currentFullPath[1024];                                  // current path from root
-char currentPath[128];                                       // current directory name max 128 char
-char * currentImageFilename;                            // current mounted image filename;
-char currentFullPathImageFilename[1024];                     // fullpath from root image filename
+char selItem[MAX_FILENAME_LENGTH];                                            // select from chainedlist item;
+char currentFullPath[MAX_PATH_LENGTH];                                   // current path from root
+char currentPath[128];                                        // current directory name max 128 char
+char * currentImageFilename;                                  // current mounted image filename;
+char currentFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];  // fullpath from root image filename
+
+char tmpFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];      // fullpath from root image filename
 
 image_info_t mountImageInfo;
 
@@ -1040,7 +1048,6 @@ void processPrevFavoriteItem(){
       dispSelectedIndx--;
     }
     log_info("currentClistPos:%d, dispSelectedIndx:%d",currentClistPos,dispSelectedIndx);
-    //updateFSDisplay(-1);
     updateChainedListDisplay(-1,favoritesChainedList);
 }
 
@@ -1070,11 +1077,10 @@ void processSelectFavoriteItem(){
   list_node_t *pItem=NULL;
   
   pItem=list_at(favoritesChainedList, selectedFsIndx);
-  sprintf(selItem,"%s",(char*)pItem->val);
-  switchPage(MOUNT,selItem);
+  sprintf(tmpFullPathImageFilename,"%s",(char*)pItem->val);
+  char * imageName=getImageNameFromFullPath(tmpFullPathImageFilename);
+  switchPage(MOUNT,imageName);
 
-  log_debug("result |%s|",currentFullPath);
-  
 }
 
 void processPrevFSItem(){
@@ -1168,7 +1174,8 @@ void processSelectFSItem(){
     nextAction=FSDISP;
     
   }else{
-    switchPage(MOUNT,selItem);
+    sprintf(tmpFullPathImageFilename,"%s/%s",currentFullPath,selItem+2);
+    switchPage(MOUNT,selItem+2);
   }
   log_debug("result |%s|",currentFullPath);
   
@@ -1191,8 +1198,8 @@ void processMountOption(){
     switchPage(FS,currentFullPath);
     toggle=1;                               // rearm toggle switch
   }else{
+    
     nextAction=IMG_MOUNT;                       // Mounting can not be done via Interrupt, must be done via the main thread
-    //switchPage(FS,NULL);
   }
 }
 
@@ -1212,14 +1219,18 @@ void processBtnRet(){
 void toggleAddToFavorite(){
   if (isFavorite(currentFullPathImageFilename)==0){
     log_info("add from Favorite:%s",currentFullPathImageFilename);
-    addToFavorites(currentFullPathImageFilename);
+    if (addToFavorites(currentFullPathImageFilename)==RET_OK)
+      mountImageInfo.favorite=1;
   }
   else{
     log_info("remove from Favorite:%s",currentFullPathImageFilename);
-    removeFromFavorites(currentFullPathImageFilename);
+    if (removeFromFavorites(currentFullPathImageFilename)==RET_OK)
+      mountImageInfo.favorite=0;
   }
+
   buildLstFromFavorites();
   saveConfigFile();
+  initIMAGEScreen(NULL,0);
 }
 
 enum STATUS switchPage(enum page newPage,void * arg){
@@ -1271,7 +1282,7 @@ enum STATUS switchPage(enum page newPage,void * arg){
       currentPage=IMAGE;
       break;
     case MOUNT:
-      mountImageScreen((char*)arg+2);
+      mountImageScreen((char*)arg);
       ptrbtnEntr=processMountOption;
       ptrbtnUp=processToogleOption;
       ptrbtnDown=processToogleOption;
@@ -1496,6 +1507,12 @@ enum STATUS mountImagefile(char * filename){
   flgImageMounted=1;
   sprintf(currentFullPathImageFilename,"%s",filename);
   log_info("currentFullPathImageFilename:%s",currentFullPathImageFilename);
+
+  if (isFavorite(currentFullPathImageFilename)==1)
+    mountImageInfo.favorite=1;
+  else
+    mountImageInfo.favorite=0;
+
   return RET_OK;
 }
 
@@ -1675,24 +1692,12 @@ int main(void)
         log_info("init default and save configFile");
       }
     }else{
+      getFavorites();
+      buildLstFromFavorites();
+      //wipeFavorites();
       log_info("loading configFile: OK");
     }
 
-    getFavorites();
-    //addToFavorites("F|test2.nic");
-    //addToFavorites("F|test4.nic");
-    //addToFavorites("test5");
-    //removeFromFavorites("test2");
-    //removeFromFavorites("test3");
-    buildLstFromFavorites();
-    printChainedList();
-    buildLstFromFavorites();
-    printChainedList();
-    //wipeFavorites();
-    saveConfigFile();
-
-   // while(1);
-      
     imgFile=(char*)getConfigParamStr("lastFile");
     char * tmp=(char*)getConfigParamStr("currentPath");
     
@@ -1940,32 +1945,25 @@ int main(void)
         
         case IMG_MOUNT:
           flgImageMounted=0;
-          int len=strlen(currentFullPath)+strlen(selItem)+1;                      // Ugly malloc to be fixed 
-          char * tmp=(char *)malloc(len*sizeof(char));
-          sprintf(tmp,"%s/%s",currentFullPath,selItem+2);
+          flgBeaming=0;
           
-          currentImageFilename=(char*)malloc(512*sizeof(char));
-          sprintf(currentImageFilename,"%s",selItem+2);
-          
-          if (setConfigParamStr("lastFile",tmp)==RET_ERR){
-            log_error("Error in setting param to configFie:lastImageFile %s",tmp);
+          if (setConfigParamStr("lastFile",tmpFullPathImageFilename)==RET_ERR){
+            log_error("Error in setting param to configFie:lastImageFile %s",tmpFullPathImageFilename);
           }
 
-          if(mountImagefile(tmp)==RET_OK){
+          if(mountImagefile(tmpFullPathImageFilename)==RET_OK){
             if (initeBeaming()==RET_OK){                                         // <!> TO Be tested
               processDeviceEnableInterrupt(DEVICE_ENABLE_Pin);
-              switchPage(IMAGE,tmp);
+              switchPage(IMAGE,tmpFullPathImageFilename);
             }
-            dumpConfigParams();
+
             if (saveConfigFile()==RET_ERR){
               log_error("Error in saving JSON to file");
             }else{
               log_info("saving configFile: OK");
             }
           }
-          log_info("current:%s",currentImageFilename);
-          
-          free(tmp);
+          sprintf(currentFullPathImageFilename,"%s",tmpFullPathImageFilename);
           nextAction=NONE;
           break;
 
