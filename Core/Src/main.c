@@ -1,8 +1,8 @@
 /* USER CODE BEGIN Header */
 /*
 __   _____ ___ ___        Author: Vincent BESSON
- \ \ / /_ _| _ ) _ \      Release: 0.70
-  \ V / | || _ \   /      Date: 2024.10.31
+ \ \ / /_ _| _ ) _ \      Release: 0.71
+  \ V / | || _ \   /      Date: 2024.11.02
    \_/ |___|___/_|_\      Description: Apple Disk II Emulator on STM32F4x
                 2024      Licence: Creative Commons
 ______________________
@@ -11,7 +11,7 @@ ______________________
 Todo:
 - Add the screen PWR on a pin and not directly on the +3.3V
 - Add 74LS125 to protect the STM32 against AII over current
-- Relocate all display function & Ux navigation from main.c to display.c
+
 
 Note 
 + CubeMX is needed to generate the code not included such as drivers folders and ...
@@ -102,20 +102,23 @@ UART
 
 // Changelog
 /*
-01.11.24: v0.70
-  +Add btn repetition for up/down (end of debouncer timer, check for btn state)
-  +Adjust TIM4 period on repeat and back to 400
-  +Change SDIO precaler to 1 (instead of 2) for performance purpose
-  +Add favorites primitives functions
-  +rationnalization of display function
-  +add toggle add/remove favorite from image screen
-  +add favorite parsing on Image Mounting
-  +fix issue with SDIO IRQ on saveConfiguration
-  +fix issue with SDIO IRQ on favoriteSaveConfiguration
-  +fix issue with favorite filename displaying full path
-  +fix missing icon for favorite in ImageScreen
-  +add define.h
-  +fix init chainedlist based screen with 0 and first row selected
+01.11.24: v0.71
+  +feat: config Menu
+  +feat: favorites
+  +Add: btn repetition for up/down (end of debouncer timer, check for btn state)
+  +Adjust: TIM4 period on repeat and back to 400
+  +Change: SDIO precaler to 1 (instead of 2) for performance purpose
+  +Add: favorites primitives functions
+  +refactor: rationnalization of display function
+  +add: toggle add/remove favorite from image screen
+  +add: favorite parsing on Image Mounting
+  +fix: issue with SDIO IRQ on saveConfiguration
+  +fix: issue with SDIO IRQ on favoriteSaveConfiguration
+  +fix: issue with favorite filename displaying full path
+  +fix: missing icon for favorite in ImageScreen
+  +add: define.h
+  +fix: init chainedlist based screen with 0 and first row selected
+  +refactor: display function
 
 31.10.24: v0.69
   +Add PO file support
@@ -1128,7 +1131,7 @@ enum STATUS mountImagefile(char * filename){
   while(fsState!=READY){};
   fsState=BUSY;
 
-  fr = f_mount(&fs, "", 1);                 // to be checked 
+  //fr = f_mount(&fs, "", 1);                 // to be checked 
 
   fr = f_stat(filename, &fno);
   switch (fr) {
@@ -1336,15 +1339,16 @@ int main(void)
   int trk=35;
   ph_track=160;
   currentFullPathImageFilename[0]=0x0;
+  currentFullPath[0]=0x0;
   tmpFullPathImageFilename[0]=0x0;
 
   log_info("************** BOOTING ****************");                      // Data to send
   log_info("**     This is the sound of sea !    **");
   log_info("***************************************");
   
-  initScreen();                                                             // I2C Screen init                  
+  initSplashScreen();                                                       // I2C Screen init                  
                                             
-  HAL_Delay(750);
+  HAL_Delay(SPLASHSCREEN_DURATION);
 
   EnableTiming();                                                           // Enable WatchDog to get precise CPU Cycle counting
 
@@ -1379,8 +1383,6 @@ int main(void)
   processDeviceEnableInterrupt(DEVICE_ENABLE_Pin);
  
   dirChainedList = list_new();                                                       // ChainedList to manage File list in current path
-                                                                                     // Current index in the chained List
-  //lastlistPos=0;                                                                   // Last index in the chained list
 
   mountImageInfo.optimalBitTiming=32;
   mountImageInfo.writeProtected=0;
@@ -1397,8 +1399,6 @@ int main(void)
   int bootMode=0;
 
   if (fres == FR_OK) {
-
-    //f_unlink("/sdiskConfig.json");                                                // <!> TODO : to be removed in production 
 
     if (loadConfigFile()==RET_ERR){
       log_error("loading configFile error");
@@ -1429,11 +1429,9 @@ int main(void)
     
     if (imgFile!=NULL){
       log_info("lastFile:%s",imgFile);
-      //currentImageFilename=(char*)malloc(512*sizeof(char));
       sprintf(tmpFullPathImageFilename,"%s",imgFile);
     }
 
-    //currentFullPath[0]=0x0;                                  // <!> TODO : to be removed in production                                
     walkDir(currentFullPath);
 
   }else{
@@ -1519,8 +1517,6 @@ int main(void)
     if (flgBeaming==1){
       switchPage(IMAGE,currentFullPathImageFilename);
     }
-
-    //switchPage(FS,NULL);
     
   unsigned long cAlive=0;
   volatile int newBitSize=0;

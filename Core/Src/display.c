@@ -13,7 +13,7 @@
 extern list_t * dirChainedList;
 extern list_t * favoritesChainedList;
 extern char currentFullPath[MAX_FULLPATH_LENGTH]; 
-extern char currentPath[128];
+extern char currentPath[MAX_PATH_LENGTH];
 extern char currentFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];  // fullpath from root image filename
 extern char tmpFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];      // fullpath from root image filename
 extern unsigned char flgImageMounted;
@@ -85,7 +85,7 @@ enum STATUS switchPage(enum page newPage,void * arg){
       ptrbtnUp=processPrevConfigItem;
       ptrbtnDown=processNextConfigItem;
       ptrbtnEntr=processSelectConfigItem;
-      ptrbtnRet=processUpdirConfigItem;
+      ptrbtnRet=processReturnConfigItem;
       currentPage=CONFIG;
       break;
 
@@ -200,7 +200,7 @@ void updateChainedListDisplay(int init, list_t * lst ){
     if (value!=NULL){
       if (value[0]=='D' && value[1]=='|'){
         fsDispItem[i].icon=0;   
-        fsDispItem[i].type=0;                 // 0 -> Directory
+        fsDispItem[i].type=0;                // 0 -> Directory
         snprintf(fsDispItem[i].title,24,"%s",value+2); 
       }else if (value[0]=='F' && value[1]=='|'){
         fsDispItem[i].icon=1; 
@@ -247,7 +247,6 @@ void updateChainedListDisplay(int init, list_t * lst ){
 
 
 /**
- * 
  * 
  *   FILESYSTEM PAGE
  * 
@@ -299,7 +298,7 @@ void processUpdirFSItem(){
   int len=strlen(currentFullPath);
   for (int i=len-1;i!=-1;i--){
     if (currentFullPath[i]=='/'){
-      snprintf(currentPath,128,"%s",currentFullPath+i);
+      snprintf(currentPath,MAX_PATH_LENGTH,"%s",currentFullPath+i);
       currentFullPath[i]=0x0;
       dispSelectedIndx=0;
       currentClistPos=0;
@@ -326,7 +325,7 @@ void processSelectFSItem(){
   if (selItem[2]=='.' && selItem[3]=='.'){                // selectedItem is [UpDir];
     for (int i=len-1;i!=-1;i--){
       if (currentFullPath[i]=='/'){
-        snprintf(currentPath,128,"%s",currentFullPath+i);
+        snprintf(currentPath,MAX_PATH_LENGTH,"%s",currentFullPath+i);
         currentFullPath[i]=0x0;
         dispSelectedIndx=0;
         currentClistPos=0;
@@ -391,13 +390,14 @@ void toggleMountOption(int i){
   ssd1306_UpdateScreen();
 }
 
-void initScreen(){
+void initSplashScreen(){
   ssd1306_Init();
   ssd1306_FlipScreenVertically();
   
   ssd1306_Clear();
   ssd1306_SetColor(White);
   displayStringAtPosition(30,3*9,"SmartDisk ][");
+  displayStringAtPosition(90,6*9,_VERSION);
   ssd1306_UpdateScreen();
 }
 
@@ -653,7 +653,7 @@ void processSelectConfigItem(){
 
 }
 
-void processUpdirConfigItem(){
+void processReturnConfigItem(){
   switchPage(MENU,NULL);
 }
 
@@ -894,7 +894,7 @@ menuIcon[3]=3;
   ssd1306_SetColor(White);
   ssd1306_DrawLine(0,6*9-1,127,6*9-1);
 
-  displayStringAtPosition(1,6*9+1,VERSION);
+  displayStringAtPosition(1,6*9+1,_VERSION);
   ssd1306_UpdateScreen();
   currentMainMenuItem=i;
   return;
@@ -1059,7 +1059,6 @@ void clearScreen(){
 }
 
 void displayStringAtPosition(int x,int y,char * str){
-  
   ssd1306_SetCursor(x,y);
   ssd1306_WriteString(str,Font_6x8);
 }

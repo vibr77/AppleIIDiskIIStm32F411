@@ -1,5 +1,9 @@
 
 
+#define _VERSION "v0.71"
+
+#define SPLASHSCREEN_DURATION 1000
+
 #define MAX_FAVORITES 10
 
 #define MAX_FILENAME_LENGTH 64
