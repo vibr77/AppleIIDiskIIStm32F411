@@ -848,7 +848,7 @@ enum STATUS walkDir(char * path){
 
   if (fres == FR_OK){
       if (strcmp(path,"") && strcmp(path,"/")){
-        fileName=malloc(128*sizeof(char));
+        fileName=malloc(64*sizeof(char));
         sprintf(fileName,"D|..");
         list_rpush(dirChainedList, list_node_new(fileName));
         lastlistPos++;
@@ -898,13 +898,13 @@ enum STATUS walkDir(char * path){
           }
 
         
-        log_info("%c%c%c%c %10d %s/%s",
+        /*log_info("%c%c%c%c %10d %s/%s",
           ((fno.fattrib & AM_DIR) ? 'D' : '-'),
           ((fno.fattrib & AM_RDO) ? 'R' : '-'),
           ((fno.fattrib & AM_SYS) ? 'S' : '-'),
           ((fno.fattrib & AM_HID) ? 'H' : '-'),
           (int)fno.fsize, path, fno.fname);
-        
+        */
       }
     }
   
@@ -1009,11 +1009,11 @@ void processBtnInterrupt(uint16_t GPIO_Pin){
       break;
     case BTN_ENTR_Pin:
       ptrbtnEntr(NULL);
-      log_info("BTN ENT");
+      log_debug("BTN ENT");
       break;
     case BTN_RET_Pin:
       ptrbtnRet(NULL);
-      log_info("BTN RET");
+      log_debug("BTN RET");
       break;
     default:
       break;
@@ -1240,6 +1240,17 @@ enum STATUS switchPage(enum page newPage,void * arg){
 // Manage with page to display and the attach function to button Interrupt  
   
   switch(newPage){
+    
+    case CONFIG:
+      initConfigMenuScreen(0);
+      updateConfigMenuDisplay(0);
+
+      ptrbtnUp=processPrevConfigItem;
+      ptrbtnDown=processNextConfigItem;
+      ptrbtnEntr=processSelectConfigItem;
+      ptrbtnRet=processUpdirConfigItem;
+      currentPage=CONFIG;
+      break;
     case FAVORITE:
       initFavoriteScreen();
       updateChainedListDisplay(0, favoritesChainedList);
@@ -1561,9 +1572,6 @@ enum STATUS initeBeaming(){
   
   flgBeaming=1;
 
-  //if (flgDeviceEnable==1)                                 // TO BE TESTED
-  //   HAL_TIM_PWM_Start_IT(&htim3,TIM_CHANNEL_4);
-
   return RET_OK;
 }
 
@@ -1681,6 +1689,8 @@ int main(void)
   database=fs.database;
   char * imgFile=NULL;
 
+  int bootMode=0;
+
   if (fres == FR_OK) {
 
     //f_unlink("/sdiskConfig.json");                                                // <!> TODO : to be removed in production 
@@ -1696,6 +1706,10 @@ int main(void)
     }else{
       getFavorites();
       buildLstFromFavorites();
+      if (getConfigParamInt("bootMode",&bootMode)==RET_ERR)
+        log_error("error getting bootMode from Config");
+      else 
+        log_info("bootMode=%d",bootMode);
       //wipeFavorites();
       log_info("loading configFile: OK");
     }
@@ -1721,22 +1735,30 @@ int main(void)
     log_error("Error mounting sdcard %d",fres);
   }
 
-  if (mountImagefile(currentImageFilename)==RET_OK){
-    
-    switchPage(IMAGE,currentImageFilename);
 
-    if (flgImageMounted==1){                                            // <!> TO BE TESTED
-      if (initeBeaming()==RET_OK)
-        processDeviceEnableInterrupt(DEVICE_ENABLE_Pin);
-    }
-  
-  }else{
-    if (currentImageFilename!=NULL)
-      log_error("imageFile mount error: %s",imgFile);
-    else
-      log_error("no imageFile to mount");
+
+  if (bootMode==0){
+    if (mountImagefile(currentImageFilename)==RET_OK){
+      
+      switchPage(IMAGE,currentImageFilename);
+
+      if (flgImageMounted==1){                                            // <!> TO BE TESTED
+        if (initeBeaming()==RET_OK)
+          processDeviceEnableInterrupt(DEVICE_ENABLE_Pin);
+      }
     
+    }else{
+      if (currentImageFilename!=NULL)
+        log_error("imageFile mount error: %s",imgFile);
+      else
+        log_error("no imageFile to mount");
+      
+      switchPage(FS,currentFullPath);
+    }
+  }else if (bootMode==1){
     switchPage(FS,currentFullPath);
+  }else if (bootMode==2){
+    switchPage(FAVORITE,NULL);
   }
 
   irqReadTrack();

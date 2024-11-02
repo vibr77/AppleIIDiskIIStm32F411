@@ -24,7 +24,14 @@ void processNextMainMenuScreen();
 void processActiveMainMenuScreen();
 void initMainMenuScreen(int i);
 
+
+void processPrevConfigItem();
+void processNextConfigItem();
+void processSelectConfigItem();
+void processUpdirConfigItem();
+
 void initConfigMenuScreen(int i);
+void updateConfigMenuDisplay(int init);
 
 void initSdEjectScreen();
 void initFSScreen(char * path);

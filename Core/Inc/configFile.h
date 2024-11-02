@@ -16,7 +16,7 @@ void dumpConfigParams();
 void setConfigFileDefaultValues();
 
 const char * getConfigParamStr(char * key);
-enum STATUS getConfigParamInt(char * key,int value);
+enum STATUS getConfigParamInt(char * key,int * value);
 
 enum STATUS setConfigParamStr(char * key,char * value);
 enum STATUS setConfigParamInt(char * key,int value);

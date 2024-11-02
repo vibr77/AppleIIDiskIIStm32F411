@@ -7,6 +7,7 @@
 #include "main.h"
 #include "log.h"
 #include "favorites.h"
+#include "configFile.h"
 
 extern list_t * dirChainedList;
 extern list_t * favoritesChainedList;
@@ -16,6 +17,7 @@ extern int currentClistPos;
 extern image_info_t mountImageInfo;
 
 uint8_t selectedFsIndx=0;
+uint8_t selectedIndx=0;
 
 #define MAX_LINE_ITEM 4
 uint8_t dispSelectedIndx;                        // Which line is selected
@@ -166,7 +168,9 @@ void dispIcon(int x,int y,int indx){
     0x08, 0xd8, 0x7c, 0x3f, 0x3f, 0x7c, 0xd8, 0x08,   // indx=2 'star', 8x8px
     0x00, 0x6c, 0x7c, 0x3e, 0x7c, 0x7c, 0x10, 0x00,   // indx=3 'config', 8x8px
     0x00, 0x60, 0x68, 0x1c, 0x3e, 0x1e, 0x0e, 0x00,   // indx=4 'launch', 8x8px
-    0x00, 0x1c, 0x3e, 0x7c, 0x7c, 0x3e, 0x1c, 0x00    // indx=5 'favorite', 8x8px
+    0x00, 0x1c, 0x3e, 0x7c, 0x7c, 0x3e, 0x1c, 0x00,   // indx=5 'favorite', 8x8px
+    0x00, 0x7e, 0x42, 0x42, 0x42, 0x42, 0x7e, 0x00,   // indx=6 'chkbox_empty", 8x8px
+    0x00, 0x7e, 0x7e, 0x7e, 0x7e, 0x7e, 0x7e, 0x00    // indx=7 'chkbox_full", 8x8px
   };
 
   ssd1306_DrawBitmap(x,y,8,8,icon_set+8*indx);
@@ -231,29 +235,10 @@ void initScreen(){
 
 enum STATUS initIMAGEScreen(char * imageName,int type){
   
-  /*
-  if (imageName==NULL){
-    log_error("imageName is null");
-    return RET_ERR;
-  }
-  */
 
   char tmp[32];
   clearScreen();
   ssd1306_SetColor(White);
-  
-  /*
-    int len=strlen(imageName);
-    int i=0;
-
-    for (i=len-1;i!=0;i--){
-      if (imageName[i]=='/')
-        break;
-    }
-
-    snprintf(tmp,20,"%s",imageName+i+1);
-    len=strlen(tmp);
-  */
   
   char CL,WP,SYN;
   displayStringAtPosition(5,1*9,mountImageInfo.title);
@@ -299,22 +284,16 @@ enum STATUS initIMAGEScreen(char * imageName,int type){
 }
 
 void updateIMAGEScreen(uint8_t status,uint8_t trk){
-  //unsigned long t1,t2,/*diff1*/;  
-   //DWT->CYCCNT = 0;
-   //t1 = DWT->CYCCNT; 
+
   if (currentTrk!=trk || status!=currentStatus){
 
     char tmp[32];
 
     if (currentTrk!=trk){
-      //sprintf(tmp,"Track: %02d ",trk);
       sprintf(tmp,"TRACK: %02d",trk);
       displayStringAtPosition(5,3*9,tmp);
       currentTrk=trk;
     }
-     //   t2 = DWT->CYCCNT;
-    //diff1 = t2 - t1;
-    //log_info("diff Str: %d",diff1);
     
     if (status==0){
       sprintf(tmp,"RD");
@@ -329,6 +308,274 @@ void updateIMAGEScreen(uint8_t status,uint8_t trk){
   }
   return;
 }
+/*
+*
+* CONFIG MENU SCREEN
+*
+*/
+
+typedef struct MNUDISPITEM{
+  uint8_t displayPos;
+  uint8_t update;
+  uint8_t selected;
+  uint8_t mnuItemIndx;
+  uint8_t status;
+}MNUDISPITEM_t;
+
+MNUDISPITEM_t mnuDispItem[MAX_LINE_ITEM]; // LINE OF MENU ITEM DISP ON SCREEN
+
+typedef struct MNUITEM{
+  uint8_t type;             // 0 -> simpleLabel; 1-> boolean; 2-> value
+  uint8_t icon;
+  char title[32];
+  
+  void (* triggerfunction)();
+  uint8_t arg;
+  uint8_t ival;
+}MNUITEM_t;
+
+MNUITEM_t mnuItem[6]; // MENU ITEM DEFINITION
+
+enum STATUS processBootOption(int arg){
+  if (arg==0){
+    mnuItem[0].ival=1;
+    mnuItem[1].ival=0;
+    mnuItem[2].ival=0;
+  }else if (arg==1){
+    mnuItem[0].ival=0;
+    mnuItem[1].ival=1;
+    mnuItem[2].ival=0;
+  }else if (arg==2){
+    mnuItem[0].ival=0;
+    mnuItem[1].ival=0;
+    mnuItem[2].ival=1;
+  }
+  
+  updateConfigMenuDisplay(-1);
+  setConfigParamInt("bootMode",arg);
+  saveConfigFile();
+return RET_OK;
+}
+
+void processClearprefs(){
+  f_unlink("/sdiskConfig.json"); 
+  displayStringAtPosition(1,6*9+1,"Prefs cleared");
+  ssd1306_UpdateScreen();
+}
+
+void processClearFavorites(){
+  wipeFavorites();
+  saveConfigFile();
+  displayStringAtPosition(1,6*9+1,"Favorites cleared");
+  ssd1306_UpdateScreen();
+}
+
+void processMakeFs(){
+
+}
+
+void processPrevConfigItem(){
+  uint8_t itemCount=sizeof(mnuItem)/sizeof(MNUITEM_t);
+    
+  if (itemCount<=MAX_LINE_ITEM && dispSelectedIndx==0){
+    dispSelectedIndx=itemCount-1;
+  }else if (dispSelectedIndx==0)
+    if (currentClistPos==0)
+      currentClistPos=itemCount-1;
+    else
+      currentClistPos=(currentClistPos-1)%itemCount;
+  else{
+    dispSelectedIndx--;
+  }
+  log_info("currentClistPos:%d, dispSelectedIndx:%d",currentClistPos,dispSelectedIndx);
+  updateConfigMenuDisplay(-1);
+}
+
+void processNextConfigItem(){
+  uint8_t itemCount=sizeof(mnuItem)/sizeof(MNUITEM_t);
+    
+  if (itemCount<=MAX_LINE_ITEM && dispSelectedIndx==itemCount-1){
+    dispSelectedIndx=0;
+  }else if (dispSelectedIndx==(MAX_LINE_ITEM-1))
+    currentClistPos=(currentClistPos+1)%itemCount;
+  else{
+    dispSelectedIndx++;
+  }
+  log_info("currentClistPos:%d, dispSelectedIndx:%d",currentClistPos,dispSelectedIndx);
+  updateConfigMenuDisplay(-1);
+}
+
+void processSelectConfigItem(){
+  MNUITEM_t * cMnuItem;
+
+  cMnuItem=&mnuItem[selectedIndx];
+  log_info("selected:%s ",cMnuItem->title);
+  cMnuItem->triggerfunction(cMnuItem->arg);
+
+}
+
+void processUpdirConfigItem(){
+  switchPage(MENU,NULL);
+}
+
+void updateConfigMenuDisplay(int init){
+  int offset=5;
+  int h_offset=10;
+
+  MNUITEM_t * cMnuItem;
+  uint8_t mnuIndx=0;
+  uint8_t itemCount=sizeof(mnuItem)/sizeof(MNUITEM_t);
+
+  log_info("lst_count:%d init:%d",itemCount,init);
+
+  if (init!=-1){
+    currentClistPos=init;
+    dispSelectedIndx=0;
+  }
+
+  for (int i=0;i<MAX_LINE_ITEM;i++){
+    
+    mnuDispItem[i].status=1;                   // starting with item status =0, if an error then status = -1;
+    mnuDispItem[i].displayPos=i;               // corresponding line on the screen
+    mnuDispItem[i].update=1;
+    
+    if (i>itemCount-1){                          // End of the list before the MAX_LINE_ITEM
+      mnuDispItem[i].status=0;
+      continue;
+    }
+
+    mnuIndx=(currentClistPos+i)%itemCount;
+    cMnuItem=&mnuItem[mnuIndx];
+    if (mnuDispItem[i].selected==1 && i!=dispSelectedIndx){    // It was selected (inversed, thus we need to reinverse)
+        mnuDispItem[i].selected=0;
+    }else if (i==dispSelectedIndx){
+      mnuDispItem[i].selected=1;                // first item of the list is selected
+      selectedIndx=mnuIndx;
+    }  
+      
+    if (cMnuItem!=NULL)
+      mnuDispItem[i].mnuItemIndx=mnuIndx;
+    else{
+      mnuDispItem[i].status=0;
+      continue;
+    }
+
+  }
+
+  // Render Part
+  for (int i=0;i<MAX_LINE_ITEM;i++){
+
+    clearLineStringAtPosition(1+i,offset);
+    if (mnuDispItem[i].status!=0){
+      uint8_t cMnuIndx=mnuDispItem[i].mnuItemIndx;
+      ssd1306_SetColor(White);
+      dispIcon(1,(1+i)*9+offset,mnuItem[cMnuIndx].icon);
+
+      ssd1306_SetColor(White);
+      displayStringAtPosition(1+h_offset,(1+i)*9+offset,mnuItem[cMnuIndx].title);
+      
+      if (mnuItem[cMnuIndx].type==1){
+        if (mnuItem[cMnuIndx].ival==1)
+          dispIcon(118,(1+i)*9+offset,7); // 7 FULL
+        else
+          dispIcon(118,(1+i)*9+offset,6); // 7 FULL
+      }
+      
+      if (mnuDispItem[i].selected==1){
+        inverseStringAtPosition(1+i,offset);
+      }
+    }
+  }
+
+  ssd1306_UpdateScreen();
+}
+
+void initConfigMenuScreen(int i){
+  
+  
+  u_int8_t numItems=6;
+  uint8_t h_offset=10;
+
+  if (i>=numItems)
+    i=0;
+
+  if (i<0)
+    i=numItems-1;
+
+  int bootMode=0;
+  if (getConfigParamInt("bootMode",&bootMode)==RET_ERR)
+    log_error("error getting bootMode from Config");
+  else 
+    log_info("bootMode=%d",bootMode);
+
+  sprintf(mnuItem[0].title,"Boot last image");
+  mnuItem[0].type=1;
+  mnuItem[1].icon=0;
+  mnuItem[0].triggerfunction=processBootOption;
+  mnuItem[0].arg=0;
+  mnuItem[0].ival=0;
+
+
+  sprintf(mnuItem[1].title,"Boot last dir");
+  mnuItem[1].type=1;
+  mnuItem[1].icon=0;
+  mnuItem[1].triggerfunction=processBootOption;
+  mnuItem[1].arg=1;
+  mnuItem[1].ival=0;
+
+  sprintf(mnuItem[2].title,"Boot favorites");
+  mnuItem[2].type=1;
+  mnuItem[2].icon=1;
+  mnuItem[2].triggerfunction=processBootOption;
+  mnuItem[2].arg=2;
+  mnuItem[2].ival=0;
+
+
+  mnuItem[bootMode].ival=1;
+
+
+  sprintf(mnuItem[3].title,"Clear prefs");
+  mnuItem[3].type=0;
+  mnuItem[3].icon=0;
+  mnuItem[3].triggerfunction=processClearprefs;
+  mnuItem[3].arg=0;
+
+  sprintf(mnuItem[4].title,"Clear favorites");
+  mnuItem[4].type=0;
+  mnuItem[4].icon=0;
+  mnuItem[4].triggerfunction=processClearFavorites;
+  mnuItem[4].arg=0;
+
+  sprintf(mnuItem[5].title,"Make filesystem");
+  mnuItem[5].type=0;
+  mnuItem[5].icon=0;
+  mnuItem[5].triggerfunction=processMakeFs;
+  mnuItem[5].arg=0;
+
+  clearScreen();
+
+  ssd1306_SetColor(White);
+  displayStringAtPosition(0,0,"Config Menu");
+  ssd1306_DrawLine(0,8,127,8);
+
+  ssd1306_SetColor(White);
+  ssd1306_DrawLine(0,6*9-1,127,6*9-1);
+
+  displayStringAtPosition(1,6*9+1,VERSION);
+  ssd1306_UpdateScreen();
+
+
+  return;
+
+}
+
+
+/**
+ * 
+ * MAIN MENU SCREEN
+ * 
+ */
+
 
 int8_t currentMainMenuItem=0;
 
@@ -355,6 +602,10 @@ void processActiveMainMenuScreen(){
 
     case 2:
       switchPage(IMAGE,NULL);
+      break;
+
+    case 3:
+       switchPage(CONFIG,NULL);
       break;
 
     default:
@@ -410,38 +661,6 @@ menuIcon[3]=3;
   ssd1306_UpdateScreen();
   currentMainMenuItem=i;
   return;
-
-}
-
-void initConfigMenuScreen(int i){
-
-  const char * menuItem[5];
-  u_int8_t numItems=2;
-
-  if (i>numItems)
-    i=0;
-
-  menuItem[0]="AutoMount";
-  menuItem[1]="Format FS";
-
-  
-  clearScreen();
-
-  ssd1306_SetColor(White);
-  for (int j=0;j<numItems;j++){
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
-    displayStringAtPosition(30,(2+j)*9,menuItem[j]);
-
-  }
-
-  ssd1306_SetColor(Inverse);
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
-  displayStringAtPosition(30,(2+i)*9,menuItem[i]);
-#pragma GCC diagnostic pop
-
-  ssd1306_UpdateScreen();
 
 }
 

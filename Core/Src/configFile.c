@@ -124,7 +124,7 @@ const char * getConfigParamStr(char * key){
     
 }
 
-enum STATUS getConfigParamInt(char * key,int value){
+enum STATUS getConfigParamInt(char * key,int * value){
     
     const cJSON *obj = NULL;
     if (key==NULL){
@@ -133,8 +133,8 @@ enum STATUS getConfigParamInt(char * key,int value){
     obj = cJSON_GetObjectItemCaseSensitive(json, key);
     
     if (cJSON_IsNumber(obj)){
-        //printf("getParam:%s %d\n",key,obj->valueint);
-        value= obj->valueint;
+        printf("getParam:%s %d\n",key,obj->valueint);
+        *value= obj->valueint;
         return RET_OK;
     }else
         return RET_ERR; 
