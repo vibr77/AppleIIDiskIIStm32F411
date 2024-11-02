@@ -13,7 +13,7 @@
 #include "cJSON.h"
 
 extern FATFS fs;
-const char configFilename[]="sdiskConfig.json";
+
 extern volatile enum FS_STATUS fsState;
 cJSON *json;
 
@@ -28,7 +28,7 @@ enum STATUS loadConfigFile(){
     
     while(fsState!=READY){};
     fsState=BUSY;
-    fres = f_open(&fil, configFilename, FA_READ );
+    fres = f_open(&fil, CONFIGFILE_NAME, FA_READ );
     if(fres != FR_OK) {
         log_error("f_open error (%i)\n", fres);
         fsState=READY;
@@ -88,7 +88,7 @@ enum STATUS saveConfigFile(){
     while(fsState!=READY){};
 
     fsState=BUSY;
-    fres = f_open(&fil, configFilename, FA_WRITE | FA_CREATE_ALWAYS);
+    fres = f_open(&fil, CONFIGFILE_NAME, FA_WRITE | FA_CREATE_ALWAYS);
     if(fres != FR_OK) {
         log_error("f_open error (%i)\n", fres);
         fsState=READY;
@@ -112,6 +112,11 @@ enum STATUS saveConfigFile(){
 
 void cleanJsonMem(){
     // json_value_free(root_value);
+}
+
+enum STATUS deleteConfigFile(){
+    f_unlink(CONFIGFILE_NAME); 
+    return RET_OK;
 }
 
 const char * getConfigParamStr(char * key){
@@ -158,7 +163,7 @@ enum STATUS setConfigParamStr(char * key,char * value){
         cJSON_AddStringToObject(json, key, value);
 
     return RET_OK;
-   
+
 }
 
 enum STATUS setConfigParamInt(char * key,int value){
@@ -177,6 +182,3 @@ enum STATUS setConfigParamInt(char * key,int value){
 
     return RET_OK;
 }
-
-
-

@@ -5,40 +5,80 @@
 #define disp
 
 
+enum page{FS,MOUNT,MENU,IMAGE,FAVORITE,CONFIG};
+
 char * getImageNameFromFullPath(char * fullPathImageName);
-void updateFSDisplay(int init);
+
+enum STATUS switchPage(enum page newPage,void * arg);
+
 void updateChainedListDisplay(int init, list_t * lst );
-void dispIcon12x12(int x,int y,int indx);
-void dispIcon(int x,int y,int indx);
-void mountImageScreen(char * filename);
-void toggleMountOption(int i); 
-void clearScreen();
+
+
+
+/*      INIT SCREEN             */
 void initScreen();
 
+/*      FILESYSTEM SCREEN      */
+void processPrevFSItem();
+void processNextFSItem();
+void processUpdirFSItem();
+void processSelectFSItem();
+
+void processToogleOption();
+void processMountOption();
+void nothing();
+void processBtnRet();
+
+/*      MOUNT IMAGE SCREEN      */
+void mountImageScreen(char * filename);
+void toggleMountOption(int i); 
+
+/*      IMAGE SCREEN             */
 enum STATUS initIMAGEScreen(char * imageName,int type);
-
 void updateIMAGEScreen(uint8_t status,uint8_t trk);
+void toggleAddToFavorite();
 
+
+/*      MAIN MENU SCREEN        */
 void processPreviousMainMenuScreen();
 void processNextMainMenuScreen();
 void processActiveMainMenuScreen();
 void initMainMenuScreen(int i);
+
+/*      CONFIG MENU SCREEN      */
 
 void processPrevConfigItem();
 void processNextConfigItem();
 void processSelectConfigItem();
 void processUpdirConfigItem();
 
+void processBootOption(int arg);
+void processClearprefs();
+void processClearFavorites();
+
 void initConfigMenuScreen(int i);
 void updateConfigMenuDisplay(int init);
 
 void initSdEjectScreen();
 void initFSScreen(char * path);
+
+
+/*      FAVORITE SCREEN         */
 void initFavoriteScreen();
+void processPrevFavoriteItem();
+void processNextFavoriteItem();
+void processReturnFavoriteItem();
+void processSelectFavoriteItem();
+
+/*      DISPLAY PRIMITIVES          */
+void clearScreen();
+
+void dispIcon12x12(int x,int y,int indx);
+void dispIcon(int x,int y,int indx);
 
 void displayStringAtPosition(int x,int y,char * str);
 void inverseStringAtPosition(int lineNumber,int offset);
 void clearLineStringAtPosition(int lineNumber,int offset);
-void displayFSItem();
+//void displayFSItem();
 
 #endif

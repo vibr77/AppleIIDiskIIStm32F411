@@ -14,13 +14,23 @@ extern list_t * dirChainedList;
 extern list_t * favoritesChainedList;
 extern char currentFullPath[MAX_FULLPATH_LENGTH]; 
 extern char currentPath[128];
-extern int currentClistPos;
+extern char currentFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];  // fullpath from root image filename
+extern char tmpFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];      // fullpath from root image filename
+extern unsigned char flgImageMounted;
 extern image_info_t mountImageInfo;
 
-uint8_t selectedFsIndx=0;
-uint8_t selectedIndx=0;
 
-#define MAX_LINE_ITEM 4
+/* BTN FUNCTION POINTER CALLED FROM IRQ*/
+extern void (*ptrbtnUp)(void *);                                 
+extern void (*ptrbtnDown)(void *);
+extern void (*ptrbtnEntr)(void *);
+extern void (*ptrbtnRet)(void *);
+
+extern enum action nextAction;
+
+uint8_t selectedIndx=0;
+uint8_t currentClistPos=0;
+
 uint8_t dispSelectedIndx;                        // Which line is selected
 
 typedef struct FSDISPITEM{
@@ -34,7 +44,9 @@ typedef struct FSDISPITEM{
   uint8_t chainedListPosition;
 }FSDISPITEM_t;
 
-FSDISPITEM_t fsDispItem[MAX_LINE_ITEM];
+FSDISPITEM_t fsDispItem[SCREEN_MAX_LINE_ITEM];
+
+enum page currentPage=0;
 
 int currentTrk=0;
 int currentStatus=0;
@@ -55,6 +67,90 @@ char * getImageNameFromFullPath(char * fullPathImageName){
   return fullPathImageName+i+1;
 
 }
+
+/*
+*     PAGE SWITCHER MAIN FUNCTION
+*/
+
+enum STATUS switchPage(enum page newPage,void * arg){
+
+// Manage with page to display and the attach function to button Interrupt  
+  
+  switch(newPage){
+    
+    case CONFIG:
+      initConfigMenuScreen(0);
+      updateConfigMenuDisplay(0);
+
+      ptrbtnUp=processPrevConfigItem;
+      ptrbtnDown=processNextConfigItem;
+      ptrbtnEntr=processSelectConfigItem;
+      ptrbtnRet=processUpdirConfigItem;
+      currentPage=CONFIG;
+      break;
+
+    case FAVORITE:
+      initFavoriteScreen();
+      updateChainedListDisplay(0, favoritesChainedList);
+
+      ptrbtnUp=processPrevFavoriteItem;
+      ptrbtnDown=processNextFavoriteItem;
+      ptrbtnEntr=processSelectFavoriteItem;
+      ptrbtnRet=processReturnFavoriteItem;
+      currentPage=FAVORITE;
+      break;
+
+    case FS:
+      initFSScreen(arg);
+      updateChainedListDisplay(0,dirChainedList);
+
+      ptrbtnUp=processPrevFSItem;
+      ptrbtnDown=processNextFSItem;
+      ptrbtnEntr=processSelectFSItem;
+      ptrbtnRet=processUpdirFSItem;
+      currentPage=FS;
+      break;
+
+    case MENU:
+      initMainMenuScreen(0);
+      ptrbtnUp=processPreviousMainMenuScreen;
+      ptrbtnDown=processNextMainMenuScreen;
+      ptrbtnEntr=processActiveMainMenuScreen;
+      ptrbtnRet=nothing;
+      currentPage=MENU;
+      break;
+
+    case IMAGE:
+      if (flgImageMounted==0){
+        log_error("No image mounted");
+        return RET_ERR;
+      }
+
+      initIMAGEScreen(arg,0);
+      ptrbtnUp=nothing;
+      ptrbtnDown=nothing;
+      ptrbtnEntr=toggleAddToFavorite;
+      ptrbtnRet=processBtnRet;
+      currentPage=IMAGE;
+      break;
+    
+    case MOUNT:
+      mountImageScreen((char*)arg);
+      ptrbtnEntr=processMountOption;
+      ptrbtnUp=processToogleOption;
+      ptrbtnDown=processToogleOption;
+      ptrbtnRet=processBtnRet;
+      currentPage=MOUNT;
+      break;
+    
+    default:
+      return RET_ERR;
+      break;
+  }
+  return RET_OK;
+}
+
+
 void updateChainedListDisplay(int init, list_t * lst ){
   int offset=5;
   int h_offset=10;
@@ -66,14 +162,14 @@ void updateChainedListDisplay(int init, list_t * lst ){
   uint8_t fsIndx=0;
   uint8_t lstCount=lst->len;
 
-  log_info("lst_count:%d init:%d",lstCount,init);
+  log_debug("lst_count:%d init:%d",lstCount,init);
 
   if (init!=-1){
     currentClistPos=init;
     dispSelectedIndx=0;
   }
 
-  for (int i=0;i<MAX_LINE_ITEM;i++){
+  for (int i=0;i<SCREEN_MAX_LINE_ITEM;i++){
     
     fsDispItem[i].status=1;                   // starting with item status =0, if an error then status = -1;
     fsDispItem[i].displayPos=i;               // corresponding line on the screen
@@ -90,7 +186,7 @@ void updateChainedListDisplay(int init, list_t * lst ){
         fsDispItem[i].selected=0;
     }else if (i==dispSelectedIndx){
       fsDispItem[i].selected=1;                // first item of the list is selected
-      selectedFsIndx=fsIndx;
+      selectedIndx=fsIndx;
     }  
       
     if (fsItem!=NULL)
@@ -123,7 +219,7 @@ void updateChainedListDisplay(int init, list_t * lst ){
   }
 
   // Render Part
-  for (int i=0;i<MAX_LINE_ITEM;i++){
+  for (int i=0;i<SCREEN_MAX_LINE_ITEM;i++){
 
     clearLineStringAtPosition(1+i,offset);
     if (fsDispItem[i].status!=0){
@@ -140,41 +236,118 @@ void updateChainedListDisplay(int init, list_t * lst ){
   }
 
   ssd1306_SetColor(White);
-  sprintf(tmp,"%02d/%02d",selectedFsIndx+1,lstCount);
+  if (lstCount>0)
+    sprintf(tmp,"%02d/%02d",selectedIndx+1,lstCount);
+  else
+    sprintf(tmp,"Empty");
   displayStringAtPosition(96,6*9+1,tmp);
 
   ssd1306_UpdateScreen();
 }
 
-// Icon converter BMP ->  https://mischianti.org/ssd1306-oled-display-draw-images-splash-and-animations-2/
-// <!> Generate Vertical 1 bit per pixel
 
-void dispIcon12x12(int x,int y,int indx){
-  const unsigned char icon12x12[]={
+/**
+ * 
+ * 
+ *   FILESYSTEM PAGE
+ * 
+ */
 
-    // 'fav_full_12x12', 12x12px
-0x00, 0x70, 0xf8, 0xfc, 0xfc, 0xf8, 0xf8, 0xfc, 0xfc, 0xf8, 0x70, 0x00, 0x00, 0x00, 0x00, 0x01, 
-0x03, 0x07, 0x07, 0x03, 0x01, 0x00, 0x00, 0x00,
-// 'fav_empty_12x12', 12x12px
-0x00, 0x70, 0xf8, 0x9c, 0x0c, 0x08, 0x08, 0x0c, 0x9c, 0xf8, 0x70, 0x00, 0x00, 0x00, 0x00, 0x01, 
-0x03, 0x06, 0x06, 0x03, 0x01, 0x00, 0x00, 0x00
-  };
-  ssd1306_DrawBitmap(x,y,12,12,icon12x12+24*indx);
+void processPrevFSItem(){
+    
+    uint8_t lstCount=dirChainedList->len;
+    
+    if (lstCount<=SCREEN_MAX_LINE_ITEM && dispSelectedIndx==0){
+      dispSelectedIndx=lstCount-1;
+    }else if (dispSelectedIndx==0)
+      if (currentClistPos==0)
+        currentClistPos=lstCount-1;
+      else
+        currentClistPos=(currentClistPos-1)%lstCount;
+    else{
+      dispSelectedIndx--;
+    }
+    log_debug("currentClistPos:%d, dispSelectedIndx:%d",currentClistPos,dispSelectedIndx);
+    
+    updateChainedListDisplay(-1,dirChainedList);
 }
 
-void dispIcon(int x,int y,int indx){
-  const unsigned char icon_set[]  = {
-    0x00, 0x7e, 0x7e, 0x7e, 0x7c, 0x7c, 0x7c, 0x00,   // indx=0 'folderb', 8x8px 
-    0x00, 0x7e, 0x42, 0x46, 0x4a, 0x7e, 0x00, 0x00,   // indx=1 'file2', 8x8px
-    0x08, 0xd8, 0x7c, 0x3f, 0x3f, 0x7c, 0xd8, 0x08,   // indx=2 'star', 8x8px
-    0x00, 0x6c, 0x7c, 0x3e, 0x7c, 0x7c, 0x10, 0x00,   // indx=3 'config', 8x8px
-    0x00, 0x60, 0x68, 0x1c, 0x3e, 0x1e, 0x0e, 0x00,   // indx=4 'launch', 8x8px
-    0x00, 0x1c, 0x3e, 0x7c, 0x7c, 0x3e, 0x1c, 0x00,   // indx=5 'favorite', 8x8px
-    0x00, 0x7e, 0x42, 0x42, 0x42, 0x42, 0x7e, 0x00,   // indx=6 'chkbox_empty", 8x8px
-    0x00, 0x7e, 0x7e, 0x7e, 0x7e, 0x7e, 0x7e, 0x00    // indx=7 'chkbox_full", 8x8px
-  };
+void processNextFSItem(){ 
+    
+    uint8_t lstCount=dirChainedList->len;
+    
+    if (lstCount<=SCREEN_MAX_LINE_ITEM && dispSelectedIndx==lstCount-1){
+      dispSelectedIndx=0;
+    }else if (dispSelectedIndx==(SCREEN_MAX_LINE_ITEM-1))
+      currentClistPos=(currentClistPos+1)%lstCount;
+    else{
+      dispSelectedIndx++;
+    }
+    log_info("currentClistPos:%d, dispSelectedIndx:%d",currentClistPos,dispSelectedIndx);
+    
+    updateChainedListDisplay(-1,dirChainedList);
+}
 
-  ssd1306_DrawBitmap(x,y,8,8,icon_set+8*indx);
+void processUpdirFSItem(){
+  
+  if (currentFullPath[0]==0x0){
+    // we are at the ROOT -> Disp General Menu
+    switchPage(MENU,NULL);
+    return;
+  }
+
+  int len=strlen(currentFullPath);
+  for (int i=len-1;i!=-1;i--){
+    if (currentFullPath[i]=='/'){
+      snprintf(currentPath,128,"%s",currentFullPath+i);
+      currentFullPath[i]=0x0;
+      dispSelectedIndx=0;
+      currentClistPos=0;
+      nextAction=FSDISP;
+      break;
+    }
+    if (i==0)
+      currentFullPath[0]=0x0;
+  }
+}
+
+void processSelectFSItem(){
+  // Warning Interrupt can not trigger Filesystem action otherwise deadlock can occured !!!
+  
+  if (nextAction==FSDISP)     // we need to wait for the previous action to complete (a deadlock might have happened)
+    return;
+
+  list_node_t *pItem=NULL;
+  char selItem[MAX_FILENAME_LENGTH];
+  pItem=list_at(dirChainedList, selectedIndx);
+  sprintf(selItem,"%s",(char*)pItem->val);
+  
+  int len=strlen(currentFullPath);
+  if (selItem[2]=='.' && selItem[3]=='.'){                // selectedItem is [UpDir];
+    for (int i=len-1;i!=-1;i--){
+      if (currentFullPath[i]=='/'){
+        snprintf(currentPath,128,"%s",currentFullPath+i);
+        currentFullPath[i]=0x0;
+        dispSelectedIndx=0;
+        currentClistPos=0;
+        nextAction=FSDISP;
+        break;
+      }
+      if (i==0)
+        currentFullPath[0]=0x0;
+    }
+  }else if (selItem[0]=='D' && selItem[1]=='|'){        // selectedItem is a directory
+    sprintf(currentFullPath+len,"/%s",selItem+2);
+    dispSelectedIndx=0;
+    currentClistPos=0;
+    nextAction=FSDISP;
+    
+  }else{
+    sprintf(tmpFullPathImageFilename,"%s/%s",currentFullPath,selItem+2);
+    switchPage(MOUNT,selItem+2);
+  }
+  log_debug("result |%s|",currentFullPath);
+  
 }
 
 void mountImageScreen(char * filename){
@@ -218,11 +391,6 @@ void toggleMountOption(int i){
   ssd1306_UpdateScreen();
 }
 
-void clearScreen(){
-  ssd1306_SetColor(Black);
-  ssd1306_FillRect(0,0,127,63);
-}
-
 void initScreen(){
   ssd1306_Init();
   ssd1306_FlipScreenVertically();
@@ -233,6 +401,11 @@ void initScreen(){
   ssd1306_UpdateScreen();
 }
 
+/*
+ * 
+ *  IMAGES SCREEN
+ * 
+ */
 
 enum STATUS initIMAGEScreen(char * imageName,int type){
   
@@ -286,6 +459,9 @@ enum STATUS initIMAGEScreen(char * imageName,int type){
 
 void updateIMAGEScreen(uint8_t status,uint8_t trk){
 
+  if (currentPage!=IMAGE)
+    return;
+
   if (currentTrk!=trk || status!=currentStatus){
 
     char tmp[32];
@@ -309,6 +485,67 @@ void updateIMAGEScreen(uint8_t status,uint8_t trk){
   }
   return;
 }
+
+void toggleAddToFavorite(){
+  if (isFavorite(currentFullPathImageFilename)==0){
+    log_info("add from Favorite:%s",currentFullPathImageFilename);
+    if (addToFavorites(currentFullPathImageFilename)==RET_OK)
+      mountImageInfo.favorite=1;
+  }
+  else{
+    log_info("remove from Favorite:%s",currentFullPathImageFilename);
+    if (removeFromFavorites(currentFullPathImageFilename)==RET_OK)
+      mountImageInfo.favorite=0;
+  }
+
+  buildLstFromFavorites();
+  saveConfigFile();
+  initIMAGEScreen(NULL,0);
+}
+
+/*
+ * 
+ *  TOGGLE SCREEN
+ * 
+ */
+
+int toggle=1;
+void processToogleOption(){
+  
+  if (toggle==1){
+    toggle=0;
+    toggleMountOption(0);
+  }else{
+    toggle=1;
+    toggleMountOption(1);
+  }
+}
+
+void processMountOption(){
+  if (toggle==0){
+    switchPage(FS,currentFullPath);
+    toggle=1;                               // rearm toggle switch
+  }else{
+    
+    nextAction=IMG_MOUNT;                       // Mounting can not be done via Interrupt, must be done via the main thread
+  }
+}
+
+void nothing(){
+  __NOP();
+}
+
+void processBtnRet(){
+  if (currentPage==MOUNT || currentPage==IMAGE){
+    switchPage(FS,currentFullPath);
+    printf("here .\n");
+  }else if (currentPage==FS){
+
+  }
+}
+
+
+
 /*
 *
 * CONFIG MENU SCREEN
@@ -323,7 +560,7 @@ typedef struct MNUDISPITEM{
   uint8_t status;
 }MNUDISPITEM_t;
 
-MNUDISPITEM_t mnuDispItem[MAX_LINE_ITEM]; // LINE OF MENU ITEM DISP ON SCREEN
+MNUDISPITEM_t mnuDispItem[SCREEN_MAX_LINE_ITEM]; // LINE OF MENU ITEM DISP ON SCREEN
 
 typedef struct MNUITEM{
   uint8_t type;             // 0 -> simpleLabel; 1-> boolean; 2-> value
@@ -337,7 +574,7 @@ typedef struct MNUITEM{
 
 MNUITEM_t mnuItem[6]; // MENU ITEM DEFINITION
 
-enum STATUS processBootOption(int arg){
+void processBootOption(int arg){
   if (arg==0){
     mnuItem[0].ival=1;
     mnuItem[1].ival=0;
@@ -355,11 +592,11 @@ enum STATUS processBootOption(int arg){
   updateConfigMenuDisplay(-1);
   setConfigParamInt("bootMode",arg);
   saveConfigFile();
-return RET_OK;
+return;
 }
 
 void processClearprefs(){
-  f_unlink("/sdiskConfig.json"); 
+  deleteConfigFile();
   displayStringAtPosition(1,6*9+1,"Prefs cleared");
   ssd1306_UpdateScreen();
 }
@@ -367,6 +604,7 @@ void processClearprefs(){
 void processClearFavorites(){
   wipeFavorites();
   saveConfigFile();
+  buildLstFromFavorites();
   displayStringAtPosition(1,6*9+1,"Favorites cleared");
   ssd1306_UpdateScreen();
 }
@@ -378,7 +616,7 @@ void processMakeFs(){
 void processPrevConfigItem(){
   uint8_t itemCount=sizeof(mnuItem)/sizeof(MNUITEM_t);
     
-  if (itemCount<=MAX_LINE_ITEM && dispSelectedIndx==0){
+  if (itemCount<=SCREEN_MAX_LINE_ITEM && dispSelectedIndx==0){
     dispSelectedIndx=itemCount-1;
   }else if (dispSelectedIndx==0)
     if (currentClistPos==0)
@@ -395,9 +633,9 @@ void processPrevConfigItem(){
 void processNextConfigItem(){
   uint8_t itemCount=sizeof(mnuItem)/sizeof(MNUITEM_t);
     
-  if (itemCount<=MAX_LINE_ITEM && dispSelectedIndx==itemCount-1){
+  if (itemCount<=SCREEN_MAX_LINE_ITEM && dispSelectedIndx==itemCount-1){
     dispSelectedIndx=0;
-  }else if (dispSelectedIndx==(MAX_LINE_ITEM-1))
+  }else if (dispSelectedIndx==(SCREEN_MAX_LINE_ITEM-1))
     currentClistPos=(currentClistPos+1)%itemCount;
   else{
     dispSelectedIndx++;
@@ -434,7 +672,7 @@ void updateConfigMenuDisplay(int init){
     dispSelectedIndx=0;
   }
 
-  for (int i=0;i<MAX_LINE_ITEM;i++){
+  for (int i=0;i<SCREEN_MAX_LINE_ITEM;i++){
     
     mnuDispItem[i].status=1;                   // starting with item status =0, if an error then status = -1;
     mnuDispItem[i].displayPos=i;               // corresponding line on the screen
@@ -464,7 +702,7 @@ void updateConfigMenuDisplay(int init){
   }
 
   // Render Part
-  for (int i=0;i<MAX_LINE_ITEM;i++){
+  for (int i=0;i<SCREEN_MAX_LINE_ITEM;i++){
 
     clearLineStringAtPosition(1+i,offset);
     if (mnuDispItem[i].status!=0){
@@ -493,9 +731,7 @@ void updateConfigMenuDisplay(int init){
 
 void initConfigMenuScreen(int i){
   
-  
   u_int8_t numItems=6;
-  uint8_t h_offset=10;
 
   if (i>=numItems)
     i=0;
@@ -571,9 +807,9 @@ void initConfigMenuScreen(int i){
 }
 
 
-/**
+/*
  * 
- * MAIN MENU SCREEN
+ *  MAIN MENU SCREEN
  * 
  */
 
@@ -673,7 +909,11 @@ void toggleMainMenuOption(int i){
   ssd1306_FillRect(30-5,5*9-1,50,9);
   ssd1306_UpdateScreen();
 }
-
+/*
+ * 
+ *  SD EJECT SCREEN
+ * 
+ */
 void initSdEjectScreen(){
 
   clearScreen();
@@ -702,10 +942,62 @@ void initFSScreen(char * path){
   displayStringAtPosition(0,6*9+1,tmp);
 
   ssd1306_UpdateScreen();
-
 }
 
+/**
+ * 
+ *    FAVORITE SCREEN
+ * 
+ */
 
+void processPrevFavoriteItem(){
+    
+    uint8_t lstCount=dirChainedList->len;
+    
+    if (lstCount<=SCREEN_MAX_LINE_ITEM && dispSelectedIndx==0){
+      dispSelectedIndx=lstCount-1;
+    }else if (dispSelectedIndx==0)
+      if (currentClistPos==0)
+        currentClistPos=lstCount-1;
+      else
+        currentClistPos=(currentClistPos-1)%lstCount;
+    else{
+      dispSelectedIndx--;
+    }
+    log_info("currentClistPos:%d, dispSelectedIndx:%d",currentClistPos,dispSelectedIndx);
+    updateChainedListDisplay(-1,favoritesChainedList);
+}
+
+void processNextFavoriteItem(){ 
+
+    uint8_t lstCount=dirChainedList->len;
+    
+    if (lstCount<=SCREEN_MAX_LINE_ITEM && dispSelectedIndx==lstCount-1){
+      dispSelectedIndx=0;
+    }else if (dispSelectedIndx==(SCREEN_MAX_LINE_ITEM-1))
+      currentClistPos=(currentClistPos+1)%lstCount;
+    else{
+      dispSelectedIndx++;
+    }
+    log_info("currentClistPos:%d, dispSelectedIndx:%d",currentClistPos,dispSelectedIndx);
+    updateChainedListDisplay(-1,favoritesChainedList);
+}
+
+void processReturnFavoriteItem(){
+  switchPage(MENU,NULL);
+}
+
+void processSelectFavoriteItem(){
+  // Warning Interrupt can not trigger Filesystem action otherwise deadlock can occured !!!
+  
+  list_node_t *pItem=NULL;
+  
+  pItem=list_at(favoritesChainedList, selectedIndx);
+  sprintf(tmpFullPathImageFilename,"%s",(char*)pItem->val);
+  char * imageName=getImageNameFromFullPath(tmpFullPathImageFilename);
+  switchPage(MOUNT,imageName);
+
+}
 
 void initFavoriteScreen(){
 
@@ -722,6 +1014,48 @@ void initFavoriteScreen(){
 
   ssd1306_UpdateScreen();
 
+}
+
+/**
+ * 
+ * DISPLAY PRIMITIVE
+ * 
+ */
+
+// Icon converter BMP ->  https://mischianti.org/ssd1306-oled-display-draw-images-splash-and-animations-2/
+// <!> Generate Vertical 1 bit per pixel
+
+void dispIcon12x12(int x,int y,int indx){
+  const unsigned char icon12x12[]={
+
+    // 'fav_full_12x12', 12x12px
+0x00, 0x70, 0xf8, 0xfc, 0xfc, 0xf8, 0xf8, 0xfc, 0xfc, 0xf8, 0x70, 0x00, 0x00, 0x00, 0x00, 0x01, 
+0x03, 0x07, 0x07, 0x03, 0x01, 0x00, 0x00, 0x00,
+// 'fav_empty_12x12', 12x12px
+0x00, 0x70, 0xf8, 0x9c, 0x0c, 0x08, 0x08, 0x0c, 0x9c, 0xf8, 0x70, 0x00, 0x00, 0x00, 0x00, 0x01, 
+0x03, 0x06, 0x06, 0x03, 0x01, 0x00, 0x00, 0x00
+  };
+  ssd1306_DrawBitmap(x,y,12,12,icon12x12+24*indx);
+}
+
+void dispIcon(int x,int y,int indx){
+  const unsigned char icon_set[]  = {
+    0x00, 0x7e, 0x7e, 0x7e, 0x7c, 0x7c, 0x7c, 0x00,   // indx=0 'folderb', 8x8px 
+    0x00, 0x7e, 0x42, 0x46, 0x4a, 0x7e, 0x00, 0x00,   // indx=1 'file2', 8x8px
+    0x08, 0xd8, 0x7c, 0x3f, 0x3f, 0x7c, 0xd8, 0x08,   // indx=2 'star', 8x8px
+    0x00, 0x6c, 0x7c, 0x3e, 0x7c, 0x7c, 0x10, 0x00,   // indx=3 'config', 8x8px
+    0x00, 0x60, 0x68, 0x1c, 0x3e, 0x1e, 0x0e, 0x00,   // indx=4 'launch', 8x8px
+    0x00, 0x1c, 0x3e, 0x7c, 0x7c, 0x3e, 0x1c, 0x00,   // indx=5 'favorite', 8x8px
+    0x00, 0x7e, 0x42, 0x42, 0x42, 0x42, 0x7e, 0x00,   // indx=6 'chkbox_empty", 8x8px
+    0x00, 0x7e, 0x7e, 0x7e, 0x7e, 0x7e, 0x7e, 0x00    // indx=7 'chkbox_full", 8x8px
+  };
+
+  ssd1306_DrawBitmap(x,y,8,8,icon_set+8*indx);
+}
+
+void clearScreen(){
+  ssd1306_SetColor(Black);
+  ssd1306_FillRect(0,0,127,63);
 }
 
 void displayStringAtPosition(int x,int y,char * str){

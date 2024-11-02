@@ -151,9 +151,7 @@ UART
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
-
 #include "display.h"
-//#include "fatfs_sdcard.h"
 #include "list.h"
 #include "driver_woz.h"
 #include "driver_nic.h"
@@ -218,18 +216,21 @@ static void MX_TIM2_Init(void);
 static void MX_NVIC_Init(void);
 /* USER CODE BEGIN PFP */
 
+void (*ptrbtnUp)(void *);                                 
+void (*ptrbtnDown)(void *);
+void (*ptrbtnEntr)(void *);
+void (*ptrbtnRet)(void *);
+
+
 bool buttonDebounceState=true;
-extern __uint32_t TRK_BitCount[160];
 
-volatile int ph_track=0;                                    // SDISK Physical track 0 - 139
-volatile int intTrk=0;                                      // InterruptTrk                                    
-unsigned char prevTrk=35;                                    // prevTrk to keep track of the last head track
+volatile int ph_track=0;                                                // SDISK Physical track 0 - 139
+volatile int intTrk=0;                                                  // InterruptTrk                                    
+unsigned char prevTrk=35;                                               // prevTrk to keep track of the last head track
 
-unsigned int RawSDTrackSize=8192;                           // Maximuum track size on NIC & WOZ to load from SD
-unsigned char read_track_data_bloc[8192];                   // 3 adjacent track 3 x RawSDTrackSize
-  
-volatile unsigned char DMA_BIT_TX_BUFFER[8192];             // DMA Buffer for READ Track
-volatile unsigned char DMA_BIT_RX_BUFFER[8192];             // DMA Buffer for WRITE Track
+unsigned char read_track_data_bloc[RAW_SD_TRACK_SIZE];                   // 
+volatile unsigned char DMA_BIT_TX_BUFFER[RAW_SD_TRACK_SIZE];             // DMA Buffer for READ Track
+volatile unsigned char DMA_BIT_RX_BUFFER[RAW_SD_TRACK_SIZE];             // DMA Buffer for WRITE Track
 
 uint8_t optimalBitTiming=32;
 
@@ -239,13 +240,11 @@ volatile unsigned int WR_REQ_PHASE=0;
 FATFS fs;                                                   // fatfs global variable <!> do not remount witihn a function the fatfs otherwise it breaks the rest
 long database=0;                                            // start of the data segment in FAT
 int csize=0;                                                // Cluster size
-extern uint8_t CardType;                                    // fatfs_sdcard.c type of SD card
 
 volatile unsigned char flgDeviceEnable=0;
 unsigned char flgImageMounted=0;                            // Image file mount status flag
 unsigned char flgBeaming=0;                                 // DMA SPI1 to Apple II Databeaming status flag
-volatile unsigned int flgwhiteNoise=0;                     // White noise in case of blank 255 track to generate random bit
-unsigned char flgWriteProtected=0;                                   // Write Protected
+unsigned char flgWriteProtected=0;                          // Write Protected
 
 enum STATUS (*getTrackBitStream)(int,unsigned char*);       // pointer to readBitStream function according to driver woz/nic
 enum STATUS (*setTrackBitStream)(int,unsigned char*);       // pointer to writeBitStream function according to driver woz/nic
@@ -253,32 +252,21 @@ long (*getSDAddr)(int ,int ,int , long);                    // pointer to getSDA
 int  (*getTrackFromPh)(int);                                // pointer to track calculation function
 unsigned int  (*getTrackSize)(int);    
 
-enum page currentPage=0;
 enum action nextAction=NONE;
 
-void (*ptrbtnUp)(void *);                                   // function pointer to manage Button Interupt according to the page
-void (*ptrbtnDown)(void *);
-void (*ptrbtnEntr)(void *);
-void (*ptrbtnRet)(void *);
-
-char selItem[MAX_FILENAME_LENGTH];                                            // select from chainedlist item;
-char currentFullPath[MAX_FULLPATH_LENGTH];                                   // current path from root
-char currentPath[MAX_PATH_LENGTH];                                        // current directory name max 128 char
-char * currentImageFilename;                                  // current mounted image filename;
+char currentFullPath[MAX_FULLPATH_LENGTH];                    // current path from root
+char currentPath[MAX_PATH_LENGTH];                            // current directory name max 64 char
 char currentFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];  // fullpath from root image filename
-
 char tmpFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];      // fullpath from root image filename
 
 image_info_t mountImageInfo;
 
-int lastlistPos;
+//int lastlistPos;
 list_t * dirChainedList;
 
 // DEBUG BLOCK
 
 unsigned long t1,t2,diff1;   
-
-extern list_t * favoritesChainedList;
 
 int wrStartPtr=0;
 int wrEndPtr=0;
@@ -407,6 +395,7 @@ void TIM3_IRQHandler(void){
     
     // ************  WEAKBIT ****************
   
+#if WEAKBIT ==1
     if (nextBit==0){
       if (++zeroBits>2){
         nextBit=weakBitTank[fakeBitTankPosition] & 1;    // 30% of fakebit in the buffer as per AppleSauce reco
@@ -417,7 +406,7 @@ void TIM3_IRQHandler(void){
     }else{
       zeroBits=0;
     }
-
+#endif
     // ************  WEAKBIT ****************
 
     bitCounter++;
@@ -620,8 +609,8 @@ enum STATUS writeTrkFile(char * filename,char * buffer,uint32_t offset){
   UINT bytesWrote;
   UINT totalBytes=0;
 
-  int blk=(RawSDTrackSize/512);
-  int lst_blk_size=RawSDTrackSize%512;
+  int blk=(RAW_SD_TRACK_SIZE/512);
+  int lst_blk_size=RAW_SD_TRACK_SIZE%512;
 
   for (int i=0;i<blk/2;i++){
     fres = f_write(&fil, buffer+i*1024, 1024, &bytesWrote);
@@ -806,7 +795,7 @@ enum STATUS processPath(char *path){
 
   for (int i=len-1;i!=-1;i--){
     if (path[i]=='/'){
-      snprintf(currentPath,128,"%s",path+i+1);
+      snprintf(currentPath,MAX_PATH_LENGTH,"%s",path+i+1);
       break;
     }
   }
@@ -823,8 +812,8 @@ enum STATUS walkDir(char * path){
   DIR dir;
   FRESULT     fres;  
 
-  processPath(path);
-
+  //processPath(path);
+  log_info("walkdir() path:%s",path);
   HAL_NVIC_EnableIRQ(SDIO_IRQn);
   HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
   HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
@@ -842,16 +831,17 @@ enum STATUS walkDir(char * path){
     
   char * fileName;
   int len;
-  lastlistPos=0;
+  //lastlistPos=0;
   dirChainedList=list_new();
 
 
   if (fres == FR_OK){
       if (strcmp(path,"") && strcmp(path,"/")){
-        fileName=malloc(64*sizeof(char));
+        fileName=malloc(MAX_FILENAME_LENGTH*sizeof(char));
         sprintf(fileName,"D|..");
         list_rpush(dirChainedList, list_node_new(fileName));
-        lastlistPos++;
+        //lastlistPos++;
+        
       }
       
       while(1){
@@ -877,12 +867,12 @@ enum STATUS walkDir(char * path){
              !memcmp(fno.fname+(len-4),".woz",4)  ||           // .woz
              !memcmp(fno.fname+(len-4),".DSK",4)  ||           // .DSK
              !memcmp(fno.fname+(len-4),".dsk",4)) &&           // .dsk
-             !(fno.fattrib & AM_SYS) &&                                    // Not System file
-             !(fno.fattrib & AM_HID)                                       // Not Hidden file
+             !(fno.fattrib & AM_SYS) &&                        // Not System file
+             !(fno.fattrib & AM_HID)                           // Not Hidden file
             )
             ){
               
-          fileName=malloc(64*sizeof(char));
+          fileName=malloc(MAX_FILENAME_LENGTH*sizeof(char));
           if (fno.fattrib & AM_DIR){
             fileName[0]='D';
             fileName[1]='|';
@@ -894,11 +884,11 @@ enum STATUS walkDir(char * path){
             fileName[len+2]=0x0;
           }
             list_rpush(dirChainedList, list_node_new(fileName));
-            lastlistPos++;
+
           }
 
         
-        /*log_info("%c%c%c%c %10d %s/%s",
+        /*log_debug("%c%c%c%c %10d %s/%s",
           ((fno.fattrib & AM_DIR) ? 'D' : '-'),
           ((fno.fattrib & AM_RDO) ? 'R' : '-'),
           ((fno.fattrib & AM_SYS) ? 'S' : '-'),
@@ -924,6 +914,7 @@ char processSdEject(uint16_t GPIO_PIN){
   int sdEject=HAL_GPIO_ReadPin(SD_EJECT_GPIO_Port, GPIO_PIN);                 // Check if SDCard is ejected
   if (sdEject==1){  
     flgImageMounted=0;
+    flgBeaming=0;
 
     initSdEjectScreen();                                                                      // Display the message on screen
     
@@ -957,7 +948,7 @@ char processDeviceEnableInterrupt(uint16_t GPIO_Pin){
     GPIO_InitStruct.Pull  = GPIO_PULLDOWN;
     HAL_GPIO_Init(RD_DATA_GPIO_Port, &GPIO_InitStruct);
 
-      HAL_TIM_PWM_Start_IT(&htim3,TIM_CHANNEL_4);
+    HAL_TIM_PWM_Start_IT(&htim3,TIM_CHANNEL_4);
 
     GPIO_InitStruct.Pin   = WR_PROTECT_Pin;
     GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP;
@@ -1020,295 +1011,6 @@ void processBtnInterrupt(uint16_t GPIO_Pin){
   }       
 }
 
-/**
-  * @brief  processPrevFSItem(), processNextFSItem(), processSelectFSItem()
-  *         are functions linked to button DOWN/UP/ENTER to manage fileSystem information displayed,
-  *         and trigger the action   
-  * @param  Node
-  * @retval None
-  */
-
-int currentClistPos;
-int nextClistPos;
-extern uint8_t dispSelectedIndx;
-extern uint8_t selectedFsIndx;
-
-#define MAX_LINE_ITEM 4
-
-void processPrevFavoriteItem(){
-    
-    uint8_t lstCount=dirChainedList->len;
-    
-    if (lstCount<=MAX_LINE_ITEM && dispSelectedIndx==0){
-      dispSelectedIndx=lstCount-1;
-    }else if (dispSelectedIndx==0)
-      if (currentClistPos==0)
-        currentClistPos=lstCount-1;
-      else
-        currentClistPos=(currentClistPos-1)%lstCount;
-    else{
-      dispSelectedIndx--;
-    }
-    log_info("currentClistPos:%d, dispSelectedIndx:%d",currentClistPos,dispSelectedIndx);
-    updateChainedListDisplay(-1,favoritesChainedList);
-}
-
-void processNextFavoriteItem(){ 
-
-    uint8_t lstCount=dirChainedList->len;
-    
-    if (lstCount<=MAX_LINE_ITEM && dispSelectedIndx==lstCount-1){
-      dispSelectedIndx=0;
-    }else if (dispSelectedIndx==(MAX_LINE_ITEM-1))
-      currentClistPos=(currentClistPos+1)%lstCount;
-    else{
-      dispSelectedIndx++;
-    }
-    log_info("currentClistPos:%d, dispSelectedIndx:%d",currentClistPos,dispSelectedIndx);
-    updateChainedListDisplay(-1,favoritesChainedList);
-}
-
-void processUpdirFavoriteItem(){
-    // we are at the ROOT -> Disp General Menu
-  switchPage(MENU,NULL);
-}
-
-void processSelectFavoriteItem(){
-  // Warning Interrupt can not trigger Filesystem action otherwise deadlock can occured !!!
-  
-  list_node_t *pItem=NULL;
-  
-  pItem=list_at(favoritesChainedList, selectedFsIndx);
-  sprintf(tmpFullPathImageFilename,"%s",(char*)pItem->val);
-  char * imageName=getImageNameFromFullPath(tmpFullPathImageFilename);
-  switchPage(MOUNT,imageName);
-
-}
-
-void processPrevFSItem(){
-    
-    uint8_t lstCount=dirChainedList->len;
-    
-    if (lstCount<=MAX_LINE_ITEM && dispSelectedIndx==0){
-      dispSelectedIndx=lstCount-1;
-    }else if (dispSelectedIndx==0)
-      if (currentClistPos==0)
-        currentClistPos=lstCount-1;
-      else
-        currentClistPos=(currentClistPos-1)%lstCount;
-    else{
-      dispSelectedIndx--;
-    }
-    log_info("currentClistPos:%d, dispSelectedIndx:%d",currentClistPos,dispSelectedIndx);
-    
-    updateChainedListDisplay(-1,dirChainedList);
-}
-
-void processNextFSItem(){ 
-    
-    uint8_t lstCount=dirChainedList->len;
-    
-    if (lstCount<=MAX_LINE_ITEM && dispSelectedIndx==lstCount-1){
-      dispSelectedIndx=0;
-    }else if (dispSelectedIndx==(MAX_LINE_ITEM-1))
-      currentClistPos=(currentClistPos+1)%lstCount;
-    else{
-      dispSelectedIndx++;
-    }
-    log_info("currentClistPos:%d, dispSelectedIndx:%d",currentClistPos,dispSelectedIndx);
-    
-    updateChainedListDisplay(-1,dirChainedList);
-}
-
-void processUpdirFSItem(){
-  
-  if (currentFullPath[0]==0x0){
-    // we are at the ROOT -> Disp General Menu
-    switchPage(MENU,NULL);
-    return;
-  }
-
-
-  int len=strlen(currentFullPath);
-  for (int i=len-1;i!=-1;i--){
-    if (currentFullPath[i]=='/'){
-      snprintf(currentPath,128,"%s",currentFullPath+i);
-      currentFullPath[i]=0x0;
-      dispSelectedIndx=0;
-      currentClistPos=0;
-      nextAction=FSDISP;
-      break;
-    }
-    if (i==0)
-      currentFullPath[0]=0x0;
-  }
-}
-
-void processSelectFSItem(){
-  // Warning Interrupt can not trigger Filesystem action otherwise deadlock can occured !!!
-  
-  if (nextAction==FSDISP)     // we need to wait for the previous action to complete (a deadlock might have happened)
-    return;
-
-  list_node_t *pItem=NULL;
-  
-  pItem=list_at(dirChainedList, selectedFsIndx);
-  sprintf(selItem,"%s",(char*)pItem->val);
-  
-  int len=strlen(currentFullPath);
-  if (selItem[2]=='.' && selItem[3]=='.'){                // selectedItem is [UpDir];
-    for (int i=len-1;i!=-1;i--){
-      if (currentFullPath[i]=='/'){
-        snprintf(currentPath,128,"%s",currentFullPath+i);
-        currentFullPath[i]=0x0;
-        dispSelectedIndx=0;
-        currentClistPos=0;
-        nextAction=FSDISP;
-        break;
-      }
-      if (i==0)
-        currentFullPath[0]=0x0;
-    }
-  }else if (selItem[0]=='D' && selItem[1]=='|'){        // selectedItem is a directory
-    sprintf(currentFullPath+len,"/%s",selItem+2);
-    dispSelectedIndx=0;
-    currentClistPos=0;
-    nextAction=FSDISP;
-    
-  }else{
-    sprintf(tmpFullPathImageFilename,"%s/%s",currentFullPath,selItem+2);
-    switchPage(MOUNT,selItem+2);
-  }
-  log_debug("result |%s|",currentFullPath);
-  
-}
-
-int toggle=1;
-void processToogleOption(){
-  
-  if (toggle==1){
-    toggle=0;
-    toggleMountOption(0);
-  }else{
-    toggle=1;
-    toggleMountOption(1);
-  }
-}
-
-void processMountOption(){
-  if (toggle==0){
-    switchPage(FS,currentFullPath);
-    toggle=1;                               // rearm toggle switch
-  }else{
-    
-    nextAction=IMG_MOUNT;                       // Mounting can not be done via Interrupt, must be done via the main thread
-  }
-}
-
-void nothing(){
-  __NOP();
-}
-
-void processBtnRet(){
-  if (currentPage==MOUNT || currentPage==IMAGE){
-    switchPage(FS,currentFullPath);
-    printf("here .\n");
-  }else if (currentPage==FS){
-
-  }
-}
-
-void toggleAddToFavorite(){
-  if (isFavorite(currentFullPathImageFilename)==0){
-    log_info("add from Favorite:%s",currentFullPathImageFilename);
-    if (addToFavorites(currentFullPathImageFilename)==RET_OK)
-      mountImageInfo.favorite=1;
-  }
-  else{
-    log_info("remove from Favorite:%s",currentFullPathImageFilename);
-    if (removeFromFavorites(currentFullPathImageFilename)==RET_OK)
-      mountImageInfo.favorite=0;
-  }
-
-  buildLstFromFavorites();
-  saveConfigFile();
-  initIMAGEScreen(NULL,0);
-}
-
-enum STATUS switchPage(enum page newPage,void * arg){
-
-// Manage with page to display and the attach function to button Interrupt  
-  
-  switch(newPage){
-    
-    case CONFIG:
-      initConfigMenuScreen(0);
-      updateConfigMenuDisplay(0);
-
-      ptrbtnUp=processPrevConfigItem;
-      ptrbtnDown=processNextConfigItem;
-      ptrbtnEntr=processSelectConfigItem;
-      ptrbtnRet=processUpdirConfigItem;
-      currentPage=CONFIG;
-      break;
-    case FAVORITE:
-      initFavoriteScreen();
-      updateChainedListDisplay(0, favoritesChainedList);
-
-      ptrbtnUp=processPrevFavoriteItem;
-      ptrbtnDown=processNextFavoriteItem;
-      ptrbtnEntr=processSelectFavoriteItem;
-      ptrbtnRet=processUpdirFavoriteItem;
-      currentPage=FAVORITE;
-      
-      break;
-    case FS:
-      initFSScreen(arg);
-      
-      updateChainedListDisplay(0,dirChainedList);
-      ptrbtnUp=processPrevFSItem;
-      ptrbtnDown=processNextFSItem;
-      ptrbtnEntr=processSelectFSItem;
-      ptrbtnRet=processUpdirFSItem;
-      currentPage=FS;
-      break;
-    case MENU:
-      initMainMenuScreen(0);
-      ptrbtnUp=processPreviousMainMenuScreen;
-      ptrbtnDown=processNextMainMenuScreen;
-      ptrbtnEntr=processActiveMainMenuScreen;
-      ptrbtnRet=nothing;
-
-      currentPage=MENU;
-      break;
-    case IMAGE:
-      if (flgImageMounted==0){
-        log_error("No image mounted");
-        return RET_ERR;
-      }
-
-      initIMAGEScreen(arg,0);
-      ptrbtnUp=nothing;
-      ptrbtnDown=nothing;
-      ptrbtnEntr=toggleAddToFavorite;
-      ptrbtnRet=processBtnRet;
-      currentPage=IMAGE;
-      break;
-    case MOUNT:
-      mountImageScreen((char*)arg);
-      ptrbtnEntr=processMountOption;
-      ptrbtnUp=processToogleOption;
-      ptrbtnDown=processToogleOption;
-      ptrbtnRet=processBtnRet;
-      currentPage=MOUNT;
-      break;
-    default:
-      return RET_ERR;
-      break;
-  }
-  return RET_OK;
-}
-
 // Magnet States --> Stepper Motor Position
 //
 //                N
@@ -1345,7 +1047,7 @@ void processDiskHeadMoveInterrupt(uint16_t GPIO_Pin){
 
   volatile unsigned char stp=(GPIOA->IDR&0b0000000000001111);
   volatile int newPosition=magnet2Position[stp];
-  //return;
+
   if (newPosition>=0){
       
     int lastPosition=ph_track&7;
@@ -1371,22 +1073,21 @@ void processDiskHeadMoveInterrupt(uint16_t GPIO_Pin){
 */
 enum STATUS makeSDFS(){
 
- FRESULT fr;
- MKFS_PARM fmt_opt = {FM_FAT32, 1, 0, 0, 32768};
- BYTE work[FF_MAX_SS];
- fr = f_mkfs("0:", &fmt_opt,  work, sizeof work);
+  FRESULT fr;
+  MKFS_PARM fmt_opt = {FM_FAT32, 1, 0, 0, 32768};
+  BYTE work[FF_MAX_SS];
+  fr = f_mkfs("0:", &fmt_opt,  work, sizeof work);
 
-    if (fr==FR_OK){
-      f_mount(&fs, "", 1);
-      return RET_OK;
-    }else{
-      log_error("makeSDFS error %d",fr);
-    }
+  if (fr==FR_OK){
+    f_mount(&fs, "", 1);
+    return RET_OK;
+  }else{
+    log_error("makeSDFS error %d",fr);
+  }
 
-    /* Give a work area to the default drive */
-    
-
-return RET_ERR;
+  /* Give a work area to the default drive */
+  
+  return RET_ERR;
 }
 
 /**
@@ -1406,6 +1107,11 @@ enum STATUS mountImagefile(char * filename){
   
   int len=strlen(filename);
   int i=0;
+
+  if (len==0){
+    log_error("mount error filename is empty");
+    return RET_ERR;
+  }
 
   for (i=len-1;i!=0;i--){
     if (filename[i]=='/')
@@ -1543,15 +1249,15 @@ enum STATUS initeBeaming(){
 
   flgBeaming=0;
 
-  memset((unsigned char *)&DMA_BIT_TX_BUFFER,0,sizeof(char)*RawSDTrackSize);
-  memset((unsigned char *)&DMA_BIT_RX_BUFFER,0,sizeof(char)*RawSDTrackSize);
-  memset(read_track_data_bloc,0,sizeof(char)*RawSDTrackSize);
+  memset((unsigned char *)&DMA_BIT_TX_BUFFER,0,sizeof(char)*RAW_SD_TRACK_SIZE);
+  memset((unsigned char *)&DMA_BIT_RX_BUFFER,0,sizeof(char)*RAW_SD_TRACK_SIZE);
+  memset(read_track_data_bloc,0,sizeof(char)*RAW_SD_TRACK_SIZE);
 
 
   DWT->CYCCNT = 0;                              // Reset cpu cycle counter
   t1 = DWT->CYCCNT; 
  
- // flgWriteProtected=1;
+  //flgWriteProtected=1;
 
   if (flgWriteProtected==1)
     HAL_GPIO_WritePin(WR_PROTECT_GPIO_Port,WR_PROTECT_Pin,GPIO_PIN_SET);                              // WRITE_PROTECT is enable
@@ -1565,7 +1271,6 @@ enum STATUS initeBeaming(){
   bitSize=6656*8;
   bitCounter=0;
 
-  // TIM3->ARR=(mountImageInfo.optimalBitTiming*125/10)-1;
   TIM3->ARR=(mountImageInfo.optimalBitTiming*12)-1;
 
   log_info("initeBeaming optimalBitTiming:%d",mountImageInfo.optimalBitTiming);
@@ -1630,13 +1335,13 @@ int main(void)
 
   int trk=35;
   ph_track=160;
-
+  currentFullPathImageFilename[0]=0x0;
+  tmpFullPathImageFilename[0]=0x0;
 
   log_info("************** BOOTING ****************");                      // Data to send
   log_info("**     This is the sound of sea !    **");
   log_info("***************************************");
   
-
   initScreen();                                                             // I2C Screen init                  
                                             
   HAL_Delay(750);
@@ -1673,9 +1378,9 @@ int main(void)
   processSdEject(SD_EJECT_Pin);
   processDeviceEnableInterrupt(DEVICE_ENABLE_Pin);
  
-  dirChainedList = list_new();                                                      // ChainedList to manage File list in current path
-  currentClistPos=0;                                                                // Current index in the chained List
-  lastlistPos=0;                                                                    // Last index in the chained list
+  dirChainedList = list_new();                                                       // ChainedList to manage File list in current path
+                                                                                     // Current index in the chained List
+  //lastlistPos=0;                                                                   // Last index in the chained list
 
   mountImageInfo.optimalBitTiming=32;
   mountImageInfo.writeProtected=0;
@@ -1710,7 +1415,7 @@ int main(void)
         log_error("error getting bootMode from Config");
       else 
         log_info("bootMode=%d",bootMode);
-      //wipeFavorites();
+
       log_info("loading configFile: OK");
     }
 
@@ -1724,8 +1429,8 @@ int main(void)
     
     if (imgFile!=NULL){
       log_info("lastFile:%s",imgFile);
-      currentImageFilename=(char*)malloc(512*sizeof(char));
-      sprintf(currentImageFilename,"%s",imgFile);
+      //currentImageFilename=(char*)malloc(512*sizeof(char));
+      sprintf(tmpFullPathImageFilename,"%s",imgFile);
     }
 
     //currentFullPath[0]=0x0;                                  // <!> TODO : to be removed in production                                
@@ -1738,9 +1443,9 @@ int main(void)
 
 
   if (bootMode==0){
-    if (mountImagefile(currentImageFilename)==RET_OK){
+    if (mountImagefile(tmpFullPathImageFilename)==RET_OK){
       
-      switchPage(IMAGE,currentImageFilename);
+      switchPage(IMAGE,currentFullPathImageFilename);
 
       if (flgImageMounted==1){                                            // <!> TO BE TESTED
         if (initeBeaming()==RET_OK)
@@ -1748,7 +1453,7 @@ int main(void)
       }
     
     }else{
-      if (currentImageFilename!=NULL)
+      if (tmpFullPathImageFilename[0]!=0x0)
         log_error("imageFile mount error: %s",imgFile);
       else
         log_error("no imageFile to mount");
@@ -1812,7 +1517,7 @@ int main(void)
     */
 
     if (flgBeaming==1){
-      switchPage(IMAGE,currentImageFilename);
+      switchPage(IMAGE,currentFullPathImageFilename);
     }
 
     //switchPage(FS,NULL);
@@ -1874,7 +1579,7 @@ int main(void)
       // PART 1 MAIN TRACK & RESTORE AS QUICKLY AS POSSIBLE THE DMA
       // --------------------------------------------------------------------
       
-      if (currentPage==IMAGE)
+      
         updateIMAGEScreen(0,trk);
  
       HAL_NVIC_EnableIRQ(SDIO_IRQn);
@@ -1890,7 +1595,7 @@ int main(void)
       HAL_NVIC_DisableIRQ(DMA2_Stream6_IRQn);
 
 
-      memcpy((unsigned char *)&DMA_BIT_TX_BUFFER,read_track_data_bloc,RawSDTrackSize);
+      memcpy((unsigned char *)&DMA_BIT_TX_BUFFER,read_track_data_bloc,RAW_SD_TRACK_SIZE);
       
       /* FOR DEBUGGING PURPOSE ON TRACK 0 */
       
@@ -1945,7 +1650,7 @@ int main(void)
           HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
           HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
 
-          dumpBufFile(filename,DMA_BIT_RX_BUFFER,RawSDTrackSize);
+          dumpBufFile(filename,DMA_BIT_RX_BUFFER,RAW_SD_TRACK_SIZE);
 
           HAL_NVIC_DisableIRQ(SDIO_IRQn);
           HAL_NVIC_DisableIRQ(DMA2_Stream3_IRQn);
@@ -1961,7 +1666,6 @@ int main(void)
           walkDir(currentFullPath);
           setConfigParamStr("currentPath",currentFullPath);
           saveConfigFile();
-          currentClistPos=0;
           initFSScreen(currentPath);
           updateChainedListDisplay(-1,dirChainedList);
           nextAction=NONE;
@@ -2557,8 +2261,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
       wrEndPtr=wrBitCounter;
       bitCounter=wrBitCounter;
       
-      memcpy((unsigned char *)&DMA_BIT_TX_BUFFER,(unsigned char *)&DMA_BIT_RX_BUFFER,RawSDTrackSize);
-      memset((unsigned char *)&DMA_BIT_RX_BUFFER,0,RawSDTrackSize);
+      memcpy((unsigned char *)&DMA_BIT_TX_BUFFER,(unsigned char *)&DMA_BIT_RX_BUFFER,RAW_SD_TRACK_SIZE);
+      memset((unsigned char *)&DMA_BIT_RX_BUFFER,0,RAW_SD_TRACK_SIZE);
       
       // nextAction=WRITE_TRK;
       nextAction=DUMP_TX;

@@ -4,11 +4,9 @@
 
 #define CONFIG_FI
 
-#define maxLength 512
-
-
 enum STATUS loadConfigFile();
 enum STATUS saveConfigFile();
+enum STATUS deleteConfigFile();
 
 void cleanJsonMem();
 void dumpConfigParams();

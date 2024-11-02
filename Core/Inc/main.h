@@ -63,7 +63,6 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-enum page{FS,MOUNT,MENU,IMAGE,FAVORITE,CONFIG};
 enum action{NONE,IMG_MOUNT,FSDISP,DUMP_TX,WRITE_TRK,UPDIMGDISP,PROCESS_FS_CHANGEDIR};
 
 enum FS_STATUS{READY,READING,WRITING,BUSY,DBG};
@@ -83,15 +82,7 @@ enum STATUS mountImagefile(char * filename);
 
 void processBtnInterrupt(uint16_t GPIO_Pin);
 
-void processPrevFSItem();
-void processNextFSItem();
-void processUpdirFSItem();
-void processSelectFSItem();
 
-void processToogleOption();
-void processMountOption();
-void nothing();
-void processBtnRet();
 
 void debounceBtn(int GPIO);
 
@@ -105,7 +96,6 @@ void Custom_SD_ReadCpltCallback(void);
 void getDataBlocksBareMetal(long memoryAdr,volatile unsigned char * buffer,int count);
 void setDataBlocksBareMetal(long memoryAdr,volatile unsigned char * buffer,int count);
 
-enum STATUS switchPage(enum page newPage,void * arg);
 void processDiskHeadMoveInterrupt(uint16_t GPIO_Pin);
 char processDeviceEnableInterrupt(uint16_t GPIO_Pin);
 char processSdEject(uint16_t GPIO_PIN);
