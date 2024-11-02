@@ -39,7 +39,7 @@ enum STATUS loadConfigFile(){
     unsigned int pt;
     
     
-    fres = f_read(&fil,jsonBuffer,1024,&pt);
+    fres = f_read(&fil,jsonBuffer,JSON_BUFFER_SIZE,&pt);
     if(fres != FR_OK){
         log_error("File read Error: (%i)",fres);
         return RET_ERR;
@@ -50,6 +50,12 @@ enum STATUS loadConfigFile(){
     fsState=READY;
     
     json = cJSON_Parse(jsonBuffer);
+    if (json==NULL){
+        log_error("json==null,creating empty json, saveconfig");
+        
+        json = cJSON_Parse("{}");
+        saveConfigFile();
+    }
     log_debug("Config JSON:%s\n",jsonBuffer);
     
     free(jsonBuffer);

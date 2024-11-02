@@ -24,7 +24,6 @@ void processNextMainMenuScreen();
 void processActiveMainMenuScreen();
 void initMainMenuScreen(int i);
 
-
 void processPrevConfigItem();
 void processNextConfigItem();
 void processSelectConfigItem();

@@ -2,6 +2,7 @@
 #include "stdio.h"
 #include "display.h"
 #include "ssd1306.h"
+#include "defines.h"
 #include "fonts.h"
 #include "list.h"
 #include "main.h"
@@ -11,7 +12,7 @@
 
 extern list_t * dirChainedList;
 extern list_t * favoritesChainedList;
-extern char currentFullPath[1024]; 
+extern char currentFullPath[MAX_FULLPATH_LENGTH]; 
 extern char currentPath[128];
 extern int currentClistPos;
 extern image_info_t mountImageInfo;
@@ -561,7 +562,7 @@ void initConfigMenuScreen(int i){
   ssd1306_SetColor(White);
   ssd1306_DrawLine(0,6*9-1,127,6*9-1);
 
-  displayStringAtPosition(1,6*9+1,VERSION);
+  displayStringAtPosition(1,6*9+1,"");
   ssd1306_UpdateScreen();
 
 
