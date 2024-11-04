@@ -1,7 +1,7 @@
 /* USER CODE BEGIN Header */
 /*
 __   _____ ___ ___        Author: Vincent BESSON
- \ \ / /_ _| _ ) _ \      Release: 0.71
+ \ \ / /_ _| _ ) _ \      Release: 0.72
   \ V / | || _ \   /      Date: 2024.11.02
    \_/ |___|___/_|_\      Description: Apple Disk II Emulator on STM32F4x
                 2024      Licence: Creative Commons
@@ -11,6 +11,7 @@ ______________________
 Todo:
 - Add the screen PWR on a pin and not directly on the +3.3V
 - Add 74LS125 to protect the STM32 against AII over current
+- Feat: Add a menu after mounting image to Add to favorite, delete, umount,...
 
 
 Note 
@@ -102,6 +103,9 @@ UART
 
 // Changelog
 /*
+04.11.24: v0.72
+  +fix: directory with name of 1 char not read by the emulator
+  +fix: PO/po file extension add to the list of extension
 01.11.24: v0.71
   +feat: config Menu
   +feat: favorites
@@ -862,14 +866,16 @@ enum STATUS walkDir(char * path){
         len=(int)strlen(fno.fname);                                       // Warning strlen
         
         if (((fno.fattrib & AM_DIR) && 
-            !(fno.fattrib & AM_HID) && len>2 && fno.fname[0]!='.' ) ||     // Listing Directories & File with NIC extension
-            (len>5 &&
+            !(fno.fattrib & AM_HID) && len>0 && fno.fname[0]!='.' ) ||     // Listing Directories & File with NIC extension
+            (len>3 &&
             (!memcmp(fno.fname+(len-4),".NIC",4)  ||           // .NIC
              !memcmp(fno.fname+(len-4),".nic",4)  ||           // .nic
              !memcmp(fno.fname+(len-4),".WOZ",4)  ||           // .WOZ
              !memcmp(fno.fname+(len-4),".woz",4)  ||           // .woz
              !memcmp(fno.fname+(len-4),".DSK",4)  ||           // .DSK
-             !memcmp(fno.fname+(len-4),".dsk",4)) &&           // .dsk
+             !memcmp(fno.fname+(len-4),".dsk",4)  ||           // .dsk
+             !memcmp(fno.fname+(len-3),".PO",3)   ||           // .DSK
+             !memcmp(fno.fname+(len-3),".po",3)) &&           // .dsk
              !(fno.fattrib & AM_SYS) &&                        // Not System file
              !(fno.fattrib & AM_HID)                           // Not Hidden file
             )
