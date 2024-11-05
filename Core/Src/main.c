@@ -106,6 +106,8 @@ UART
 04.11.24: v0.72
   +fix: directory with name of 1 char not read by the emulator
   +fix: PO/po file extension add to the list of extension
+  +feat: add menu image (toggle Favorite, unmount, unlink)
+  +fix SDIO IRQ for unlink
 01.11.24: v0.71
   +feat: config Menu
   +feat: favorites
@@ -1244,6 +1246,26 @@ enum STATUS mountImagefile(char * filename){
   return RET_OK;
 }
 
+enum STATUS unmountImage(){
+  flgImageMounted=0;
+  flgBeaming=0;
+  // TODO add stop timer
+  return RET_OK;
+}
+
+enum STATUS unlinkImageFile(char* fullpathfilename){
+  if (fullpathfilename==NULL){
+    log_error("filename is null");
+  }
+
+  HAL_NVIC_EnableIRQ(SDIO_IRQn);
+  HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
+  HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
+  
+  f_unlink(fullpathfilename);
+
+  return RET_OK;
+}
 
 /**
   * @brief  Inite Buffer to be send to the Apple II 

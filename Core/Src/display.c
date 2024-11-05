@@ -78,6 +78,15 @@ enum STATUS switchPage(enum page newPage,void * arg){
   
   switch(newPage){
     
+    case IMAGEMENU:
+      initImageMenuScreen(0);
+      ptrbtnUp=processPreviousImageMenuScreen;
+      ptrbtnDown=processNextImageMenuScreen;
+      ptrbtnEntr=processActiveImageMenuScreen;
+      ptrbtnRet=processImageMenuScreen;
+      currentPage=IMAGEMENU;
+      break;
+
     case CONFIG:
       initConfigMenuScreen(0);
       updateConfigMenuDisplay(0);
@@ -129,7 +138,7 @@ enum STATUS switchPage(enum page newPage,void * arg){
       initIMAGEScreen(arg,0);
       ptrbtnUp=nothing;
       ptrbtnDown=nothing;
-      ptrbtnEntr=toggleAddToFavorite;
+      ptrbtnEntr=processDisplayImageMenu;
       ptrbtnRet=processBtnRet;
       currentPage=IMAGE;
       break;
@@ -150,6 +159,10 @@ enum STATUS switchPage(enum page newPage,void * arg){
   return RET_OK;
 }
 
+void processDisplayImageMenu(){
+  switchPage(IMAGEMENU,NULL);
+
+}
 
 void updateChainedListDisplay(int init, list_t * lst ){
   int offset=5;
@@ -806,6 +819,101 @@ void initConfigMenuScreen(int i){
 
 }
 
+/*
+ * 
+ *  MENU IMAGE OPTION 
+ * 
+ */
+
+int8_t currentImageMenuItem=0;
+
+void processNextImageMenuScreen(){
+  currentImageMenuItem++;
+  initImageMenuScreen(currentImageMenuItem);
+}
+
+void processPreviousImageMenuScreen(){
+  currentImageMenuItem--;
+  initImageMenuScreen(currentImageMenuItem);
+}
+
+void processImageMenuScreen(){
+  switchPage(IMAGE,NULL);
+}
+
+void processActiveImageMenuScreen(){
+  switch(currentImageMenuItem){
+    
+    case 0:
+      // Add / Remove from Favorite
+      toggleAddToFavorite();
+      switchPage(IMAGE,NULL);
+      break;
+
+    case 1:
+      // unmount();
+      unmountImage();
+      switchPage(FS,0x0);
+      break;
+
+    case 2:
+      // unlink();
+      unmountImage();
+      unlinkImageFile(currentFullPathImageFilename);
+      nextAction=FSDISP;
+      break;
+
+    default:
+      break;
+  }
+  return;
+}
+
+void initImageMenuScreen(int i){
+  
+  char * menuItem[3];
+  u_int8_t numItems=3;
+  uint8_t h_offset=10;
+
+  if (i>=numItems)
+    i=0;
+
+  if (i<0)
+    i=numItems-1;
+
+  menuItem[0]="Toggle favorite";
+  menuItem[1]="Unmount image";
+  menuItem[2]="Delete image";
+
+  uint8_t menuIcon[3];            // TODO Change ICO
+  menuIcon[0]=5;
+  menuIcon[1]=0;
+  menuIcon[2]=4;
+
+  clearScreen();
+
+  ssd1306_SetColor(White);
+  displayStringAtPosition(0,0,"Image Menu");
+  ssd1306_DrawLine(0,8,127,8);
+
+  ssd1306_SetColor(White);
+  for (int j=0;j<numItems;j++){
+    displayStringAtPosition(1+h_offset,(1+j)*9+5,menuItem[j]);
+    dispIcon(1,(1+j)*9+5,menuIcon[j]);
+  }
+
+  ssd1306_SetColor(Inverse);
+  ssd1306_FillRect(1,(1+i)*9-1+5,126,9);
+  
+  ssd1306_SetColor(White);
+  ssd1306_DrawLine(0,6*9-1,127,6*9-1);
+
+  displayStringAtPosition(1,6*9+1,_VERSION);
+  ssd1306_UpdateScreen();
+  currentImageMenuItem=i;
+  return;
+
+}
 
 /*
  * 
@@ -842,7 +950,7 @@ void processActiveMainMenuScreen(){
       break;
 
     case 3:
-       switchPage(CONFIG,NULL);
+      switchPage(CONFIG,NULL);
       break;
 
     default:
@@ -901,7 +1009,7 @@ menuIcon[3]=3;
 
 }
 
-void toggleMainMenuOption(int i){
+void toggleMainMenuOption(int i){         // Todo checked if used ?
   
 
   ssd1306_SetColor(Inverse);

@@ -5,7 +5,7 @@
 #define disp
 
 
-enum page{FS,MOUNT,MENU,IMAGE,FAVORITE,CONFIG};
+enum page{FS,MOUNT,MENU,IMAGE,FAVORITE,CONFIG,IMAGEMENU};
 char * getImageNameFromFullPath(char * fullPathImageName);
 enum STATUS switchPage(enum page newPage,void * arg);
 void updateChainedListDisplay(int init, list_t * lst );
@@ -35,6 +35,13 @@ enum STATUS initIMAGEScreen(char * imageName,int type);
 void updateIMAGEScreen(uint8_t status,uint8_t trk);
 void toggleAddToFavorite();
 
+/*     IMAGE MENU SCREEN                */
+void processPreviousImageMenuScreen();
+void processNextImageMenuScreen();
+void processActiveImageMenuScreen();
+void processImageMenuScreen();
+void initImageMenuScreen(int i);
+void processDisplayImageMenu();
 
 /*      MAIN MENU SCREEN                */
 void processPreviousMainMenuScreen();
