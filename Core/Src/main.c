@@ -59,7 +59,7 @@ Current status: READ PARTIALLY WORKING / WRITE Experimental
 			},
 
 Architecture:
-
+- TIM1 Timer 1 : Use to Manage passive buzzer on PIN 14 (Channel 2N), via a PWM 
 - TIM2 Timer 2 : Use to Manage the WR_DATA, ETR1 Slave Reset mode to resync with the A2 Write Pulse that is 3.958 uS instead of 4uS. Every Rising Edge resync
 - TIM3 Timer 3 : Use to Manage the RD_DATA, 
 - TIM4 Timer 4 : Internal no PWM, debouncer for the control button
