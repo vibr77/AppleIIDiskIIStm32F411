@@ -17,6 +17,7 @@ extern char currentPath[MAX_PATH_LENGTH];
 extern char currentFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];  // fullpath from root image filename
 extern char tmpFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];      // fullpath from root image filename
 extern unsigned char flgImageMounted;
+extern uint8_t flgSoundEffect;
 extern image_info_t mountImageInfo;
 
 
@@ -608,6 +609,21 @@ void processBootOption(int arg){
 return;
 }
 
+void processSoundEffect(){
+  if (mnuItem[3].ival==1){
+    setConfigParamInt("soundEffect",0);
+    flgSoundEffect=0;
+    mnuItem[3].ival=0;
+  }else{
+    setConfigParamInt("soundEffect",1);
+    flgSoundEffect=1;
+    mnuItem[3].ival=1;
+  }
+    
+  saveConfigFile();
+  updateConfigMenuDisplay(-1);
+}
+
 void processClearprefs(){
   deleteConfigFile();
   displayStringAtPosition(1,6*9+1,"Prefs cleared");
@@ -744,7 +760,7 @@ void updateConfigMenuDisplay(int init){
 
 void initConfigMenuScreen(int i){
   
-  u_int8_t numItems=6;
+  u_int8_t numItems=7;
 
   if (i>=numItems)
     i=0;
@@ -780,27 +796,32 @@ void initConfigMenuScreen(int i){
   mnuItem[2].arg=2;
   mnuItem[2].ival=0;
 
-
   mnuItem[bootMode].ival=1;
 
-
-  sprintf(mnuItem[3].title,"Clear prefs");
-  mnuItem[3].type=0;
+  sprintf(mnuItem[3].title,"Sound effect");
+  mnuItem[3].type=1;
   mnuItem[3].icon=0;
-  mnuItem[3].triggerfunction=processClearprefs;
+  mnuItem[3].triggerfunction=processSoundEffect;
   mnuItem[3].arg=0;
+  mnuItem[3].ival=flgSoundEffect;
 
-  sprintf(mnuItem[4].title,"Clear favorites");
+  sprintf(mnuItem[4].title,"Clear prefs");
   mnuItem[4].type=0;
   mnuItem[4].icon=0;
-  mnuItem[4].triggerfunction=processClearFavorites;
+  mnuItem[4].triggerfunction=processClearprefs;
   mnuItem[4].arg=0;
 
-  sprintf(mnuItem[5].title,"Make filesystem");
+  sprintf(mnuItem[4].title,"Clear favorites");
   mnuItem[5].type=0;
   mnuItem[5].icon=0;
-  mnuItem[5].triggerfunction=processMakeFs;
+  mnuItem[5].triggerfunction=processClearFavorites;
   mnuItem[5].arg=0;
+
+  sprintf(mnuItem[5].title,"Make filesystem");
+  mnuItem[6].type=0;
+  mnuItem[6].icon=0;
+  mnuItem[6].triggerfunction=processMakeFs;
+  mnuItem[6].arg=0;
 
   clearScreen();
 

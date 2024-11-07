@@ -250,6 +250,7 @@ FATFS fs;                                                   // fatfs global vari
 long database=0;                                            // start of the data segment in FAT
 int csize=0;                                                // Cluster size
 
+uint8_t flgSoundEffect=0;
 volatile unsigned char flgDeviceEnable=0;
 unsigned char flgImageMounted=0;                            // Image file mount status flag
 unsigned char flgBeaming=0;                                 // DMA SPI1 to Apple II Databeaming status flag
@@ -470,11 +471,11 @@ void TIM2_IRQHandler(void){
   if (TIM2->SR & TIM_SR_UIF){ 
 
     TIM2->SR &= ~TIM_SR_UIF;                                                  // Reset the Interrupt
-    HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_SET);
+    //HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_SET);
   
   }else if (TIM2->SR & TIM_SR_CC2IF){                                        // The count & compare is on channel 2 to avoid issue with ETR1
 
-    HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_RESET);
+    //HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_RESET);
 
     wrData=HAL_GPIO_ReadPin(WR_DATA_GPIO_Port, WR_DATA_Pin);  // get WR_DATA
 
@@ -1445,6 +1446,13 @@ int main(void)
         log_info("bootMode=%d",bootMode);
 
       log_info("loading configFile: OK");
+
+      if (getConfigParamInt("soundEffect",&flgSoundEffect)==RET_ERR)
+        log_error("error getting soundEffect from Config");
+      else 
+        log_info("soundEffect=%d",flgSoundEffect);
+
+      log_info("loading configFile: OK");
     }
 
     imgFile=(char*)getConfigParamStr("lastFile");
@@ -1562,7 +1570,7 @@ int main(void)
   while(1){}
 */
 
-  HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_RESET);
+  //HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_RESET);
 
 /*
   if (flgBeaming==1){
@@ -1623,11 +1631,11 @@ int main(void)
       
       /* FOR DEBUGGING PURPOSE ON TRACK 0 */
       
-      if (intTrk==0){
+     /* if (intTrk==0){
         HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_SET);
       }else{
         HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_RESET);
-      }
+      }*/
       /* End of debug       */
 
       //t2 = DWT->CYCCNT;
@@ -2162,7 +2170,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, RD_DATA_Pin|WR_PROTECT_Pin|DEBUG_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, RD_DATA_Pin|WR_PROTECT_Pin/*|DEBUG_Pin*/, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : BTN_UP_Pin BTN_DOWN_Pin BTN_ENTR_Pin */
   GPIO_InitStruct.Pin = BTN_UP_Pin|BTN_DOWN_Pin|BTN_ENTR_Pin;
@@ -2196,7 +2204,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(RD_DATA_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : WR_PROTECT_Pin DEBUG_Pin */
-  GPIO_InitStruct.Pin = WR_PROTECT_Pin|DEBUG_Pin;
+  GPIO_InitStruct.Pin = WR_PROTECT_Pin/*|DEBUG_Pin*/;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;

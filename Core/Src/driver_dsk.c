@@ -132,7 +132,7 @@ enum STATUS dsk2Nic(unsigned char *rawByte,unsigned char *buffer,uint8_t trk){
 
     int i=0;
     char dst[512];
-    char src[256];
+    char src[256+2];
     unsigned char * sectorMap;
     if (mountImageInfo.type==2)
         sectorMap=dsk2nicSectorMap;
@@ -143,52 +143,53 @@ enum STATUS dsk2Nic(unsigned char *rawByte,unsigned char *buffer,uint8_t trk){
         return RET_ERR;
     }
         
+    for (i=0; i<0x16; i++) 
+        dst[i]=0xff;
+
+    // sync header
+    dst[0x16]=0x03;
+    dst[0x17]=0xfc;
+    dst[0x18]=0xff;
+    dst[0x19]=0x3f;
+    dst[0x1a]=0xcf;
+    dst[0x1b]=0xf3;
+    dst[0x1c]=0xfc;
+    dst[0x1d]=0xff;
+    dst[0x1e]=0x3f;
+    dst[0x1f]=0xcf;
+    dst[0x20]=0xf3;
+    dst[0x21]=0xfc;	
+
+    // address header
+    dst[0x22]=0xd5;
+    dst[0x23]=0xaa;
+    dst[0x24]=0x96;
+    dst[0x2d]=0xde;
+    dst[0x2e]=0xaa;
+    dst[0x2f]=0xeb;
     
+    // sync header
+    for (i=0x30; i<0x35; i++) 
+        dst[i]=0xff;
+
+    // data
+    dst[0x35]=0xd5;
+    dst[0x36]=0xaa;
+    dst[0x37]=0xad;
+    dst[0x18f]=0xde;
+    dst[0x190]=0xaa;
+    dst[0x191]=0xeb;
+    
+    for (i=0x192; i<0x1a0; i++) 
+        dst[i]=0xff;
+    
+    for (i=0x1a0; i<0x200; i++) 
+        dst[i]=0x00;
 
     for (u_int8_t sector=0;sector<16;sector++){
-        memcpy(src,rawByte+sectorMap[sector] * 256,256);
-
-        for (i=0; i<0x16; i++) 
-            dst[i]=0xff;
-
-	    // sync header
-        dst[0x16]=0x03;
-        dst[0x17]=0xfc;
-        dst[0x18]=0xff;
-        dst[0x19]=0x3f;
-        dst[0x1a]=0xcf;
-        dst[0x1b]=0xf3;
-        dst[0x1c]=0xfc;
-        dst[0x1d]=0xff;
-        dst[0x1e]=0x3f;
-        dst[0x1f]=0xcf;
-        dst[0x20]=0xf3;
-        dst[0x21]=0xfc;	
-	
-        // address header
-        dst[0x22]=0xd5;
-        dst[0x23]=0xaa;
-        dst[0x24]=0x96;
-        dst[0x2d]=0xde;
-        dst[0x2e]=0xaa;
-        dst[0x2f]=0xeb;
-        
-        // sync header
-        for (i=0x30; i<0x35; i++) 
-            dst[i]=0xff;
-
-	    // data
-        dst[0x35]=0xd5;
-        dst[0x36]=0xaa;
-        dst[0x37]=0xad;
-        dst[0x18f]=0xde;
-        dst[0x190]=0xaa;
-        dst[0x191]=0xeb;
-        for (i=0x192; i<0x1a0; i++) 
-            dst[i]=0xff;
-        
-        for (i=0x1a0; i<0x200; i++) 
-            dst[i]=0x00;
+        uint8_t sm=sectorMap[sector];
+        memcpy(src,rawByte+sm * 256,256);
+        src[256] = src[257] = 0;
 
         unsigned char c, x, ox = 0;
 
@@ -208,12 +209,14 @@ enum STATUS dsk2Nic(unsigned char *rawByte,unsigned char *buffer,uint8_t trk){
 			dst[i+0x38] = encTable[(x^ox)&0x3f];
             ox = x;
         }
+
         for (i = 0; i < 256; i++) {
             x = (src[i] >> 2);
             dst[i+0x8e] = encTable[(x ^ ox) & 0x3f];
             ox = x;
         }
-        dst[0x18e]=encTable[ox];
+        
+        dst[0x18e]=encTable[ox & 0x3f];
         memcpy(buffer+sector*512,dst,512);
     }
     return RET_OK;

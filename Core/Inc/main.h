@@ -123,12 +123,12 @@ typedef struct image_info_s {
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define BTN_UP_Pin GPIO_PIN_14
-#define BTN_UP_GPIO_Port GPIOC
-#define BTN_UP_EXTI_IRQn EXTI15_10_IRQn
 #define BTN_DOWN_Pin GPIO_PIN_13
 #define BTN_DOWN_GPIO_Port GPIOC
 #define BTN_DOWN_EXTI_IRQn EXTI15_10_IRQn
+#define BTN_UP_Pin GPIO_PIN_14
+#define BTN_UP_GPIO_Port GPIOC
+#define BTN_UP_EXTI_IRQn EXTI15_10_IRQn
 #define BTN_ENTR_Pin GPIO_PIN_15
 #define BTN_ENTR_GPIO_Port GPIOC
 #define BTN_ENTR_EXTI_IRQn EXTI15_10_IRQn
@@ -158,8 +158,6 @@ typedef struct image_info_s {
 #define BTN_RET_EXTI_IRQn EXTI15_10_IRQn
 #define SD_EJECT_Pin GPIO_PIN_13
 #define SD_EJECT_GPIO_Port GPIOB
-#define DEBUG_Pin GPIO_PIN_14
-#define DEBUG_GPIO_Port GPIOB
 #define WR_REQ_Pin GPIO_PIN_9
 #define WR_REQ_GPIO_Port GPIOB
 #define WR_REQ_EXTI_IRQn EXTI9_5_IRQn

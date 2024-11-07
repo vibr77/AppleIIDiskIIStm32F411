@@ -57,6 +57,7 @@ void processSelectConfigItem();
 void processReturnConfigItem();
 
 void processBootOption(int arg);
+void processSoundEffect();
 void processClearprefs();
 void processClearFavorites();
 
