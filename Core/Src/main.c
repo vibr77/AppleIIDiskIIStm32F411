@@ -1684,11 +1684,13 @@ int main(void)
 
       /* FOR DEBUGGING PURPOSE ON TRACK 0 */
       
-     /* if (intTrk==0){
+    /* 
+     if (intTrk==0){
         HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_SET);
       }else{
         HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_RESET);
-      }*/
+      }
+    */
       /* End of debug       */
 
       //t2 = DWT->CYCCNT;

@@ -586,7 +586,7 @@ typedef struct MNUITEM{
   uint8_t ival;
 }MNUITEM_t;
 
-MNUITEM_t mnuItem[6]; // MENU ITEM DEFINITION
+MNUITEM_t mnuItem[7]; // MENU ITEM DEFINITION
 
 void processBootOption(int arg){
   if (arg==0){
@@ -776,7 +776,7 @@ void initConfigMenuScreen(int i){
 
   sprintf(mnuItem[0].title,"Boot last image");
   mnuItem[0].type=1;
-  mnuItem[1].icon=0;
+  mnuItem[0].icon=10;
   mnuItem[0].triggerfunction=processBootOption;
   mnuItem[0].arg=0;
   mnuItem[0].ival=0;
@@ -784,14 +784,14 @@ void initConfigMenuScreen(int i){
 
   sprintf(mnuItem[1].title,"Boot last dir");
   mnuItem[1].type=1;
-  mnuItem[1].icon=0;
+  mnuItem[1].icon=10;
   mnuItem[1].triggerfunction=processBootOption;
   mnuItem[1].arg=1;
   mnuItem[1].ival=0;
 
   sprintf(mnuItem[2].title,"Boot favorites");
   mnuItem[2].type=1;
-  mnuItem[2].icon=1;
+  mnuItem[2].icon=10;
   mnuItem[2].triggerfunction=processBootOption;
   mnuItem[2].arg=2;
   mnuItem[2].ival=0;
@@ -800,26 +800,26 @@ void initConfigMenuScreen(int i){
 
   sprintf(mnuItem[3].title,"Sound effect");
   mnuItem[3].type=1;
-  mnuItem[3].icon=0;
+  mnuItem[3].icon=9;
   mnuItem[3].triggerfunction=processSoundEffect;
   mnuItem[3].arg=0;
   mnuItem[3].ival=flgSoundEffect;
 
   sprintf(mnuItem[4].title,"Clear prefs");
   mnuItem[4].type=0;
-  mnuItem[4].icon=0;
+  mnuItem[4].icon=8;
   mnuItem[4].triggerfunction=processClearprefs;
   mnuItem[4].arg=0;
 
-  sprintf(mnuItem[4].title,"Clear favorites");
+  sprintf(mnuItem[5].title,"Clear favorites");
   mnuItem[5].type=0;
-  mnuItem[5].icon=0;
+  mnuItem[5].icon=8;
   mnuItem[5].triggerfunction=processClearFavorites;
   mnuItem[5].arg=0;
 
-  sprintf(mnuItem[5].title,"Make filesystem");
+  sprintf(mnuItem[6].title,"Make filesystem");
   mnuItem[6].type=0;
-  mnuItem[6].icon=0;
+  mnuItem[6].icon=11;
   mnuItem[6].triggerfunction=processMakeFs;
   mnuItem[6].arg=0;
 
@@ -1202,15 +1202,20 @@ void dispIcon12x12(int x,int y,int indx){
 
 void dispIcon(int x,int y,int indx){
   const unsigned char icon_set[]  = {
-    0x00, 0x7e, 0x7e, 0x7e, 0x7c, 0x7c, 0x7c, 0x00,   // indx=0 'folderb', 8x8px 
-    0x00, 0x7e, 0x42, 0x46, 0x4a, 0x7e, 0x00, 0x00,   // indx=1 'file2', 8x8px
-    0x08, 0xd8, 0x7c, 0x3f, 0x3f, 0x7c, 0xd8, 0x08,   // indx=2 'star', 8x8px
-    0x00, 0x6c, 0x7c, 0x3e, 0x7c, 0x7c, 0x10, 0x00,   // indx=3 'config', 8x8px
-    0x00, 0x60, 0x68, 0x1c, 0x3e, 0x1e, 0x0e, 0x00,   // indx=4 'launch', 8x8px
-    0x00, 0x1c, 0x3e, 0x7c, 0x7c, 0x3e, 0x1c, 0x00,   // indx=5 'favorite', 8x8px
-    0x00, 0x7e, 0x42, 0x42, 0x42, 0x42, 0x7e, 0x00,   // indx=6 'chkbox_empty", 8x8px
-    0x00, 0x7e, 0x7e, 0x7e, 0x7e, 0x7e, 0x7e, 0x00    // indx=7 'chkbox_full", 8x8px
+    0x00, 0x7e, 0x7e, 0x7e, 0x7c, 0x7c, 0x7c, 0x00,   // indx=0   'folderb',      8x8px 
+    0x00, 0x7e, 0x42, 0x46, 0x4a, 0x7e, 0x00, 0x00,   // indx=1   'file2',        8x8px
+    0x08, 0xd8, 0x7c, 0x3f, 0x3f, 0x7c, 0xd8, 0x08,   // indx=2   'star',         8x8px
+    0x00, 0x6c, 0x7c, 0x3e, 0x7c, 0x7c, 0x10, 0x00,   // indx=3   'config',       8x8px
+    0x00, 0x60, 0x68, 0x1c, 0x3e, 0x1e, 0x0e, 0x00,   // indx=4   'launch',       8x8px
+    0x00, 0x1c, 0x3e, 0x7c, 0x7c, 0x3e, 0x1c, 0x00,   // indx=5   'favorite',     8x8px
+    0x00, 0x7e, 0x42, 0x42, 0x42, 0x42, 0x7e, 0x00,   // indx=6   'chkbox_empty", 8x8px
+    0x00, 0x7e, 0x7e, 0x7e, 0x7e, 0x7e, 0x7e, 0x00,   // indx=7   'chkbox_full",  8x8px
+    0x00, 0x04, 0x7c, 0x46, 0x46, 0x7c, 0x04, 0x00,   // indx=8   'trash',        8x8px
+    0x18, 0x18, 0x24, 0x42, 0x7e, 0x00, 0x24, 0x18,   // indx=9   'sound',        8x8px
+    0x00, 0x66, 0x42, 0x18, 0x18, 0x42, 0x66, 0x00,   // indx=10  'boot',         8x8px
+    0xaa, 0xee, 0xea, 0xba, 0xba, 0xea, 0xee, 0xaa    // indx=11  'makefs',       8x8px
   };
+
 
   ssd1306_DrawBitmap(x,y,8,8,icon_set+8*indx);
 }
