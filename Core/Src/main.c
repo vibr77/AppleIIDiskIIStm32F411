@@ -103,11 +103,25 @@ UART
 
 // Changelog
 /*
+09.11.23: v0.73
+  +fix: reset on sdcard reinserted
+  +fix: sdcard ejected message
+  +feat: sound option in config menu
+  +feat: passive buzzer add on board rev2
+  +feat: buzzer sound on head track change
+  +feat: buzzer sound on key pressed
+  +feat: adding logo on splashscreen
+  +fix: walk dir missing fs lock
+  +fix: add flg for weakbit on woz only, 
+  +fix: add bitcounter index on woz only
+  +refactor: code refactoring
+
 04.11.24: v0.72
   +fix: directory with name of 1 char not read by the emulator
   +fix: PO/po file extension add to the list of extension
   +feat: add menu image (toggle Favorite, unmount, unlink)
   +fix SDIO IRQ for unlink
+
 01.11.24: v0.71
   +feat: config Menu
   +feat: favorites
@@ -252,8 +266,12 @@ FATFS fs;                                                   // fatfs global vari
 long database=0;                                            // start of the data segment in FAT
 int csize=0;                                                // Cluster size
 
-uint8_t flgSoundEffect=0;
+uint8_t flgSoundEffect=0;                                   // Activate Buzze
+uint8_t flgWeakBit=0;                                       // Activate WeakBit only for Woz File
+uint8_t flgBitIndxCounter=0;                                // Keep track of Bit Index Counter when changing track (only for WOZ)
+
 volatile unsigned char flgDeviceEnable=0;
+unsigned char flgFsMounted=0;
 unsigned char flgImageMounted=0;                            // Image file mount status flag
 unsigned char flgBeaming=0;                                 // DMA SPI1 to Apple II Databeaming status flag
 unsigned char flgWriteProtected=0;                          // Write Protected
@@ -273,7 +291,6 @@ char tmpFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];      // fullpath from r
 
 image_info_t mountImageInfo;
 
-//int lastlistPos;
 list_t * dirChainedList;
 
 // DEBUG BLOCK
@@ -372,6 +389,8 @@ void TIM4_IRQHandler(void){
   if (TIM4->SR & TIM_SR_UIF){
     buttonDebounceState = true;
     log_debug("debounced\n");
+    //HAL_TIMEx_PWMN_Stop(&htim1,TIM_CHANNEL_2);
+
     if(HAL_GPIO_ReadPin(BTN_UP_GPIO_Port, BTN_UP_Pin)){
       debounceBtn(BTN_UP_Pin);
       TIM4->ARR=200;                                      // Manage repeat acceleration
@@ -408,7 +427,7 @@ void TIM3_IRQHandler(void){
     // ************  WEAKBIT ****************
   
 #if WEAKBIT ==1
-    if (nextBit==0){
+    if (nextBit==0 && flgWeakBit==1){
       if (++zeroBits>2){
         nextBit=weakBitTank[fakeBitTankPosition] & 1;    // 30% of fakebit in the buffer as per AppleSauce reco
 
@@ -460,6 +479,7 @@ volatile uint8_t wrData=0;
 volatile uint8_t prevWrData=0;
 volatile uint8_t xorWrData=0;
 volatile uint8_t wrBitPos=0;
+
 volatile unsigned int wrBitCounter=0;
 volatile unsigned int wrBytes=0;
 
@@ -551,6 +571,17 @@ void irqWIdle(){
 
 }
 
+void irqEnableSDIO(){
+  HAL_NVIC_EnableIRQ(SDIO_IRQn);
+  HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
+  HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
+}
+
+void irqDisableSDIO(){
+  HAL_NVIC_DisableIRQ(SDIO_IRQn);
+  HAL_NVIC_DisableIRQ(DMA2_Stream3_IRQn);
+  HAL_NVIC_DisableIRQ(DMA2_Stream6_IRQn);
+}
 
 /**
   * @brief debug function to dump content of buffer to file
@@ -824,13 +855,11 @@ enum STATUS walkDir(char * path){
   DIR dir;
   FRESULT     fres;  
 
-  //processPath(path);
   log_info("walkdir() path:%s",path);
-  HAL_NVIC_EnableIRQ(SDIO_IRQn);
-  HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
-  HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
+  irqEnableSDIO();
 
   while(fsState!=READY){};
+  fsState=BUSY;
 
   fres = f_opendir(&dir, path);
 
@@ -838,22 +867,20 @@ enum STATUS walkDir(char * path){
 
   if (fres != FR_OK){
     log_error("f_opendir error (%i)\n",fres);
+    fsState=READY;
     return RET_ERR;
   }
     
   char * fileName;
   int len;
-  //lastlistPos=0;
-  dirChainedList=list_new();
 
+  dirChainedList=list_new();
 
   if (fres == FR_OK){
       if (strcmp(path,"") && strcmp(path,"/")){
         fileName=malloc(MAX_FILENAME_LENGTH*sizeof(char));
         sprintf(fileName,"D|..");
         list_rpush(dirChainedList, list_node_new(fileName));
-        //lastlistPos++;
-        
       }
       
       while(1){
@@ -863,6 +890,7 @@ enum STATUS walkDir(char * path){
  
         if (fres != FR_OK){
           log_error("Error f_readdir:%d path:%s\n", fres,path);
+          fsState=READY;
           return RET_ERR;
         }
         if ((fres != FR_OK) || (fno.fname[0] == 0))
@@ -914,6 +942,7 @@ enum STATUS walkDir(char * path){
   
   dirChainedList=sortLinkedList(dirChainedList);
   f_closedir(&dir);
+  fsState=READY;
   return RET_OK;
 }
 
@@ -923,19 +952,21 @@ enum STATUS walkDir(char * path){
   * @retval None
   */
 char processSdEject(uint16_t GPIO_PIN){
-  log_info("processSdeject");
+  //log_info("processSdeject");
   
   int sdEject=HAL_GPIO_ReadPin(SD_EJECT_GPIO_Port, GPIO_PIN);                 // Check if SDCard is ejected
   if (sdEject==1){  
     flgImageMounted=0;
     flgBeaming=0;
 
-    initSdEjectScreen();                                                                      // Display the message on screen
+    initErrorScreen("SD EJECTED");                                                                      // Display the message on screen
     
     do {  
       sdEject=HAL_GPIO_ReadPin(SD_EJECT_GPIO_Port, GPIO_PIN);                 // wait til it has changed
     }while(sdEject==1);
-  
+
+    nextAction=SYSRESET;      // When SDCard is back we display FS
+    
   }
   return sdEject;
 }
@@ -950,7 +981,7 @@ char processDeviceEnableInterrupt(uint16_t GPIO_Pin){
   
   // The DEVICE_ENABLE signal from the Disk controller is activeLow
 
-  uint8_t  a=HAL_GPIO_ReadPin(DEVICE_ENABLE_GPIO_Port,GPIO_Pin);
+  uint8_t a=HAL_GPIO_ReadPin(DEVICE_ENABLE_GPIO_Port,GPIO_Pin);
   
   GPIO_InitTypeDef GPIO_InitStruct = {0};
 
@@ -989,8 +1020,9 @@ char processDeviceEnableInterrupt(uint16_t GPIO_Pin){
     HAL_GPIO_Init(WR_PROTECT_GPIO_Port, &GPIO_InitStruct);
 
     HAL_TIM_PWM_Stop_IT(&htim3,TIM_CHANNEL_4);                                                // Stop the Timer
-    
+    log_info("stopping the timers");
   }
+
   log_info("flgDeviceEnable==%d",flgDeviceEnable);
   return flgDeviceEnable;
 }
@@ -1002,6 +1034,15 @@ char processDeviceEnableInterrupt(uint16_t GPIO_Pin){
   * @retval None
   */
 void processBtnInterrupt(uint16_t GPIO_Pin){     
+
+  if (flgSoundEffect==1 && (GPIO_Pin==BTN_UP_Pin || GPIO_Pin==BTN_DOWN_Pin || GPIO_Pin==BTN_ENTR_Pin || GPIO_Pin==BTN_RET_Pin)){
+      TIM1->PSC=500;
+      TIM1->ARR=1000;
+      TIM1->CCR2=500;
+      HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_2);
+      HAL_Delay(15);
+      HAL_TIMEx_PWMN_Stop(&htim1,TIM_CHANNEL_2);
+  }
 
   switch (GPIO_Pin){
     case BTN_UP_Pin:
@@ -1134,15 +1175,11 @@ enum STATUS mountImagefile(char * filename){
 
   snprintf(mountImageInfo.title,20,"%s",filename+i+1);
 
-  HAL_NVIC_EnableIRQ(SDIO_IRQn);
-  HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
-  HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
+  irqEnableSDIO();
  
   log_info("Mounting image: %s",filename);
   while(fsState!=READY){};
   fsState=BUSY;
-
-  //fr = f_mount(&fs, "", 1);                 // to be checked 
 
   fr = f_stat(filename, &fno);
   switch (fr) {
@@ -1160,6 +1197,7 @@ enum STATUS mountImagefile(char * filename){
         fsState=READY;
         return RET_ERR;
   }
+
   fsState=READY;
   l=strlen(filename);
   if (l>4 && 
@@ -1181,6 +1219,8 @@ enum STATUS mountImagefile(char * filename){
     mountImageInfo.type=0;
 
     flgWriteProtected=0;
+    flgWeakBit=0;
+    flgBitIndxCounter=0;
 
   }else if (l>4 && 
       (!memcmp(filename+(l-4),".WOZ",4)  ||           // .WOZ
@@ -1204,6 +1244,9 @@ enum STATUS mountImagefile(char * filename){
     mountImageInfo.type=1;
 
     flgWriteProtected=wozFile.is_write_protected;
+    
+    flgWeakBit=1;
+    flgBitIndxCounter=1;
     
   }else if (l>4 && 
       (!memcmp(filename+(l-4),".DSK",4)  ||           // .DSK & PO
@@ -1231,6 +1274,8 @@ enum STATUS mountImagefile(char * filename){
       mountImageInfo.type=3; 
 
     flgWriteProtected=0;
+    flgWeakBit=0;
+    flgBitIndxCounter=0;
 
   }else{
     return RET_ERR;
@@ -1252,6 +1297,8 @@ enum STATUS mountImagefile(char * filename){
 enum STATUS unmountImage(){
   flgImageMounted=0;
   flgBeaming=0;
+  flgWeakBit=0;
+  flgBitIndxCounter=0;
   // TODO add stop timer
   return RET_OK;
 }
@@ -1261,9 +1308,7 @@ enum STATUS unlinkImageFile(char* fullpathfilename){
     log_error("filename is null");
   }
 
-  HAL_NVIC_EnableIRQ(SDIO_IRQn);
-  HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
-  HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
+  irqEnableSDIO();
   
   f_unlink(fullpathfilename);
 
@@ -1362,20 +1407,20 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   log_set_level(LOG_INFO);
+  //log_set_level(LOG_DEBUG);
 
-
-  int trk=35;
   ph_track=160;
+  int trk=ph_track>>2;
+
   currentFullPathImageFilename[0]=0x0;
   currentFullPath[0]=0x0;
   tmpFullPathImageFilename[0]=0x0;
-
+  
   log_info("************** BOOTING ****************");                      // Data to send
   log_info("**     This is the sound of sea !    **");
   log_info("***************************************");
   
-  initSplashScreen();                                                       // I2C Screen init                  
-                                            
+  initSplashScreen();                                                       // I2C Screen init                                                           
   HAL_Delay(SPLASHSCREEN_DURATION);
 
   EnableTiming();                                                           // Enable WatchDog to get precise CPU Cycle counting
@@ -1411,7 +1456,7 @@ int main(void)
 
   }
 */
-
+  flgFsMounted=0;
   processSdEject(SD_EJECT_Pin);
   processDeviceEnableInterrupt(DEVICE_ENABLE_Pin);
  
@@ -1433,6 +1478,8 @@ int main(void)
 
   if (fres == FR_OK) {
 
+    flgFsMounted=1;
+
     if (loadConfigFile()==RET_ERR){
       log_error("loading configFile error");
       setConfigFileDefaultValues();
@@ -1445,14 +1492,14 @@ int main(void)
       getFavorites();
       buildLstFromFavorites();
       if (getConfigParamInt("bootMode",&bootMode)==RET_ERR)
-        log_error("error getting bootMode from Config");
+        log_warn("Warning: getting bootMode from Config failed, default bootMode=0 ");
       else 
         log_info("bootMode=%d",bootMode);
 
       log_info("loading configFile: OK");
 
       if (getConfigParamInt("soundEffect",&flgSoundEffect)==RET_ERR)
-        log_error("error getting soundEffect from Config");
+        log_warn("Warning: getting soundEffect from Config failed, default soundEffect=0");
       else 
         log_info("soundEffect=%d",flgSoundEffect);
 
@@ -1475,6 +1522,7 @@ int main(void)
     walkDir(currentFullPath);
 
   }else{
+    initErrorScreen("FS NOT MOUNTED");
     log_error("Error mounting sdcard %d",fres);
   }
 
@@ -1494,7 +1542,7 @@ int main(void)
       if (tmpFullPathImageFilename[0]!=0x0)
         log_error("imageFile mount error: %s",imgFile);
       else
-        log_error("no imageFile to mount");
+        log_warn("Warning: no imageFile to mount");
       
       switchPage(FS,currentFullPath);
     }
@@ -1618,24 +1666,22 @@ int main(void)
       
       updateIMAGEScreen(0,trk);
       if (flgSoundEffect==1){
+        TIM1->PSC=1000;
         HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_2);
       }
  
-      HAL_NVIC_EnableIRQ(SDIO_IRQn);
-      HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
-      HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
+      irqEnableSDIO();
     
-      getTrackBitStream(trk,read_track_data_bloc);
-        
-      while(fsState!=READY){}
+      getTrackBitStream(trk,read_track_data_bloc); 
+      while(fsState!=READY){}                                     // Check if we are not stucked here with DSK;
 
-      HAL_NVIC_DisableIRQ(SDIO_IRQn);
-      HAL_NVIC_DisableIRQ(DMA2_Stream3_IRQn);
-      HAL_NVIC_DisableIRQ(DMA2_Stream6_IRQn);
-
+      irqDisableSDIO();
 
       memcpy((unsigned char *)&DMA_BIT_TX_BUFFER,read_track_data_bloc,RAW_SD_TRACK_SIZE);
       
+      if (flgBitIndxCounter==0)
+        bitCounter=0;
+
       /* FOR DEBUGGING PURPOSE ON TRACK 0 */
       
      /* if (intTrk==0){
@@ -1667,15 +1713,11 @@ int main(void)
         case WRITE_TRK:
           long offset=getSDAddr(trk,0,csize,database);
           //writeTrkFile("/Blank.woz",DMA_BIT_TX_BUFFER,offset);
-          HAL_NVIC_EnableIRQ(SDIO_IRQn);
-          HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
-          HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
+          irqEnableSDIO();
           
           setDataBlocksBareMetal(offset,DMA_BIT_TX_BUFFER,13);
           
-          HAL_NVIC_DisableIRQ(SDIO_IRQn);
-          HAL_NVIC_DisableIRQ(DMA2_Stream3_IRQn);
-          HAL_NVIC_DisableIRQ(DMA2_Stream6_IRQn);
+          irqDisableSDIO();
 
           nextAction=NONE;
           break;
@@ -1685,17 +1727,32 @@ int main(void)
           sprintf(filename,"dump_rx_trk_%d_%d.bin",intTrk,wr_attempt);
           wr_attempt++;
           
-          HAL_NVIC_EnableIRQ(SDIO_IRQn);
-          HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
-          HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
+          irqEnableSDIO();
 
           dumpBufFile(filename,DMA_BIT_RX_BUFFER,RAW_SD_TRACK_SIZE);
 
-          HAL_NVIC_DisableIRQ(SDIO_IRQn);
-          HAL_NVIC_DisableIRQ(DMA2_Stream3_IRQn);
-          HAL_NVIC_DisableIRQ(DMA2_Stream6_IRQn);
+          irqDisableSDIO();
 
           nextAction=NONE;
+          break;
+        case SYSRESET:
+          NVIC_SystemReset();
+          break;
+        case FSMOUNT:
+          // FSMOUNT will not work if SDCard is remove & reinserted...
+          // system reset is preferred
+          irqEnableSDIO();
+      
+          fres = f_mount(&fs, "", 1);
+          if (fres == FR_OK) {
+            log_info("FS mounting: OK");
+          }else{
+            log_error("FS mounting: KO fres:%d",fres);
+          }
+
+          csize=fs.csize;
+          database=fs.database;
+          nextAction=FSDISP;
           break;
 
         case FSDISP:
@@ -1742,6 +1799,9 @@ int main(void)
       if (flgSoundEffect==1){
         HAL_TIMEx_PWMN_Stop(&htim1,TIM_CHANNEL_2);
       }
+      
+      processSdEject(SD_EJECT_Pin);
+
       if (cAlive==50000000){
         printf(".\n");
         cAlive=0;
@@ -1950,7 +2010,7 @@ static void MX_TIM1_Init(void)
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim1.Init.Period = 1000;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim1.Init.RepetitionCounter = 0;
+  htim1.Init.RepetitionCounter = 200;
   htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_PWM_Init(&htim1) != HAL_OK)
   {

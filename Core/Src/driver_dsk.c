@@ -80,15 +80,25 @@ enum STATUS getDskTrackBitStream(int trk,unsigned char * buffer){
     const unsigned int blockNumber=8; 
 
     if (addr==-1){
-        log_error("Error getting SDCard Address for nic\n");
+        log_error("Error getting SDCard Address for DSK\n");
         return RET_ERR;
     }
 
     unsigned char * tmp=(unsigned char *)malloc(4096*sizeof(char));
+    
+    if (tmp==NULL){
+        log_error("unable to allocate tmp for 4096 Bytes");
+        return RET_ERR;
+    }
+
     getDataBlocksBareMetal(addr,tmp,blockNumber);          // Needs to be improved and to remove the zeros
     while (fsState!=READY){}
 
-    dsk2Nic(tmp,buffer,trk);
+    if (dsk2Nic(tmp,buffer,trk)==RET_ERR){
+        log_error("dsk2nic return an error");
+        free(tmp);
+        return RET_ERR;
+    }
     free(tmp);
     return RET_OK;
 }

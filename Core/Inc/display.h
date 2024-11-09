@@ -64,7 +64,7 @@ void processClearFavorites();
 void initConfigMenuScreen(int i);
 void updateConfigMenuDisplay(int init);
 
-void initSdEjectScreen();
+void initErrorScreen(char * msg);
 void initFSScreen(char * path);
 
 
@@ -77,7 +77,8 @@ void processSelectFavoriteItem();
 
 /*      DISPLAY PRIMITIVES              */
 void clearScreen();
-
+void dispIcon32x32(int x,int y,uint8_t indx);
+void dispIcon24x24(int x,int y,uint8_t indx);
 void dispIcon12x12(int x,int y,int indx);
 void dispIcon(int x,int y,int indx);
 

@@ -34,7 +34,7 @@ extern "C" {
 #include "list.h"
 #include "defines.h"
 
-#define VERSION "v0.70"
+
 
 /* USER CODE END Includes */
 
@@ -63,7 +63,7 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-enum action{NONE,IMG_MOUNT,FSDISP,DUMP_TX,WRITE_TRK,UPDIMGDISP,PROCESS_FS_CHANGEDIR};
+enum action{NONE,IMG_MOUNT,FSDISP,FSMOUNT,SYSRESET,DUMP_TX,WRITE_TRK,UPDIMGDISP,PROCESS_FS_CHANGEDIR};
 
 enum FS_STATUS{READY,READING,WRITING,BUSY,DBG};
 
@@ -92,6 +92,9 @@ void debounceBtn(int GPIO);
 void irqReadTrack();
 void irqWriteTrack();
 void irqWIdle();
+
+void irqEnableSDIO();
+void irqDisableSDIO();
 
 void Custom_SD_WriteCpltCallback(void);
 void Custom_SD_ReadCpltCallback(void);

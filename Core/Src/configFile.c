@@ -106,7 +106,7 @@ enum STATUS saveConfigFile(){
     
     fsState=READY;
 
-    printf("json:%s\n",jsonBuffer);
+    log_info("JSON:%s\n",jsonBuffer);
     return RET_OK;
 }
 
@@ -128,7 +128,7 @@ const char * getConfigParamStr(char * key){
     value = cJSON_GetObjectItemCaseSensitive(json, key);
     if (cJSON_IsString(value) && (value->valuestring != NULL)){
         
-        printf("getParam:%s %s\n",key,value->valuestring);
+        log_info("getParam:%s %s\n",key,value->valuestring);
         return value->valuestring;
     }else
         return NULL;
@@ -144,7 +144,7 @@ enum STATUS getConfigParamInt(char * key,int * value){
     obj = cJSON_GetObjectItemCaseSensitive(json, key);
     
     if (cJSON_IsNumber(obj)){
-        printf("getParam:%s %d\n",key,obj->valueint);
+        log_info("getParam:%s %d\n",key,obj->valueint);
         *value= obj->valueint;
         return RET_OK;
     }else
