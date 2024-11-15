@@ -2,7 +2,7 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "BuildMake",
+            "label": "Build DiskII",
             "type": "shell",
             "command": "make -f Makefile",
             "presentation": {
@@ -20,7 +20,7 @@
             ]
         },
         {
-            "label": "BuildMake Bootloader",
+            "label": "Build Bootloader DiskII",
             "type": "shell",
             "command": "make -f Makefile USE_BOOTLOADER=1",
             "presentation": {
@@ -38,7 +38,7 @@
             ]
         },
         {
-            "label": "BuildClean",
+            "label": "Clean",
             "type": "shell",
             "command": "make -f Makefile clean",
             "presentation": {
@@ -56,7 +56,7 @@
             ]
         },
         {
-            "label": "BuildMakeClean",
+            "label": "Clean Make",
             "type": "shell",
             "command": "make -f Makefile",
             "presentation": {
@@ -65,7 +65,7 @@
             "options": {
                 "cwd": "${workspaceRoot}"
             },
-            "dependsOn": "BuildClean",
+            "dependsOn": "Clean",
             "group": {
                 "kind": "build",
                 "isDefault": true
@@ -75,7 +75,7 @@
             ]
         },
         {
-            "label": "BuildMakeFlash",
+            "label": "Build Flash",
             "type": "shell",
             "command": "make -f Makefile flash",
             "presentation": {
@@ -84,7 +84,7 @@
             "options": {
                 "cwd": "${workspaceRoot}"
             },
-            "dependsOn": "BuildMake",
+            "dependsOn": "Build DiskII",
             "group": {
                 "kind": "build",
                 "isDefault": true
@@ -94,7 +94,7 @@
             ]
         },
         {
-            "label": "BuildHex",
+            "label": "Build Hex",
             "type": "shell",
             "command": "arm-none-eabi-objcopy -O ihex ./build/AppleIISDiskII_stm32f411_sdio.elf ./build/AppleIISDiskII_stm32f411_sdio.hex",
             "presentation": {
@@ -112,10 +112,10 @@
             ]
         },
         {
-            "label": "BuildUF2",
+            "label": "Build UF2",
             "type": "shell",
             "command": "python3 ./uf2conv/uf2conv.py -c -f 0x57755a57 ./build/AppleIISDiskII_stm32f411_sdio.hex -o ./build/AppleIISDiskII_stm32f411_sdio.UF2",
-            "dependsOn": "BuildHex",
+            "dependsOn": "Build Hex",
             "presentation": {
                 "reveal": "never"
             },

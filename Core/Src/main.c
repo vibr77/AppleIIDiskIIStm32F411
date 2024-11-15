@@ -115,6 +115,7 @@ UART
   +fix: add flg for weakbit on woz only, 
   +fix: add bitcounter index on woz only
   +refactor: code refactoring
+  +fix: config menu size and index
 
 04.11.24: v0.72
   +fix: directory with name of 1 char not read by the emulator
@@ -425,7 +426,7 @@ void TIM3_IRQHandler(void){
     nextBit=(*(bbPtr+bytePtr)>>(7-bitPtr) ) & 1;          // Assuming it is on GPIO PORT B and Pin 0 (0x1 Set and 0x01 << Reset)
     
     // ************  WEAKBIT ****************
-  
+    
 #if WEAKBIT ==1
     if (nextBit==0 && flgWeakBit==1){
       if (++zeroBits>2){
@@ -495,7 +496,7 @@ void TIM2_IRQHandler(void){
     TIM2->SR &= ~TIM_SR_UIF;                                                  // Reset the Interrupt
     //HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_SET);
   
-  }else if (TIM2->SR & TIM_SR_CC2IF){                                        // The count & compare is on channel 2 to avoid issue with ETR1
+  }else if (TIM2->SR & TIM_SR_CC2IF){                                         // The count & compare is on channel 2 to avoid issue with ETR1
 
     //HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_RESET);
 
