@@ -276,7 +276,6 @@ char tmpFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];      // fullpath from r
 
 image_info_t mountImageInfo;
 
-//int lastlistPos;
 list_t * dirChainedList;
 
 // DEBUG BLOCK
@@ -288,7 +287,7 @@ int wrEndPtr=0;
 int wrBitWritten=0;
 uint8_t wrTrackOverlap=0;
 
-int wr_attempt=0;                         // temp variable to keep incremental counter of the debug dump to file
+int wr_attempt=0;                                             // temp variable to keep incremental counter of the debug dump to file
 
 #define weakBit 1
 const uint8_t weakBitTank[]   ={1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
