@@ -1,3 +1,8 @@
 {
+<<<<<<< Updated upstream
     "C_Cpp.errorSquiggles": "disabled"
+=======
+    "cortex-debug.armToolchainPath": "/Applications/ArmGNUToolchain/13.3.Rel1/arm-none-eabi/bin",
+    "cortex-debug.openocdPath": "/opt/homebrew/bin/openocd"
+>>>>>>> Stashed changes
 }
