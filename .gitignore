@@ -8,7 +8,7 @@ hardware/sdiskII_stm32-backups
 releases/*
 Drivers
 .stm32env*
-.DS_Store*
+**/.DS_Store
 .osx*
 CMake*
 *.lck
