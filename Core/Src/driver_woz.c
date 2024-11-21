@@ -3,7 +3,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include "fatfs.h"
-//#include "fatfs_sdcard.h"
 
 #include "driver_woz.h"
 #include "main.h"
@@ -15,7 +14,6 @@ __uint16_t TRK_BlockCount[41];
 __uint32_t TRK_BitCount[41];
 
 
-
 const char logPrefix[]="[woz_driver]";
 
 extern long database;                                            // start of the data segment in FAT
@@ -23,9 +21,11 @@ extern int csize;
 extern volatile enum FS_STATUS fsState;
 unsigned int fatWozCluster[20];
 char * woz1_256B_prologue;                                       // needed to store the potential overwrite
+
 woz_info_t wozFile;
+
 int getWozTrackFromPh(int phtrack){
-   return TMAP[phtrack];
+  return TMAP[phtrack];
 }
 unsigned int getWozTrackSize(int trk){
   unsigned int B=TRK_BitCount[trk];
@@ -200,7 +200,7 @@ enum STATUS mountWozFile(char * filename){
     
     if (!memcmp(info_chunk,"\x49\x4E\x46\x4F",4)){                  // Little Indian 0x4F464E49  
         
-       /* wozFile.disk_type=(uint8_t)info_chunk[1+8];
+        wozFile.disk_type=(uint8_t)info_chunk[1+8];
         log_info("woz file disk type:%d",wozFile.disk_type);
         
         wozFile.is_write_protected=info_chunk[2+8];
@@ -212,7 +212,7 @@ enum STATUS mountWozFile(char * filename){
         
         wozFile.cleaned=(int)info_chunk[4+8];
         log_info("woz cleaned:%d",wozFile.cleaned);
-        */
+        
         if (wozFile.version==2){
           
           wozFile.opt_bit_timing=(int)info_chunk[39+8];

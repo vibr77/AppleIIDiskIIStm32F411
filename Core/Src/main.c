@@ -103,6 +103,12 @@ UART
 
 // Changelog
 /*
+20.11.24: v0.76
+  +fix: weakbit issue, changing the threshold to 4 (instead of 2), Bouncing Kamungast is working
+  +fix: weakbit the Print shop is now working, wrong variable used
+  +fix: buzzer sound change after button is pressed (prescaler was not reset)
+  +fix: woz file info properties not correctly propagated to flg variable
+  +fix: harvey ball to be fixed
 04.11.24: v0.72
   +fix: directory with name of 1 char not read by the emulator
   +fix: PO/po file extension add to the list of extension
@@ -253,7 +259,7 @@ long database=0;                                            // start of the data
 int csize=0;                                                // Cluster size
 
 uint8_t flgSoundEffect=0;                                   // Activate Buzze
-uint8_t flgWeakBit=0;                                       // Activate WeakBit only for Woz File
+volatile int flgWeakBit=0;                                       // Activate WeakBit only for Woz File
 uint8_t flgBitIndxCounter=0;                                // Keep track of Bit Index Counter when changing track (only for WOZ)
 
 volatile unsigned char flgDeviceEnable=0;
@@ -289,11 +295,10 @@ uint8_t wrTrackOverlap=0;
 
 int wr_attempt=0;                                             // temp variable to keep incremental counter of the debug dump to file
 
-#define weakBit 1
-const uint8_t weakBitTank[]   ={1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
-                                1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0,
+const uint8_t weakBitTank[]   ={1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0,
+                                1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0,
                                 1, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1,
-                                0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0,
+                                0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0,
                                 0, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1,
                                 1, 1, 1, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0,
                                 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0,
@@ -410,11 +415,12 @@ void TIM3_IRQHandler(void){
     // ************  WEAKBIT ****************
   
 #if WEAKBIT ==1
-    if (nextBit==0){
-      if (++zeroBits>2){
-        nextBit=weakBitTank[fakeBitTankPosition] & 1;    // 30% of fakebit in the buffer as per AppleSauce reco
-
-        if (++weakBitTankPosition>213)
+    if ( nextBit==0 && flgWeakBit==1){
+      if (++zeroBits>3){
+        nextBit=weakBitTank[weakBitTankPosition] & 1;    // 30% of fakebit in the buffer as per AppleSauce reco
+        //log_info("wk");
+      
+        if (++weakBitTankPosition>208)
           weakBitTankPosition=0;
       }
     }else{
@@ -1260,6 +1266,10 @@ enum STATUS mountImagefile(char * filename){
 
   log_info("Mount image:OK");
   flgImageMounted=1;
+  
+  if (mountImageInfo.cleaned==1)
+    flgWeakBit=1;
+
   sprintf(currentFullPathImageFilename,"%s",filename);
   log_info("currentFullPathImageFilename:%s",currentFullPathImageFilename);
 
@@ -1640,6 +1650,7 @@ int main(void)
       
       updateIMAGEScreen(0,trk);
       if (flgSoundEffect==1){
+        TIM1->PSC=1000;
         HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_2);
       }
  

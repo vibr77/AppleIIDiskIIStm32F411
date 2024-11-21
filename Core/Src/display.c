@@ -496,6 +496,10 @@ void updateIMAGEScreen(uint8_t status,uint8_t trk){
       displayStringAtPosition(72,3*9,tmp);
     }
     
+    ssd1306_SetColor(Black);
+    ssd1306_FillRect(118,30,8,8);
+    ssd1306_SetColor(White);
+    
     if (harvey_ball==0){
       harvey_ball=1;
       dispIcon(118,30,12);
