@@ -10,16 +10,21 @@
 #include "log.h"
 
 extern long database;                                            // start of the data segment in FAT
-extern int csize;  
+extern int csize;
+extern enum FS_STATUS fsState;
 
 unsigned int fatNicCluster[20];
+
+#define NIBBLE_BLOCK_SIZE  416 //402
+#define NIBBLE_SECTOR_SIZE 512
 
 int getNicTrackFromPh(int phtrack){
   return phtrack >> 2;
 }
 
 unsigned int getNicTrackSize(int trk){
-  return 16*512*8;
+  return 16*NIBBLE_BLOCK_SIZE*8;
+  //return 16*512*8;
 }
 
 long getNicSDAddr(int trk,int block,int csize, long database){
@@ -52,19 +57,24 @@ enum STATUS getNicTrackBitStream(int trk,unsigned  char* buffer){
     return RET_ERR;
   }
 
-  //char * tmp=(char *)malloc(8192*sizeof(char));
-  getDataBlocksBareMetal(addr,buffer,blockNumber);          // Needs to be improved and to remove the zeros
-  /*
+  //getDataBlocksBareMetal(addr,buffer,blockNumber);          // Needs to be improved and to remove the zeros
+  
+  unsigned char * tmp=(unsigned char *)malloc(8192*sizeof(unsigned char));
+  
+  if (tmp==NULL){
+    log_error("can not allocate tmp for 8192 bytes");
+    return RET_ERR;
+  }
+
   getDataBlocksBareMetal(addr,tmp,blockNumber); 
-  int NIBBLE_BLOCK_SIZE=416;
-  int SECTOR_SIZE=512;
+  while(fsState!=READY){}
 
   for (int i=0;i<blockNumber;i++){
-    memcpy(buffer+(i*NIBBLE_BLOCK_SIZE),tmp+(i*SECTOR_SIZE),NIBBLE_BLOCK_SIZE);
+    memcpy(buffer+(i*NIBBLE_BLOCK_SIZE),tmp+(i*NIBBLE_SECTOR_SIZE),NIBBLE_BLOCK_SIZE);
   }
-  free(tmp);
-  */
 
+  free(tmp);
+  
   return RET_OK;
 }
 

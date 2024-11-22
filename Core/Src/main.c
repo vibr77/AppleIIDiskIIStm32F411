@@ -716,8 +716,8 @@ void Custom_SD_WriteCpltCallback(void){
   
   if (fsState==WRITING){
     fsState=READY;                                                                                       // Reset cpu cycle counter
-    t2 = DWT->CYCCNT;
-    diff1 = t2 - t1;
+    //t2 = DWT->CYCCNT;
+    //diff1 = t2 - t1;
     //log_info(" Custom_SD_WriteCpltCallback diff %ld",diff1);
   }
 }
@@ -731,9 +731,9 @@ void Custom_SD_ReadCpltCallback(void){
   
   if (fsState==READING || fsState==BUSY){
     fsState=READY;                                                                                       // Reset cpu cycle counter
-    t2 = DWT->CYCCNT;
-    diff1 = t2 - t1;
-    log_info(" Custom_SD_ReadCpltCallback diff %ld",diff1);
+    //t2 = DWT->CYCCNT;
+    //diff1 = t2 - t1;
+    //log_info(" Custom_SD_ReadCpltCallback diff %ld",diff1);
   }
 }
 
@@ -1643,6 +1643,8 @@ int main(void)
         continue;
       }
 
+
+
       // --------------------------------------------------------------------
       // PART 1 MAIN TRACK & RESTORE AS QUICKLY AS POSSIBLE THE DMA
       // --------------------------------------------------------------------
@@ -1666,6 +1668,8 @@ int main(void)
       HAL_NVIC_DisableIRQ(DMA2_Stream3_IRQn);
       HAL_NVIC_DisableIRQ(DMA2_Stream6_IRQn);
 
+      //if (trk==0)
+      //  dumpBuf(read_track_data_bloc,1,2048);
 
       memcpy((unsigned char *)&DMA_BIT_TX_BUFFER,read_track_data_bloc,RAW_SD_TRACK_SIZE);
       

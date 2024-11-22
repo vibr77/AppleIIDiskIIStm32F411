@@ -15,6 +15,9 @@ extern volatile enum FS_STATUS fsState;
 unsigned int fatDskCluster[20];
 extern image_info_t mountImageInfo;
 
+#define NIBBLE_BLOCK_SIZE  416 //402
+#define NIBBLE_SECTOR_SIZE 512
+
 /*
 static const unsigned char scramble[] = {
 		0, 7, 14, 6, 13, 5, 12, 4, 11, 3, 10, 2, 9, 1, 8, 15
@@ -64,7 +67,7 @@ int getDskTrackFromPh(int phtrack){
 }
 
 unsigned int getDskTrackSize(int trk){
-    return 16*512*8;
+    return 16*NIBBLE_BLOCK_SIZE*8;
 }
 
 long getDskSDAddr(int trk,int block,int csize, long database){
@@ -93,7 +96,7 @@ enum STATUS getDskTrackBitStream(int trk,unsigned char * buffer){
 
     getDataBlocksBareMetal(addr,tmp,blockNumber);          // Needs to be improved and to remove the zeros
     while (fsState!=READY){}
-
+    
     if (dsk2Nic(tmp,buffer,trk)==RET_ERR){
         log_error("dsk2nic return an error");
         free(tmp);
@@ -227,7 +230,7 @@ enum STATUS dsk2Nic(unsigned char *rawByte,unsigned char *buffer,uint8_t trk){
         }
         
         dst[0x18e]=encTable[ox & 0x3f];
-        memcpy(buffer+sector*512,dst,512);
+        memcpy(buffer+sector*NIBBLE_BLOCK_SIZE,dst,NIBBLE_BLOCK_SIZE);
     }
     return RET_OK;
 }
