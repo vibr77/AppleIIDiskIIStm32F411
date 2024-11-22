@@ -30,7 +30,7 @@ The ST-Link programmer should never be connected at the same time with either US
 
 The J1 PWR located at top right of the PCB enable +5V from the Apple II to the STM32.
 
-R1,R2,R3 are not neeeded. 
+R1,R2,R3 are not needed. 
 
 ## <!> SDCARD <!> ##
 
@@ -63,8 +63,8 @@ The list of features currently supported in this project:
 | NIC| YES   | NO    | 
 | WOZ 1.0| YES    | NO    |
 | WOZ 2.0| YES | Experimental|
-| DSK       | NO  | NO    |
-| PO    | NO    | NO     |
+| DSK       | YES  | NO    |
+| PO    | YES    | NO     |
 
 ### Copy protection status
 
@@ -186,6 +186,7 @@ TIMERS:
 |J5|TIM|Pin Header_1x03 P2.54mm  |
 |J6|STLINK|Pin Header_1x04 P2.54mm  |
 |DOWN1,ENTR1,RET1,UP1|6mm 5mm Round Button 50mA Direct Insert 6mm SPST 12V| LCSC C393938
+|BZ1|Passive buzzer 12 x 6.0MM P6.5| LCSC C252917
 
 
 ## Software design main principles: ##
