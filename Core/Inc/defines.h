@@ -1,6 +1,6 @@
 
 
-#define _VERSION "v0.76"
+#define _VERSION "v0.78.1"
 
 #define SPLASHSCREEN_DURATION 1000
 
@@ -18,3 +18,5 @@
 
 #define RAW_SD_TRACK_SIZE 8192                          // Maximuum track size on NIC & WOZ to load from SD
 #define WEAKBIT 1
+
+#define MAX_TRACK 59                                    // Max Number of track for a given Apple II Floppy,

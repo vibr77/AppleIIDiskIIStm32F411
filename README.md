@@ -1,4 +1,7 @@
-# Apple II STM32 based Hardware DISKII EMULATOR
+# SmartDisk II for Apple II
+
+
+## Apple II STM32 based Hardware DISKII EMULATOR
 
 This project is about an Apple II Disk II hardware emulator capable of reading / writing disk image from/to SDCARD.
 
@@ -30,7 +33,9 @@ The ST-Link programmer should never be connected at the same time with either US
 
 The J1 PWR located at top right of the PCB enable +5V from the Apple II to the STM32.
 
-R1,R2,R3 are not needed. 
+Regarding the OLED Screen: becareful of the Power pins order, some version have pin inversed
+
+R1,R2,R3 are not needed.
 
 ## <!> SDCARD <!> ##
 
@@ -41,6 +46,8 @@ to format the SDCard under linux use the following command:
 `mkfs.fat -F 32 -s 64 `
 
 Please be careful, Window 10/11 is not formatting the SDCard the right way. 
+
+An config menu option is provided directly in the SmartDisk II to format the SDCard
 
 ## Main Features ##
 

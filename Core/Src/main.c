@@ -1,7 +1,7 @@
 /* USER CODE BEGIN Header */
 /*
 __   _____ ___ ___        Author: Vincent BESSON
- \ \ / /_ _| _ ) _ \      Release: 0.72
+ \ \ / /_ _| _ ) _ \      Release: 0.78
   \ V / | || _ \   /      Date: 2024.11.02
    \_/ |___|___/_|_\      Description: Apple Disk II Emulator on STM32F4x
                 2024      Licence: Creative Commons
@@ -103,6 +103,14 @@ UART
 
 // Changelog
 /*
+23.11.24: v0.78.1
+  +Fix: Spiradisc fix, screenupdate was before memcopy was generation an extra delay and thus failing with cross track sync
+
+22.11.24: v0.78
+  +fix: WOZ more than 40 trk disk such as lode runner, add Max TRK
+22.11.24: v0.77
+  +fix: DSK reading, wrong NIBBLE_BLOCK_SIZE from 512 to 416
+  +fix: NIC reading, wrong NIBBLE_BLOCK_SIZE from 512 to 416
 20.11.24: v0.76
   +fix: weakbit issue, changing the threshold to 4 (instead of 2), Bouncing Kamungast is working
   +fix: weakbit the Print shop is now working, wrong variable used
@@ -1099,8 +1107,9 @@ void processDiskHeadMoveInterrupt(uint16_t GPIO_Pin){
   
     if (ph_track<0)
       ph_track=0;
-    else if (ph_track>160)                                                                 
-      ph_track=160;                                             
+
+    else if (ph_track>159)                                                                 
+      ph_track=159;                                             
 
     if (flgBeaming==1)                                     
       intTrk=getTrackFromPh(ph_track);                                        // Get the current track from the accroding driver                   
@@ -1650,7 +1659,7 @@ int main(void)
       // --------------------------------------------------------------------
       
       
-      updateIMAGEScreen(0,trk);
+      
       if (flgSoundEffect==1){
         TIM1->PSC=1000;
         HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_2);
@@ -1673,6 +1682,7 @@ int main(void)
 
       memcpy((unsigned char *)&DMA_BIT_TX_BUFFER,read_track_data_bloc,RAW_SD_TRACK_SIZE);
       
+      updateIMAGEScreen(0,trk);       // Put here otherwise Spiradisc is not working
       /* FOR DEBUGGING PURPOSE ON TRACK 0 */
       
      /* if (intTrk==0){
@@ -1692,7 +1702,7 @@ int main(void)
       bitSize=newBitSize;
 
       prevTrk=trk;
-      printf("trk %d %d \n",trk,bitSize);
+      //printf("trk %d %d \n",trk,bitSize);
       
     }else if (nextAction!=NONE){                                         // Several action can not be done on Interrupt
       

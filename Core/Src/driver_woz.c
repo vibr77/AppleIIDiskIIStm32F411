@@ -9,12 +9,11 @@
 #include "log.h"
 
 __uint8_t TMAP[160];
-__uint16_t TRK_startingBlockOffset[41];
-__uint16_t TRK_BlockCount[41];
-__uint32_t TRK_BitCount[41];
+__uint16_t TRK_startingBlockOffset[MAX_TRACK];
+__uint16_t TRK_BlockCount[MAX_TRACK];
+__uint32_t TRK_BitCount[MAX_TRACK];
 
-
-const char logPrefix[]="[woz_driver]";
+__uint8_t TRK_maxIndx=0;
 
 extern long database;                                            // start of the data segment in FAT
 extern int csize;  
@@ -25,9 +24,14 @@ char * woz1_256B_prologue;                                       // needed to st
 woz_info_t wozFile;
 
 int getWozTrackFromPh(int phtrack){
+
   return TMAP[phtrack];
 }
 unsigned int getWozTrackSize(int trk){
+  
+  if (trk>(MAX_TRACK-1))
+    trk=MAX_TRACK-1;
+
   unsigned int B=TRK_BitCount[trk];
   return B;
 }
@@ -65,6 +69,7 @@ enum STATUS getWozTrackBitStream_fopen(int trk,unsigned char * buffer){
   fres = f_open(&fil,filename , FA_READ);    
   if(fres != FR_OK){
     log_error("File open Error: (%i)",fres);
+
     return RET_ERR;
   }
   f_lseek(&fil,long_sector*512);
@@ -151,11 +156,12 @@ enum STATUS mountWozFile(char * filename){
     
     FRESULT fres; 
     FIL fil;  
+    TRK_maxIndx=0;
 
     for (int i=0;i<160;i++)
       TMAP[i]=255;
 
-    for (int i=0;i<40;i++){
+    for (int i=0;i<MAX_TRACK;i++){
       TRK_BitCount[i]=0;
     }
 
@@ -246,8 +252,16 @@ enum STATUS mountWozFile(char * filename){
     if (!memcmp(tmap_chunk,"\x54\x4D\x41\x50",4)){          // 0x50414D54          
         for (int i=0;i<160;i++){
             TMAP[i]=tmap_chunk[i+8];
-            //log_info("woz TMAP %03d: %02d",i,TMAP[i]);
+            log_debug("woz TMAP %03d: %02d",i,TMAP[i]);
+            
+            if (TMAP[i]!=255 && TMAP[i]>TRK_maxIndx)
+              TRK_maxIndx=TMAP[i];
+            
+            if (TRK_maxIndx>MAX_TRACK)
+              TRK_maxIndx=MAX_TRACK;
         }
+
+        log_info("woz TMAP max track %02d",TRK_maxIndx);
     }else{
         log_error("Error tmp Chunk is not valid");
         free(tmap_chunk);
@@ -266,7 +280,7 @@ enum STATUS mountWozFile(char * filename){
 
         if (!memcmp(trk_chunk,"\x54\x52\x4B\x53",4)){                                                                 // 0x534B5254          // ERREUR A FIXER ICI
 
-            for (int i=0;i<40;i++){
+            for (int i=0;i<=TRK_maxIndx;i++){
                 TRK_startingBlockOffset[i]=(((unsigned short)trk_chunk[i*8+8+1] << 8) & 0xF00) | trk_chunk[i*8+8];
                 TRK_BlockCount[i]=(((unsigned short)trk_chunk[i*8+8+1+2] << 8) & 0xF00) | trk_chunk[i*8+8+2];
                 TRK_BitCount[i] = (trk_chunk[i*8+8+3+4]  << 24) | (trk_chunk[i*8+8+2+4] << 16) | (trk_chunk[i*8+8+1+4] << 8) | trk_chunk[i*8+8+4];
@@ -282,7 +296,7 @@ enum STATUS mountWozFile(char * filename){
         free(trk_chunk);
     }else if (wozFile.version==1){
         log_info("woz file type 1 no trk_chunk\n");
-        for (int i=0;i<40;i++){
+        for (int i=0;i<=TRK_maxIndx;i++){
           TRK_startingBlockOffset[i]=13*i;
           TRK_BlockCount[i]=13;
 
