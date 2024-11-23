@@ -1,4 +1,4 @@
-23841123666150819
+23842861889501584
 Apple
 Apple II Expansion Edge Connector
 
@@ -96690,6 +96690,13 @@ module BlluePill Blue Pill header SWD breakout
 0
 44
 44
+buzzer
+AS-1201B-LF
+
+
+0
+2
+2
 sdisk_stm32
 GCT-MEM2055-00-190-01-A
 http://www.farnell.com/datasheets/1917242.pdf
