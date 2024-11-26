@@ -1,7 +1,7 @@
 /* USER CODE BEGIN Header */
 /*
 __   _____ ___ ___        Author: Vincent BESSON
- \ \ / /_ _| _ ) _ \      Release: 0.78
+ \ \ / /_ _| _ ) _ \      Release: 0.78.3 
   \ V / | || _ \   /      Date: 2024.11.02
    \_/ |___|___/_|_\      Description: Apple Disk II Emulator on STM32F4x
                 2024      Licence: Creative Commons
@@ -11,13 +11,13 @@ ______________________
 Todo:
 - Add the screen PWR on a pin and not directly on the +3.3V
 - Add 74LS125 to protect the STM32 against AII over current
-- Feat: Add a menu after mounting image to Add to favorite, delete, umount,...
 
 
 Note 
 + CubeMX is needed to generate the code not included such as drivers folders and ...
 + An update of fatfs is required to manage long filename otherwise it crashes, v0.15 
 + stm32f411 blackpill v3 if SDIO Sdcard Management otherwise, any STM32fx would work with SPI / DMA,
++ Adding a manual procedure to simulate the headsync with noise
 
 Navigation:
 - Config items:
@@ -36,6 +36,7 @@ Lessons learned:
 
 - Bitstream output is made via DMA SPI (best accurate option), do not use baremetal bitbanging with assemnbly (my first attempt) it is not accurate in ARM with internal interrupt,
 - Use Interrupt for head move on Rising & Falling Edge => Capturing 1/4 moves
+- Warning Bootloader might take too much time to load and thus missing the headsync procedure,
 
 Current status: READ PARTIALLY WORKING / WRITE Experimental
 + Woz file support : in progress first images are working
@@ -103,6 +104,16 @@ UART
 
 // Changelog
 /*
+25.11.24: v0.78.3
+  +Feat: makefs in the menu config
+  +Fix: compilation option for fatfs mkfs
+  +Fix : add fatfs label option
+  +Feat: add confirmation question on mkfs from menu config
+  +Fix: variable casting uint8 instead of int in getConfigParamUInt8
+  +Fix: Empty SDCard crash, sortlst check for empty chainedlist
+  +Feat: writing part 1
+24.11.24: v0.78.2
+  +Fix: bootloader delay providing a coldstart issue on several images
 23.11.24: v0.78.1
   +Fix: Spiradisc fix, screenupdate was before memcopy was generation an extra delay and thus failing with cross track sync
 
@@ -603,7 +614,7 @@ enum STATUS dumpBufFile(char * filename,volatile unsigned char * buffer,int leng
   UINT totalBytes=0;
 
   for (int i=0;i<13;i++){
-
+    fsState=BUSY;
     fres = f_write(&fil, (unsigned char *)buffer+i*512, 512, &bytesWrote);
     if(fres == FR_OK) {
       totalBytes+=bytesWrote;
@@ -612,6 +623,7 @@ enum STATUS dumpBufFile(char * filename,volatile unsigned char * buffer,int leng
       fsState=READY;
       return RET_ERR;
     }
+    //while(fsState!=READY){};
   }
 
   log_info("Wrote %i bytes to '%s'!\n", totalBytes,filename);
@@ -722,7 +734,7 @@ char *byte_to_binary(int x){
   */
 void Custom_SD_WriteCpltCallback(void){
   
-  if (fsState==WRITING){
+  if (fsState==WRITING || fsState==BUSY){
     fsState=READY;                                                                                       // Reset cpu cycle counter
     //t2 = DWT->CYCCNT;
     //diff1 = t2 - t1;
@@ -774,8 +786,10 @@ void setDataBlocksBareMetal(long memoryAdr,volatile unsigned char * buffer,int c
   fsState=WRITING;
   DWT->CYCCNT = 0; 
   t1 = DWT->CYCCNT;
-  if (HAL_SD_WriteBlocks_DMA(&hsd, (uint8_t *)buffer, memoryAdr, count) != HAL_OK){
-    log_error("Error HAL_SD_WriteBlocks_DMA error:%d",hsd.ErrorCode);
+  uint8_t i=0;
+  while (HAL_SD_WriteBlocks_DMA(&hsd, (uint8_t *)buffer, memoryAdr, count) != HAL_OK && i<2){
+    log_error("Error HAL_SD_WriteBlocks_DMA error:%d retry:%d",hsd.ErrorCode,i);
+    i++;
   }
 }
 
@@ -802,6 +816,12 @@ list_t * sortLinkedList(list_t * plst){
   list_node_t *cItem;
   int z=0;
   int i=0;
+
+  if (plst->len==0){
+    list_destroy(plst);
+    return sorteddirChainedList; 
+  }
+
   do{
     pItem=list_at(plst,0);
     for (i=0;i<plst->len;i++){
@@ -816,6 +836,7 @@ list_t * sortLinkedList(list_t * plst){
     list_rpush(sorteddirChainedList, list_node_new(pItem->val));
     list_remove(plst,pItem);
   }while (plst->len>0);
+
   list_destroy(plst);
   return sorteddirChainedList; 
 }
@@ -1125,11 +1146,12 @@ void processDiskHeadMoveInterrupt(uint16_t GPIO_Pin){
 enum STATUS makeSDFS(){
 
   FRESULT fr;
-  MKFS_PARM fmt_opt = {FM_FAT32, 1, 0, 0, 32768};
+  MKFS_PARM fmt_opt = {FM_FAT32 | FM_ANY, 0, 0, 0, 32768};
   BYTE work[FF_MAX_SS];
   fr = f_mkfs("0:", &fmt_opt,  work, sizeof work);
 
   if (fr==FR_OK){
+    f_setlabel("SmartDisk II");
     f_mount(&fs, "", 1);
     return RET_OK;
   }else{
@@ -1406,7 +1428,7 @@ int main(void)
 
 
   int trk=35;
-  ph_track=160;
+  ph_track=0;                                           // Change for bootloader timing 
   currentFullPathImageFilename[0]=0x0;
   currentFullPath[0]=0x0;
   tmpFullPathImageFilename[0]=0x0;
@@ -1470,7 +1492,7 @@ int main(void)
   database=fs.database;
   char * imgFile=NULL;
 
-  int bootMode=0;
+  uint8_t bootMode=0;
 
   if (fres == FR_OK) {
 
@@ -1485,14 +1507,14 @@ int main(void)
     }else{
       getFavorites();
       buildLstFromFavorites();
-      if (getConfigParamInt("bootMode",&bootMode)==RET_ERR)
+      if (getConfigParamUInt8("bootMode",&bootMode)==RET_ERR)
         log_error("error getting bootMode from Config");
       else 
         log_info("bootMode=%d",bootMode);
 
       log_info("loading configFile: OK");
 
-      if (getConfigParamInt("soundEffect",&flgSoundEffect)==RET_ERR)
+      if (getConfigParamUInt8("soundEffect",&flgSoundEffect)==RET_ERR)
         log_error("error getting soundEffect from Config");
       else 
         log_info("soundEffect=%d",flgSoundEffect);
@@ -1728,6 +1750,7 @@ int main(void)
           break;
 
         case DUMP_TX:
+          log_info("here 1");
           char filename[128];
           sprintf(filename,"dump_rx_trk_%d_%d.bin",intTrk,wr_attempt);
           wr_attempt++;
@@ -1741,6 +1764,7 @@ int main(void)
           HAL_NVIC_DisableIRQ(SDIO_IRQn);
           HAL_NVIC_DisableIRQ(DMA2_Stream3_IRQn);
           HAL_NVIC_DisableIRQ(DMA2_Stream6_IRQn);
+          log_info("dumpfile %s",filename);
 
           nextAction=NONE;
           break;
@@ -2411,7 +2435,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 
   } else if (GPIO_Pin == WR_REQ_Pin){
 
-    if (WR_REQ_PHASE==0 && flgImageMounted==1){                                           // WR_REQUEST IS ACTIVE LOW
+    if (WR_REQ_PHASE==0 && flgImageMounted==1){                     // WR_REQUEST IS ACTIVE LOW
       irqWriteTrack();  
       HAL_TIM_PWM_Stop_IT(&htim3,TIM_CHANNEL_4);
       HAL_TIM_PWM_Start_IT(&htim2,TIM_CHANNEL_3);           // start the timer1
@@ -2422,7 +2446,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
       wrStartPtr=wrBitCounter;                                      // start pointer
       printf("Write started wrBitCounter:%d\n",wrBitCounter);             
       
-    }else if (WR_REQ_PHASE==0 && flgImageMounted==1){
+    }else if (WR_REQ_PHASE==1 && flgImageMounted==1){
       WR_REQ_PHASE=0;                                 // Write has just stopped
 
       HAL_TIM_PWM_Stop_IT(&htim2,TIM_CHANNEL_3); 
@@ -2434,7 +2458,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
       bitCounter=wrBitCounter;
       
       memcpy((unsigned char *)&DMA_BIT_TX_BUFFER,(unsigned char *)&DMA_BIT_RX_BUFFER,RAW_SD_TRACK_SIZE);
-      memset((unsigned char *)&DMA_BIT_RX_BUFFER,0,RAW_SD_TRACK_SIZE);
+      //memset((unsigned char *)&DMA_BIT_RX_BUFFER,0,RAW_SD_TRACK_SIZE);
       
       // nextAction=WRITE_TRK;
       nextAction=DUMP_TX;

@@ -412,7 +412,7 @@ void initSplashScreen(){
   ssd1306_SetColor(White);
   dispIcon32x32(1,15,0);
   displayStringAtPosition(35,3*9,"SmartDisk ][");
-  displayStringAtPosition(90,6*9,_VERSION);
+  displayStringAtPosition(78,6*9,_VERSION);
   ssd1306_UpdateScreen();
 }
 
@@ -652,8 +652,41 @@ void processClearFavorites(){
 }
 
 void processMakeFs(){
+  displayStringAtPosition(1,6*9+1,"CONFIRM ?");
+  mnuItem[6].triggerfunction=processMakeFsConfirmed;
+  ptrbtnRet=processMakeFsBtnRet;
+  ssd1306_UpdateScreen();
 
 }
+
+void processMakeFsConfirmed(){
+  /*
+  displayStringAtPosition(1,6*9+1,"REBOOTING in 3");
+
+  ssd1306_UpdateScreen();
+  for (int i=0;i<1000;i++){
+    HAL_Delay(3);
+  }
+  */
+  if (makeSDFS()==RET_OK){
+    log_info("makeSDFS success");
+  }else{
+    log_error("makeSDFS error");
+  }
+
+
+  nextAction=SYSRESET;
+
+}
+
+void processMakeFsBtnRet(){
+  mnuItem[6].triggerfunction=processMakeFs;
+  ptrbtnRet=processBtnRet;
+  displayStringAtPosition(1,6*9+1,"         ");
+  ssd1306_UpdateScreen();
+}
+
+
 
 void processPrevConfigItem(){
   uint8_t itemCount=sizeof(mnuItem)/sizeof(MNUITEM_t);

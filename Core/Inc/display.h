@@ -61,6 +61,10 @@ void processSoundEffect();
 void processClearprefs();
 void processClearFavorites();
 
+void processMakeFs();
+void processMakeFsConfirmed();
+void processMakeFsBtnRet();
+
 void initConfigMenuScreen(int i);
 void updateConfigMenuDisplay(int init);
 

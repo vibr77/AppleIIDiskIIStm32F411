@@ -123,14 +123,20 @@ enum STATUS setWozTrackBitStream(int trk,unsigned char * buffer){
   const unsigned int blockNumber=13; 
   int addr=getWozSDAddr(trk,0,csize,database);
   
+  if (trk==255){
+    log_error("Error can not write to track 255");
+    return RET_ERR;
+  }
+
   if (addr==-1){
     log_error("Error getting SDCard Address for woz");
     return RET_ERR;
   }
   
   if (wozFile.version==2){
-    //writeDataBlocks(addr,buffer,blockNumber);
-    //cmd25SetDataBlocksBareMetal(addr,buffer,blockNumber);
+    setDataBlocksBareMetal(addr,buffer,blockNumber);
+    while (fsState!=READY){};
+    
   }else if (wozFile.version==1){
     
     unsigned char * tmp2=(unsigned char*)malloc(14*512*sizeof(char));
@@ -141,7 +147,9 @@ enum STATUS setWozTrackBitStream(int trk,unsigned char * buffer){
 
     // First we need to get the first 256 bytes of t
     memcpy(tmp2,woz1_256B_prologue,256);
-    memcpy(tmp2+256,buffer,blockNumber*512);   
+    memcpy(tmp2+256,buffer,blockNumber*512);
+    setDataBlocksBareMetal(addr,tmp2,14); 
+    while (fsState!=READY){};  
     //cmd25SetDataBlocksBareMetal(addr,tmp2,blockNumber+1);                           // <!> Last 10 Bytes are not Data Stream Bytes
     free(tmp2);
   }

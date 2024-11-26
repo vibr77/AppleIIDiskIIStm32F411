@@ -135,6 +135,22 @@ const char * getConfigParamStr(char * key){
     
 }
 
+enum STATUS getConfigParamUInt8(char * key,uint8_t * value){
+    
+    const cJSON *obj = NULL;
+    if (key==NULL){
+        return RET_ERR;
+    }
+    obj = cJSON_GetObjectItemCaseSensitive(json, key);
+    
+    if (cJSON_IsNumber(obj)){
+        log_info("getParam:%s %d\n",key,obj->valueint);
+        *value= obj->valueint;
+        return RET_OK;
+    }else
+        return RET_ERR; 
+}
+
 enum STATUS getConfigParamInt(char * key,int * value){
     
     const cJSON *obj = NULL;
