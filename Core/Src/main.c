@@ -111,7 +111,9 @@ UART
   +Feat: add confirmation question on mkfs from menu config
   +Fix: variable casting uint8 instead of int in getConfigParamUInt8
   +Fix: Empty SDCard crash, sortlst check for empty chainedlist
-  +Feat: writing part 1
+  +Feat: writing part 1 setting the woz driver function
+  +Feat: writing part 2 correct write bitstream and fix bit shift
+
 24.11.24: v0.78.2
   +Fix: bootloader delay providing a coldstart issue on several images
 23.11.24: v0.78.1
@@ -310,7 +312,7 @@ unsigned long t1,t2,diff1;
 int wrStartPtr=0;
 int wrEndPtr=0;
 int wrBitWritten=0;
-uint8_t wrTrackOverlap=0;
+//uint8_t wrTrackOverlap=0;
 
 int wr_attempt=0;                                             // temp variable to keep incremental counter of the debug dump to file
 
@@ -491,9 +493,7 @@ volatile unsigned int wrBitCounter=0;
 volatile unsigned int wrBytes=0;
 
 volatile unsigned char byteWindow=0x0;
-volatile unsigned char byteWindow2=0x0;
-volatile unsigned char byteWindow3=0x0;
-volatile uint8_t pattern=0;
+
 /**
   * @brief TIMER 2 IRQ Handler is managing the WR_DATA Signal from the A2,       
   * @param (void)
@@ -518,30 +518,21 @@ void TIM2_IRQHandler(void){
 
     wrBytes=wrBitCounter/8;
     wrBitPos=wrBitCounter%8;
-    //DMA_BIT_RX_BUFFER[wrBytes]|=xorWrData<<(7-wrBitPos);
-
-    wrBitCounter++;                                                           // Next bit please ;)
-    wrBitWritten++;
 
     byteWindow<<=1;
     byteWindow|=xorWrData;
     
     if (wrBitPos==0){
       DMA_BIT_RX_BUFFER[wrBytes]=byteWindow;
-      
-      if (byteWindow==0x96 && byteWindow2==0xAA && byteWindow3==0xD5){
-        pattern++;
-      }
-
-      byteWindow3=byteWindow2;
-      byteWindow2=byteWindow;
     }
 
-  
-    if (wrBitCounter==wrStartPtr)
-      wrTrackOverlap=1;
+    wrBitCounter++;                                                           // Next bit please ;)
+    wrBitWritten++;
+
+    //if (wrBitCounter==wrStartPtr)
+    //  wrTrackOverlap=1;
     
-    if (wrBitCounter>bitSize)                                                 // Same Size as the original track size
+    if (wrBitCounter>=bitSize)                                                // Same Size as the original track size
       wrBitCounter=0;                                                         // Start over at the beginning of the track
 
     TIM2->SR &= ~TIM_SR_CC2IF;                                                // clear the count & compare interrupt
@@ -1134,6 +1125,9 @@ volatile const int position2Direction[8][8] = {               // position2Direct
 
 void processDiskHeadMoveInterrupt(uint16_t GPIO_Pin){
 
+  if (flgDeviceEnable==0)
+    return;
+  
   volatile unsigned char stp=(GPIOA->IDR&0b0000000000001111);
   volatile int newPosition=magnet2Position[stp];
 
@@ -1749,15 +1743,17 @@ int main(void)
         case UPDIMGDISP:
           updateIMAGEScreen(WR_REQ_PHASE,trk);
         case WRITE_TRK:
-          long offset=getSDAddr(trk,0,csize,database);
+          //long offset=getSDAddr(trk,0,csize,database);
           //writeTrkFile("/Blank.woz",DMA_BIT_TX_BUFFER,offset);
-         irqEnableSDIO();
-          
-          setDataBlocksBareMetal(offset,DMA_BIT_TX_BUFFER,13);
-          setTrackBitStream(trk,read_track_data_bloc);
+          irqEnableSDIO();
+          log_info("writing phtrack:%d trk:%d",ph_track,intTrk);
+          //setDataBlocksBareMetal(offset,DMA_BIT_RX_BUFFER,13);
+          setTrackBitStream(intTrk,DMA_BIT_TX_BUFFER);
           irqDisableSDIO();
 
-          dumpBuf(DMA_BIT_RX_BUFFER,1,1024);
+          //dumpBuf(DMA_BIT_RX_BUFFER,1,1024);
+          //memcpy((unsigned char *)&DMA_BIT_TX_BUFFER,(unsigned char *)&DMA_BIT_RX_BUFFER,RAW_SD_TRACK_SIZE);
+      
           nextAction=NONE;
           
           break;
@@ -1772,12 +1768,12 @@ int main(void)
 
           dumpBufFile(filename,DMA_BIT_RX_BUFFER,RAW_SD_TRACK_SIZE);
 
-          irqEnableSDIO();
+          irqDisableSDIO();
           log_info("dumpfile %s",filename);
           
 
-          dumpBuf(DMA_BIT_RX_BUFFER,1,1024);
-          log_info("pattern :%d",pattern);
+          //dumpBuf(DMA_BIT_RX_BUFFER,1,1024);
+          //log_info("pattern :%d",pattern);
 
           nextAction=NONE;
           break;
@@ -2439,55 +2435,51 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
    
   }else if (GPIO_Pin==DEVICE_ENABLE_Pin){
     processDeviceEnableInterrupt(DEVICE_ENABLE_Pin);
-  }/*else if (GPIO_Pin==SD_EJECT_Pin){                            // SD EJECT IS NOT ANYMORE AN INTERRUPT
-    processSdEject(GPIO_Pin);
-  }*/
-  
-  else if ((GPIO_Pin == BTN_RET_Pin   ||      // BTN_RETURN
+  }else if ((GPIO_Pin == BTN_RET_Pin   ||      // BTN_RETURN
             GPIO_Pin == BTN_ENTR_Pin  ||      // BTN_ENTER
             GPIO_Pin == BTN_UP_Pin    ||      // BTN_UP
             GPIO_Pin == BTN_DOWN_Pin          // BTN_DOWN
             ) && buttonDebounceState==true){
     
-    //printf("here1\n");
     debounceBtn(GPIO_Pin);
-   
+
 
   } else if (GPIO_Pin == WR_REQ_Pin){
 
     if (WR_REQ_PHASE==0 && flgImageMounted==1){                     // WR_REQUEST IS ACTIVE LOW
-      irqWriteTrack();  
-      memset((unsigned char *)&DMA_BIT_RX_BUFFER,0,RAW_SD_TRACK_SIZE);
-      HAL_TIM_PWM_Stop_IT(&htim3,TIM_CHANNEL_4);
-      HAL_TIM_PWM_Start_IT(&htim2,TIM_CHANNEL_3);           // start the timer1
-      WR_REQ_PHASE=1;                                               // Write has begun :) not very clean, to be changed with value of GPIO
       
-      wrBitWritten=0;                                               // Count the number of bits sent from the A2
-      wrBitCounter=bitCounter-bitCounter%8;                         // Write position counter (handover from read)
+      
+      HAL_TIM_PWM_Stop_IT(&htim3,TIM_CHANNEL_4);
+      
+      irqWriteTrack();  
+      memset((unsigned char *)&DMA_BIT_RX_BUFFER,0,RAW_SD_TRACK_SIZE);   // Clean the RX_BUFFER 
+      HAL_TIM_PWM_Start_IT(&htim2,TIM_CHANNEL_3);                 // start the TIMER2
+      WR_REQ_PHASE=1;                                                     // Write has begun :) not very clean, to be changed with value of GPIO
+      
+      wrBitWritten=0;                                                     // Count the number of bits sent from the A2
+      wrBitCounter=bitCounter-bitCounter%8;                               // Write position counter (handover from read)
       wrStartPtr=wrBitCounter; 
-      wrBitCounter=0;
-      bitSize=51000;
-                                           // start pointer
-      printf("Write started wrBitCounter:%d\n",wrBitCounter);             
+      wrBitCounter=0;                                                   // Need to work on this sync track will cause an issue 
+      bitSize=6656*8;                                                   // Size of the bitsize should be read from the woz TRACK_MAP 
+                                                    
+      //printf("Write started wrBitCounter:%d\n",wrBitCounter);             
       
     }else if (WR_REQ_PHASE==1 && flgImageMounted==1){
-      WR_REQ_PHASE=0;                                 // Write has just stopped
+      WR_REQ_PHASE=0;                                               // Write has just stopped
 
-      //HAL_TIM_PWM_Stop_IT(&htim2,TIM_CHANNEL_3); 
-      HAL_TIM_PWM_Stop_IT(&htim2,TIM_CHANNEL_3); 
-      irqReadTrack(); 
-      HAL_TIM_PWM_Start_IT(&htim3,TIM_CHANNEL_4);
+      HAL_TIM_PWM_Stop_IT(&htim2,TIM_CHANNEL_3);           // Stop TIMER2 WRITE DATE
       
+      irqReadTrack();
+
       wrEndPtr=wrBitCounter;
       bitCounter=wrBitCounter;
       
       memcpy((unsigned char *)&DMA_BIT_TX_BUFFER,(unsigned char *)&DMA_BIT_RX_BUFFER,RAW_SD_TRACK_SIZE);
-      //memset((unsigned char *)&DMA_BIT_RX_BUFFER,0,RAW_SD_TRACK_SIZE);
+      HAL_TIM_PWM_Start_IT(&htim3,TIM_CHANNEL_4);
       
-      //nextAction=WRITE_TRK;
-      nextAction=DUMP_TX;
-      log_info("pattern %d",pattern);
-      printf("Write end total %d %d/8, started:%d, end:%d  wrBitCounter:%d bitSize:%d /8:%d\n",wrBitWritten,wrBitWritten/8,wrStartPtr,wrEndPtr,wrBitCounter,bitSize,bitSize/8);
+      nextAction=WRITE_TRK;
+      //nextAction=DUMP_TX;
+      //printf("Write end total %d %d/8, started:%d, ended:%d  wrBitCounter:%d bitSize:%d /8:%d\n",wrBitWritten,wrBitWritten/8,wrStartPtr,wrEndPtr,wrBitCounter,bitSize,bitSize/8);
 
     }
 

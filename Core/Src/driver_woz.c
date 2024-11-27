@@ -153,7 +153,7 @@ enum STATUS setWozTrackBitStream(int trk,unsigned char * buffer){
     
     free(tmp2);
   }
-        
+  //log_info("woz write trk:%d",trk);    
   return RET_OK;
 }
 
