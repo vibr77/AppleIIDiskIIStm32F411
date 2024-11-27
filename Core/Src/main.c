@@ -490,6 +490,10 @@ volatile uint8_t wrBitPos=0;
 volatile unsigned int wrBitCounter=0;
 volatile unsigned int wrBytes=0;
 
+volatile unsigned char byteWindow=0x0;
+volatile unsigned char byteWindow2=0x0;
+volatile unsigned char byteWindow3=0x0;
+volatile uint8_t pattern=0;
 /**
   * @brief TIMER 2 IRQ Handler is managing the WR_DATA Signal from the A2,       
   * @param (void)
@@ -500,11 +504,11 @@ void TIM2_IRQHandler(void){
   if (TIM2->SR & TIM_SR_UIF){ 
 
     TIM2->SR &= ~TIM_SR_UIF;                                                  // Reset the Interrupt
-    //HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_SET);
+    HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_SET);
   
   }else if (TIM2->SR & TIM_SR_CC2IF){                                        // The count & compare is on channel 2 to avoid issue with ETR1
 
-    //HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_RESET);
 
     wrData=HAL_GPIO_ReadPin(WR_DATA_GPIO_Port, WR_DATA_Pin);  // get WR_DATA
 
@@ -514,10 +518,26 @@ void TIM2_IRQHandler(void){
 
     wrBytes=wrBitCounter/8;
     wrBitPos=wrBitCounter%8;
-    DMA_BIT_RX_BUFFER[wrBytes]|=xorWrData<<(7-wrBitPos);
+    //DMA_BIT_RX_BUFFER[wrBytes]|=xorWrData<<(7-wrBitPos);
 
     wrBitCounter++;                                                           // Next bit please ;)
     wrBitWritten++;
+
+    byteWindow<<=1;
+    byteWindow|=xorWrData;
+    
+    if (wrBitPos==0){
+      DMA_BIT_RX_BUFFER[wrBytes]=byteWindow;
+      
+      if (byteWindow==0x96 && byteWindow2==0xAA && byteWindow3==0xD5){
+        pattern++;
+      }
+
+      byteWindow3=byteWindow2;
+      byteWindow2=byteWindow;
+    }
+
+  
     if (wrBitCounter==wrStartPtr)
       wrTrackOverlap=1;
     
@@ -526,6 +546,7 @@ void TIM2_IRQHandler(void){
 
     TIM2->SR &= ~TIM_SR_CC2IF;                                                // clear the count & compare interrupt
   }else{
+    HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_SET);
     TIM2->SR=0;
   }    
 }
@@ -553,12 +574,8 @@ void irqReadTrack(){
   */
 void irqWriteTrack(){
 
-  HAL_NVIC_DisableIRQ(SDIO_IRQn);
-  HAL_NVIC_DisableIRQ(DMA2_Stream3_IRQn);
-  HAL_NVIC_DisableIRQ(DMA2_Stream6_IRQn);
-
   HAL_NVIC_EnableIRQ(TIM2_IRQn);
-  HAL_NVIC_DisableIRQ(TIM3_IRQn);
+  //HAL_NVIC_DisableIRQ(TIM3_IRQn);
   HAL_NVIC_DisableIRQ(TIM4_IRQn);
   HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
   
@@ -614,7 +631,7 @@ enum STATUS dumpBufFile(char * filename,volatile unsigned char * buffer,int leng
   UINT totalBytes=0;
 
   for (int i=0;i<13;i++){
-    fsState=BUSY;
+    fsState=WRITING;
     fres = f_write(&fil, (unsigned char *)buffer+i*512, 512, &bytesWrote);
     if(fres == FR_OK) {
       totalBytes+=bytesWrote;
@@ -623,7 +640,8 @@ enum STATUS dumpBufFile(char * filename,volatile unsigned char * buffer,int leng
       fsState=READY;
       return RET_ERR;
     }
-    //while(fsState!=READY){};
+    //log_info("%d",i);
+    while(fsState!=READY){};
   }
 
   log_info("Wrote %i bytes to '%s'!\n", totalBytes,filename);
@@ -1466,7 +1484,8 @@ int main(void)
 /*
   DWT->CYCCNT = 0;                              // Reset cpu cycle counter
   t1 = DWT->CYCCNT; 
-  updateIMAGEScreen(0,10);
+  //updateIMAGEScreen(0,10);
+  flgImageMounted=1;
   t2 = DWT->CYCCNT;
   diff1 = t2 - t1;
   log_info("diff %d",diff1);
@@ -1687,17 +1706,13 @@ int main(void)
         HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_2);
       }
  
-      HAL_NVIC_EnableIRQ(SDIO_IRQn);
-      HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
-      HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
+      irqEnableSDIO();
     
       getTrackBitStream(trk,read_track_data_bloc);
         
       while(fsState!=READY){}
 
-      HAL_NVIC_DisableIRQ(SDIO_IRQn);
-      HAL_NVIC_DisableIRQ(DMA2_Stream3_IRQn);
-      HAL_NVIC_DisableIRQ(DMA2_Stream6_IRQn);
+      irqDisableSDIO();
 
       //if (trk==0)
       //  dumpBuf(read_track_data_bloc,1,2048);
@@ -1736,35 +1751,33 @@ int main(void)
         case WRITE_TRK:
           long offset=getSDAddr(trk,0,csize,database);
           //writeTrkFile("/Blank.woz",DMA_BIT_TX_BUFFER,offset);
-          HAL_NVIC_EnableIRQ(SDIO_IRQn);
-          HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
-          HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
+         irqEnableSDIO();
           
           setDataBlocksBareMetal(offset,DMA_BIT_TX_BUFFER,13);
-          
-          HAL_NVIC_DisableIRQ(SDIO_IRQn);
-          HAL_NVIC_DisableIRQ(DMA2_Stream3_IRQn);
-          HAL_NVIC_DisableIRQ(DMA2_Stream6_IRQn);
+          setTrackBitStream(trk,read_track_data_bloc);
+          irqDisableSDIO();
 
+          dumpBuf(DMA_BIT_RX_BUFFER,1,1024);
           nextAction=NONE;
+          
           break;
 
         case DUMP_TX:
-          log_info("here 1");
+          
           char filename[128];
           sprintf(filename,"dump_rx_trk_%d_%d.bin",intTrk,wr_attempt);
           wr_attempt++;
           
-          HAL_NVIC_EnableIRQ(SDIO_IRQn);
-          HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
-          HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
+          irqEnableSDIO();
 
           dumpBufFile(filename,DMA_BIT_RX_BUFFER,RAW_SD_TRACK_SIZE);
 
-          HAL_NVIC_DisableIRQ(SDIO_IRQn);
-          HAL_NVIC_DisableIRQ(DMA2_Stream3_IRQn);
-          HAL_NVIC_DisableIRQ(DMA2_Stream6_IRQn);
+          irqEnableSDIO();
           log_info("dumpfile %s",filename);
+          
+
+          dumpBuf(DMA_BIT_RX_BUFFER,1,1024);
+          log_info("pattern :%d",pattern);
 
           nextAction=NONE;
           break;
@@ -2104,7 +2117,7 @@ static void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 0;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 399;
+  htim2.Init.Period = 32*12-1;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -2135,7 +2148,7 @@ static void MX_TIM2_Init(void)
     Error_Handler();
   }
   sConfigOC.OCMode = TIM_OCMODE_TIMING;
-  sConfigOC.Pulse = 200;
+  sConfigOC.Pulse = 32*6;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   if (HAL_TIM_OC_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
@@ -2357,7 +2370,7 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin : WR_DATA_Pin */
   GPIO_InitStruct.Pin = WR_DATA_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(WR_DATA_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : RD_DATA_Pin */
@@ -2366,6 +2379,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
   HAL_GPIO_Init(RD_DATA_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : DEBUG_Pin */
+  GPIO_InitStruct.Pin = DEBUG_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  HAL_GPIO_Init(DEBUG_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : WR_PROTECT_Pin */
   GPIO_InitStruct.Pin = WR_PROTECT_Pin;
@@ -2437,20 +2457,24 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 
     if (WR_REQ_PHASE==0 && flgImageMounted==1){                     // WR_REQUEST IS ACTIVE LOW
       irqWriteTrack();  
+      memset((unsigned char *)&DMA_BIT_RX_BUFFER,0,RAW_SD_TRACK_SIZE);
       HAL_TIM_PWM_Stop_IT(&htim3,TIM_CHANNEL_4);
       HAL_TIM_PWM_Start_IT(&htim2,TIM_CHANNEL_3);           // start the timer1
       WR_REQ_PHASE=1;                                               // Write has begun :) not very clean, to be changed with value of GPIO
       
       wrBitWritten=0;                                               // Count the number of bits sent from the A2
       wrBitCounter=bitCounter-bitCounter%8;                         // Write position counter (handover from read)
-      wrStartPtr=wrBitCounter;                                      // start pointer
+      wrStartPtr=wrBitCounter; 
+      wrBitCounter=0;
+      bitSize=51000;
+                                           // start pointer
       printf("Write started wrBitCounter:%d\n",wrBitCounter);             
       
     }else if (WR_REQ_PHASE==1 && flgImageMounted==1){
       WR_REQ_PHASE=0;                                 // Write has just stopped
 
+      //HAL_TIM_PWM_Stop_IT(&htim2,TIM_CHANNEL_3); 
       HAL_TIM_PWM_Stop_IT(&htim2,TIM_CHANNEL_3); 
-
       irqReadTrack(); 
       HAL_TIM_PWM_Start_IT(&htim3,TIM_CHANNEL_4);
       
@@ -2460,9 +2484,9 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
       memcpy((unsigned char *)&DMA_BIT_TX_BUFFER,(unsigned char *)&DMA_BIT_RX_BUFFER,RAW_SD_TRACK_SIZE);
       //memset((unsigned char *)&DMA_BIT_RX_BUFFER,0,RAW_SD_TRACK_SIZE);
       
-      // nextAction=WRITE_TRK;
+      //nextAction=WRITE_TRK;
       nextAction=DUMP_TX;
-      
+      log_info("pattern %d",pattern);
       printf("Write end total %d %d/8, started:%d, end:%d  wrBitCounter:%d bitSize:%d /8:%d\n",wrBitWritten,wrBitWritten/8,wrStartPtr,wrEndPtr,wrBitCounter,bitSize,bitSize/8);
 
     }

@@ -64,7 +64,6 @@ uint8_t FATFS_UnLinkDriver(char *path);
 uint8_t FATFS_LinkDriverEx(const Diskio_drvTypeDef *drv, char *path, BYTE lun);
 uint8_t FATFS_UnLinkDriverEx(char *path, BYTE lun);
 uint8_t FATFS_GetAttachedDriversNbr(void);
-
 uint8_t FATFS_reInitDisk(const Diskio_drvTypeDef *drv, char *path);
 #ifdef __cplusplus
 }

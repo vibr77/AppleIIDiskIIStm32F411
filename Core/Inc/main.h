@@ -161,6 +161,8 @@ typedef struct image_info_s {
 #define BTN_RET_EXTI_IRQn EXTI15_10_IRQn
 #define SD_EJECT_Pin GPIO_PIN_13
 #define SD_EJECT_GPIO_Port GPIOB
+#define DEBUG_Pin GPIO_PIN_10
+#define DEBUG_GPIO_Port GPIOA
 #define WR_REQ_Pin GPIO_PIN_9
 #define WR_REQ_GPIO_Port GPIOB
 #define WR_REQ_EXTI_IRQn EXTI9_5_IRQn

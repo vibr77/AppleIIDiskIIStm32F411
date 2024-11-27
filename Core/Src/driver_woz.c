@@ -150,11 +150,11 @@ enum STATUS setWozTrackBitStream(int trk,unsigned char * buffer){
     memcpy(tmp2+256,buffer,blockNumber*512);
     setDataBlocksBareMetal(addr,tmp2,14); 
     while (fsState!=READY){};  
-    //cmd25SetDataBlocksBareMetal(addr,tmp2,blockNumber+1);                           // <!> Last 10 Bytes are not Data Stream Bytes
+    
     free(tmp2);
   }
         
-  return 1;
+  return RET_OK;
 }
 
 #define WOZ_InfoChunk_offset 12

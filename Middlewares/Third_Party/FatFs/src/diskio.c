@@ -58,7 +58,6 @@ DSTATUS disk_reinitialize (
 )
 {
   disk.is_initialized[pdrv] = 0 ;
-  return 0;
   return disk_initialize( pdrv ) ;
 }
 
