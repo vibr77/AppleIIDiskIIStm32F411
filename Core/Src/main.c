@@ -1,8 +1,8 @@
 /* USER CODE BEGIN Header */
 /*
 __   _____ ___ ___        Author: Vincent BESSON
- \ \ / /_ _| _ ) _ \      Release: 0.78.3 
-  \ V / | || _ \   /      Date: 2024.11.02
+ \ \ / /_ _| _ ) _ \      Release: 0.78.4
+  \ V / | || _ \   /      Date: 2024.11.28
    \_/ |___|___/_|_\      Description: Apple Disk II Emulator on STM32F4x
                 2024      Licence: Creative Commons
 ______________________
@@ -112,8 +112,8 @@ UART
   +Fix: variable casting uint8 instead of int in getConfigParamUInt8
   +Fix: Empty SDCard crash, sortlst check for empty chainedlist
   +Feat: writing part 1 setting the woz driver function
-  +Feat: writing part 2 correct write bitstream and fix bit shift
-
+  +Feat: writing part 2correct write bitstream and fix bit shift
+  +
 24.11.24: v0.78.2
   +Fix: bootloader delay providing a coldstart issue on several images
 23.11.24: v0.78.1
@@ -259,7 +259,6 @@ void (*ptrbtnDown)(void *);
 void (*ptrbtnEntr)(void *);
 void (*ptrbtnRet)(void *);
 
-
 bool buttonDebounceState=true;
 
 volatile int ph_track=0;                                                // SDISK Physical track 0 - 139
@@ -312,7 +311,6 @@ unsigned long t1,t2,diff1;
 int wrStartPtr=0;
 int wrEndPtr=0;
 int wrBitWritten=0;
-//uint8_t wrTrackOverlap=0;
 
 int wr_attempt=0;                                             // temp variable to keep incremental counter of the debug dump to file
 
@@ -504,11 +502,11 @@ void TIM2_IRQHandler(void){
   if (TIM2->SR & TIM_SR_UIF){ 
 
     TIM2->SR &= ~TIM_SR_UIF;                                                  // Reset the Interrupt
-    HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_SET);
+    //HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_SET);
   
   }else if (TIM2->SR & TIM_SR_CC2IF){                                        // The count & compare is on channel 2 to avoid issue with ETR1
 
-    HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_RESET);
+    //HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_RESET);
 
     wrData=HAL_GPIO_ReadPin(WR_DATA_GPIO_Port, WR_DATA_Pin);  // get WR_DATA
 
@@ -516,28 +514,25 @@ void TIM2_IRQHandler(void){
     xorWrData=wrData ^ prevWrData;                                            // Compute Magnetic polarity inversion
     prevWrData=wrData;                                                        // for next cycle keep the wrData
 
-    wrBytes=wrBitCounter/8;
-    wrBitPos=wrBitCounter%8;
-
     byteWindow<<=1;
     byteWindow|=xorWrData;
+
+    wrBitCounter++;                                                           // Next bit please ;)
+    wrBitWritten++;                                                           // Keep track of the number of bits written to update the TMAP
+
+    wrBitPos=wrBitCounter%8;
     
     if (wrBitPos==0){
+      wrBytes=(wrBitCounter/8)-1;                                             // at 8th bit, we have the first Bytes in [0] psoition;
       DMA_BIT_RX_BUFFER[wrBytes]=byteWindow;
     }
 
-    wrBitCounter++;                                                           // Next bit please ;)
-    wrBitWritten++;
-
-    //if (wrBitCounter==wrStartPtr)
-    //  wrTrackOverlap=1;
-    
     if (wrBitCounter>=bitSize)                                                // Same Size as the original track size
       wrBitCounter=0;                                                         // Start over at the beginning of the track
 
     TIM2->SR &= ~TIM_SR_CC2IF;                                                // clear the count & compare interrupt
   }else{
-    HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_SET);
+    //HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_SET);
     TIM2->SR=0;
   }    
 }
@@ -551,12 +546,8 @@ void TIM2_IRQHandler(void){
 void irqReadTrack(){
 
   HAL_NVIC_DisableIRQ(TIM2_IRQn);
-
   HAL_NVIC_EnableIRQ(TIM3_IRQn);
   HAL_NVIC_EnableIRQ(TIM4_IRQn);
-  
-  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
-  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 }
 /**
   * @brief Adjust Enable IRQ for writting process to avoid jitter / delay / corrupted data
@@ -566,10 +557,8 @@ void irqReadTrack(){
 void irqWriteTrack(){
 
   HAL_NVIC_EnableIRQ(TIM2_IRQn);
-  //HAL_NVIC_DisableIRQ(TIM3_IRQn);
+  HAL_NVIC_DisableIRQ(TIM3_IRQn);
   HAL_NVIC_DisableIRQ(TIM4_IRQn);
-  HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
-  
 }
 
 /**
@@ -582,17 +571,18 @@ void irqWIdle(){
   HAL_NVIC_DisableIRQ(TIM2_IRQn);
   HAL_NVIC_EnableIRQ(TIM3_IRQn);
   HAL_NVIC_EnableIRQ(TIM4_IRQn);
-  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
-
+  //HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 }
 
 void irqEnableSDIO(){
+
   HAL_NVIC_EnableIRQ(SDIO_IRQn);
   HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
   HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
 }
 
 void irqDisableSDIO(){
+
   HAL_NVIC_DisableIRQ(SDIO_IRQn);
   HAL_NVIC_DisableIRQ(DMA2_Stream3_IRQn);
   HAL_NVIC_DisableIRQ(DMA2_Stream6_IRQn);
@@ -655,13 +645,13 @@ enum STATUS writeTrkFile(char * filename,char * buffer,uint32_t offset){
   FRESULT fres; //Result after operations
   
   fres = f_open(&fil, filename, FA_WRITE | FA_OPEN_ALWAYS | FA_CREATE_ALWAYS);
-  if(fres != FR_OK) {
-	  log_error("f_open error (%i)\n",fres);
+  if(fres != FR_OK){
+    log_error("f_open error (%i)\n",fres);
     return RET_ERR;
   }
 
   fres=f_lseek(&fil,offset);
-  if(fres != FR_OK) {
+  if(fres != FR_OK){
     log_error("f_lseek error (%i)\n",fres);
     return RET_ERR;
   }
@@ -881,7 +871,6 @@ enum STATUS walkDir(char * path){
   DIR dir;
   FRESULT     fres;  
 
-  //processPath(path);
   log_info("walkdir() path:%s",path);
   HAL_NVIC_EnableIRQ(SDIO_IRQn);
   HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
@@ -900,17 +889,14 @@ enum STATUS walkDir(char * path){
     
   char * fileName;
   int len;
-  //lastlistPos=0;
-  dirChainedList=list_new();
 
+  dirChainedList=list_new();
 
   if (fres == FR_OK){
       if (strcmp(path,"") && strcmp(path,"/")){
         fileName=malloc(MAX_FILENAME_LENGTH*sizeof(char));
         sprintf(fileName,"D|..");
         list_rpush(dirChainedList, list_node_new(fileName));
-        //lastlistPos++;
-        
       }
       
       while(1){
@@ -955,10 +941,8 @@ enum STATUS walkDir(char * path){
             fileName[len+2]=0x0;
           }
             list_rpush(dirChainedList, list_node_new(fileName));
-
           }
 
-        
         /*log_debug("%c%c%c%c %10d %s/%s",
           ((fno.fattrib & AM_DIR) ? 'D' : '-'),
           ((fno.fattrib & AM_RDO) ? 'R' : '-'),
@@ -1262,7 +1246,6 @@ enum STATUS mountImagefile(char * filename){
 
     getSDAddr=getWozSDAddr;
     getTrackBitStream=getWozTrackBitStream;
-    //getTrackBitStream=getWozTrackBitStream_fopen;
     setTrackBitStream=setWozTrackBitStream;
     getTrackFromPh=getWozTrackFromPh;
     getTrackSize=getWozTrackSize;
@@ -1475,19 +1458,6 @@ int main(void)
   dier|=TIM_DIER_UIE;
   TIM3->DIER=dier;
   
-/*
-  DWT->CYCCNT = 0;                              // Reset cpu cycle counter
-  t1 = DWT->CYCCNT; 
-  //updateIMAGEScreen(0,10);
-  flgImageMounted=1;
-  t2 = DWT->CYCCNT;
-  diff1 = t2 - t1;
-  log_info("diff %d",diff1);
-  while(1){
-
-  }
-*/
-
   processSdEject(SD_EJECT_Pin);
   processDeviceEnableInterrupt(DEVICE_ENABLE_Pin);
  
@@ -1553,7 +1523,6 @@ int main(void)
   }else{
     log_error("Error mounting sdcard %d",fres);
   }
-
 
 
   if (bootMode==0){
@@ -1701,15 +1670,9 @@ int main(void)
       }
  
       irqEnableSDIO();
-    
       getTrackBitStream(trk,read_track_data_bloc);
-        
       while(fsState!=READY){}
-
       irqDisableSDIO();
-
-      //if (trk==0)
-      //  dumpBuf(read_track_data_bloc,1,2048);
 
       memcpy((unsigned char *)&DMA_BIT_TX_BUFFER,read_track_data_bloc,RAW_SD_TRACK_SIZE);
       
@@ -1743,17 +1706,13 @@ int main(void)
         case UPDIMGDISP:
           updateIMAGEScreen(WR_REQ_PHASE,trk);
         case WRITE_TRK:
-          //long offset=getSDAddr(trk,0,csize,database);
-          //writeTrkFile("/Blank.woz",DMA_BIT_TX_BUFFER,offset);
+          
           irqEnableSDIO();
-          log_info("writing phtrack:%d trk:%d",ph_track,intTrk);
-          //setDataBlocksBareMetal(offset,DMA_BIT_RX_BUFFER,13);
           setTrackBitStream(intTrk,DMA_BIT_TX_BUFFER);
           irqDisableSDIO();
 
-          //dumpBuf(DMA_BIT_RX_BUFFER,1,1024);
-          //memcpy((unsigned char *)&DMA_BIT_TX_BUFFER,(unsigned char *)&DMA_BIT_RX_BUFFER,RAW_SD_TRACK_SIZE);
-      
+          log_info("writing phtrack:%d trk:%d",ph_track,intTrk);
+          
           nextAction=NONE;
           
           break;
@@ -1765,22 +1724,20 @@ int main(void)
           wr_attempt++;
           
           irqEnableSDIO();
-
           dumpBufFile(filename,DMA_BIT_RX_BUFFER,RAW_SD_TRACK_SIZE);
-
           irqDisableSDIO();
-          log_info("dumpfile %s",filename);
-          
 
+          log_info("dumpfile %s",filename);
           //dumpBuf(DMA_BIT_RX_BUFFER,1,1024);
-          //log_info("pattern :%d",pattern);
 
           nextAction=NONE;
           break;
 
         case SYSRESET:
           NVIC_SystemReset();
+          nextAction=NONE;
           break;
+
         case FSMOUNT:
           // FSMOUNT will not work if SDCard is remove & reinserted...
           // system reset is preferred
@@ -1930,9 +1887,17 @@ static void MX_NVIC_Init(void)
   /* EXTI4_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(EXTI4_IRQn, 2, 0);
   HAL_NVIC_EnableIRQ(EXTI4_IRQn);
+  
+  /* TIM2_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(TIM2_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(TIM2_IRQn);
   /* TIM3_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(TIM3_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(TIM3_IRQn);
+  /* TIM4_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(TIM4_IRQn, 10, 0);
+  HAL_NVIC_EnableIRQ(TIM4_IRQn);
+
   /* SDIO_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(SDIO_IRQn, 6, 0);
   HAL_NVIC_EnableIRQ(SDIO_IRQn);
@@ -1942,16 +1907,14 @@ static void MX_NVIC_Init(void)
   /* DMA2_Stream6_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Stream6_IRQn, 6, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
+ 
   /* EXTI9_5_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(EXTI9_5_IRQn, 4, 0);
   HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
   /* EXTI15_10_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(EXTI15_10_IRQn, 13, 0);
   HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
-  /* TIM2_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(TIM2_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(TIM2_IRQn);
-}
+} 
 
 /**
   * @brief I2C1 Initialization Function
@@ -2432,7 +2395,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
      ){            // Step 3 PB11
     
     processDiskHeadMoveInterrupt(GPIO_Pin);
-   
+  
   }else if (GPIO_Pin==DEVICE_ENABLE_Pin){
     processDeviceEnableInterrupt(DEVICE_ENABLE_Pin);
   }else if ((GPIO_Pin == BTN_RET_Pin   ||      // BTN_RETURN
@@ -2447,20 +2410,20 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
   } else if (GPIO_Pin == WR_REQ_Pin){
 
     if (WR_REQ_PHASE==0 && flgImageMounted==1){                     // WR_REQUEST IS ACTIVE LOW
-      
+      WR_REQ_PHASE=1;  
       
       HAL_TIM_PWM_Stop_IT(&htim3,TIM_CHANNEL_4);
       
       irqWriteTrack();  
       memset((unsigned char *)&DMA_BIT_RX_BUFFER,0,RAW_SD_TRACK_SIZE);   // Clean the RX_BUFFER 
       HAL_TIM_PWM_Start_IT(&htim2,TIM_CHANNEL_3);                 // start the TIMER2
-      WR_REQ_PHASE=1;                                                     // Write has begun :) not very clean, to be changed with value of GPIO
+                                                         // Write has begun :) not very clean, to be changed with value of GPIO
       
       wrBitWritten=0;                                                     // Count the number of bits sent from the A2
       wrBitCounter=bitCounter-bitCounter%8;                               // Write position counter (handover from read)
       wrStartPtr=wrBitCounter; 
-      wrBitCounter=0;                                                   // Need to work on this sync track will cause an issue 
-      bitSize=6656*8;                                                   // Size of the bitsize should be read from the woz TRACK_MAP 
+      //wrBitCounter=0;                                                   // Need to work on this sync track will cause an issue 
+      //bitSize=6656*8;                                                   // Size of the bitsize should be read from the woz TRACK_MAP 
                                                     
       //printf("Write started wrBitCounter:%d\n",wrBitCounter);             
       

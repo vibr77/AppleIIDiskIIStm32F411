@@ -1,6 +1,6 @@
 
 
-#define _VERSION "v0.78.3"
+#define _VERSION "v0.78.4"
 
 #define SPLASHSCREEN_DURATION 1000
 

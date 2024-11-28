@@ -85,7 +85,6 @@ enum STATUS getWozTrackBitStream_fopen(int trk,unsigned char * buffer){
 
 }
 
-
 enum STATUS getWozTrackBitStream(int trk,unsigned char * buffer){
   const unsigned int blockNumber=13; 
   int addr=getWozSDAddr(trk,0,csize,database);
