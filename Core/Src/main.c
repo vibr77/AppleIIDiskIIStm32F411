@@ -1799,7 +1799,7 @@ int main(void)
       if (flgSoundEffect==1){
         HAL_TIMEx_PWMN_Stop(&htim1,TIM_CHANNEL_2);
       }
-      if (cAlive==50000000){
+      if (cAlive==5000000){
         printf(".\n");
         cAlive=0;
       }
