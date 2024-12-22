@@ -439,18 +439,19 @@ void SmartPortMainLoop(){
                     print_packet ((unsigned char*) packet_buffer, packet_length());
                 }
 
-                log_info("cmd:0x%02X dest:0x%02X",packet_buffer[SP_COMMAND], packet_buffer[SP_DEST]);
+                if (packet_buffer[SP_COMMAND]!=0x81)
+                    log_info("cmd:0x%02X dest:0x%02X",packet_buffer[SP_COMMAND], packet_buffer[SP_DEST]);
 
                 switch (packet_buffer[SP_COMMAND]) {
 
                     case 0x80:                                                                                          //is a status cmd
 
                         dest = packet_buffer[SP_DEST];
-                        for (partition = 0; partition < MAX_PARTITIONS; partition++) {                              // Check if its one of ours
+                        for (partition = 0; partition < MAX_PARTITIONS; partition++) {                                  // Check if its one of ours
                             uint8_t dev=(partition + initPartition) % MAX_PARTITIONS;
-                            if (devices[dev].device_id == dest && devices[dev].mounted==1 ) {                // yes it is, and it's online, then reply
+                            if (devices[dev].device_id == dest && devices[dev].mounted==1 ) {                           // yes it is, and it's online, then reply
                                                                                                                         // Added (unsigned short) cast to ensure calculated block is not underflowing.
-                                status_code = (packet_buffer[14] & 0x7f); // | (((unsigned short)packet_buffer[16] << 3) & 0x80);
+                                status_code = (packet_buffer[14] & 0x7f);                                               // | (((unsigned short)packet_buffer[16] << 3) & 0x80);
                                 log_info(" Status code: %2X",status_code);
                                 
                                 decode_data_packet();
@@ -460,7 +461,7 @@ void SmartPortMainLoop(){
                                     log_info("******** Sending DIB! ********");
                                     encode_status_dib_reply_packet(devices[dev]);
                                     print_packet ((unsigned char*) packet_buffer,packet_length());
-                                    //HAL_Delay(50);
+                                    
                                 } else {                                                                                // else just return device status
                                     log_info("Sending status:");
                                     log_info("  dest: %2X",dest);
@@ -476,6 +477,7 @@ void SmartPortMainLoop(){
 
                             }
                         }
+                        packet_buffer[0]=0x0;
                         break;
 
                     case 0xC1:
@@ -493,11 +495,12 @@ void SmartPortMainLoop(){
                     case 0xC0:                                                                                  // Extended status cmd
                 
                         dest = packet_buffer[SP_DEST];
-                        //log_info("0xC0 dest:%2X",dest);
+
                         for (partition = 0; partition < MAX_PARTITIONS; partition++) {                          // Check if its one of ours
-                            if (devices[(partition + initPartition) % MAX_PARTITIONS].device_id == dest) {      // yes it is, then reply
+                            uint8_t dev=(partition + initPartition) % MAX_PARTITIONS;
+                            if (devices[dev].device_id == dest) {      // yes it is, then reply
                                                                                                                 // Added (unsigned short) cast to ensure calculated block is not underflowing.
-                                status_code = (packet_buffer[17] & 0x7f);
+                                status_code = (packet_buffer[16] & 0x7f);
                                 log_info("Extended Status CMD: %2X",status_code);
                                 print_packet ((unsigned char*) packet_buffer,packet_length());
                                 if (status_code == 0x03) {                                                      // if statcode=3, then status with device info block
@@ -505,24 +508,22 @@ void SmartPortMainLoop(){
                                 } else {                                                                        // else just return device status
                                     log_info("Extended status non-DIB:");
                                     log_info("  dest: %2X",dest);
-                                    log_info("  Partition ID: %2X",devices[(partition + initPartition) % MAX_PARTITIONS].device_id);
+                                    log_info("  Partition ID: %2X",devices[dev].device_id);
                                     log_info("  Status code:%2X",status_code);
-                                    encode_extended_status_reply_packet(devices[(partition + initPartition) % MAX_PARTITIONS]);        
+                                    encode_extended_status_reply_packet(devices[dev]);        
                                 }
 
 
                                 SmartPortSendPacket(packet_buffer);
 
-                            
-                                print_packet ((unsigned char*) packet_buffer,packet_length());
-                                log_info("msg:0xC0 response sent:");
-                                print_packet ((unsigned char*) packet_buffer,packet_length());
                             }
                         }
+
+                        packet_buffer[0]=0x0;
                         break;
 
                     case 0x81:                                                                                  // is a readblock cmd
-                        //print_packet ((unsigned char*) packet_buffer,packet_length());
+
                         dest = packet_buffer[SP_DEST];
                         // CMD 9
                         // PARMCNT 10
@@ -557,7 +558,6 @@ void SmartPortMainLoop(){
                                     log_error("Read seek err!, partition:%d, block:%d",dev,block_num);
                                 }
 
-                                
                                 fsState=BUSY;
                                 unsigned int pt;
                                 fres=f_read(&devices[dev].fil,(unsigned char*) packet_buffer,512,&pt); // Reading block from SD Card
@@ -596,28 +596,25 @@ void SmartPortMainLoop(){
                         for (partition = 0; partition < MAX_PARTITIONS; partition++) {                              // Check if its one of ours
                             uint8_t dev=(partition + initPartition) % MAX_PARTITIONS;
                             if (devices[dev].device_id == dest) {          // yes it is, then do the write
-                                                                                                                    // block num 1st byte
-                                                                                                                    // Added (unsigned short) cast to ensure calculated block is not underflowing.
-                                //block_num = (packet_buffer[19] & 0x7f) | (((unsigned short)packet_buffer[16] << 3) & 0x80);
-                                                                                                                    // block num second byte
-                                                                                                                    // Added (unsigned short) cast to ensure calculated block is not underflowing.
-                                //block_num = block_num + (((packet_buffer[20] & 0x7f) | (((unsigned short)packet_buffer[16] << 4) & 0x80)) * 256);
                                 
                                 block_num = (LBN & 0x7f) | (((unsigned short)LBH << 3) & 0x80);                         // Added (unsigned short) cast to ensure calculated block is not underflowing.
                                 block_num = block_num + (((LBL & 0x7f) | (((unsigned short)LBH << 4) & 0x80)) << 8);    // block num second byte, Added (unsigned short) cast to ensure calculated block is not underflowing.
                                 block_num = block_num + (((LBT & 0x7f) | (((unsigned short)LBH << 5) & 0x80)) << 16);   // block num third byte, Added (unsigned short) cast to ensure calculated block is not underflowing.
                                                                                                                         // get write data packet, keep trying until no timeout
-                                
                                 SmartportReceivePacket();
                                 
                                 status = decode_data_packet();
                                 if (status == 0) {                                                                  // ok
                                     log_info("Write Bl. n.r: %d",block_num);
-
+                                    
+                                    while(fsState!=READY){};
+                                    fsState=BUSY;
+                                    
                                     FRESULT fres=f_lseek(&devices[dev].fil,block_num*512);
                                     if (fres!=FR_OK){
                                         log_error("Write seek err!");
                                     }
+                                    fsState=BUSY;
 
                                     unsigned int pt;
                                     fres=f_write(&devices[dev].fil,(unsigned char*) packet_buffer,512,&pt); // Reading block from SD Card
@@ -625,14 +622,13 @@ void SmartPortMainLoop(){
                                         log_error("Write err! Block:%d",block_num);
                                         status = 6;
                                     }
+                                    
+                                    while(fsState!=READY){};
                                 }
                                 //now return status code to host
                                 
                                 encode_write_status_packet(dest, status);
                                 SmartPortSendPacket(packet_buffer);
-
-                                //log_info("msg:0x82 response sent:");
-                                //print_packet ((unsigned char*) packet_buffer,packet_length());
                             
                             }
                         }
