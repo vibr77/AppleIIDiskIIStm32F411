@@ -5,7 +5,7 @@
 #define disp
 
 
-enum page{FS,MOUNT,MENU,IMAGE,FAVORITE,CONFIG,IMAGEMENU};
+enum page{FS,MOUNT,MENU,IMAGE,FAVORITE,CONFIG,EMULATIONTYPE,IMAGEMENU};
 char * getImageNameFromFullPath(char * fullPathImageName);
 enum STATUS switchPage(enum page newPage,void * arg);
 void updateChainedListDisplay(int init, list_t * lst );
@@ -64,6 +64,11 @@ void processClearFavorites();
 void processMakeFs();
 void processMakeFsConfirmed();
 void processMakeFsBtnRet();
+
+// Emulation type Screen
+void initConfigEmulationScreen();
+void processEmulationTypeOption(int arg);
+void processReturnEmulationTypeItem();
 
 void initConfigMenuScreen(int i);
 void updateConfigMenuDisplay(int init);

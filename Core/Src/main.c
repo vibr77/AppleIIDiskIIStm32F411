@@ -11,6 +11,10 @@ ______________________
 Todo:
 - Add the screen PWR on a pin and not directly on the +3.3V
 - Add 74LS125 to protect the STM32 against AII over current
+- Add .2Mg file support
+- Add feature request from Retro-Device A / B Head positioning 
+- Adding on PCB jumper solder
+- Adding on PCB Power Pin 11
 
 
 Note 
@@ -104,6 +108,13 @@ UART
 
 // Changelog
 /*
+13.12.24  v0.79
+  +Fix: complete code restructuring to enable different emulation type
+  +Feat: Add Smartport HD emulation type
+  +Feat: Add Config menu to manage emulation type
+  +Feat: Manage physical head positioning for Disk A & B
+25.11.24: v0.78.4
+  +Feat: Locksmith Certify works and Fast copy also
 25.11.24: v0.78.3
   +Feat: makefs in the menu config
   +Fix: compilation option for fatfs mkfs
@@ -112,13 +123,11 @@ UART
   +Fix: variable casting uint8 instead of int in getConfigParamUInt8
   +Fix: Empty SDCard crash, sortlst check for empty chainedlist
   +Feat: writing part 1 setting the woz driver function
-  +Feat: writing part 2correct write bitstream and fix bit shift
-  +
+  +Feat: writing part 2 correct write bitstream and fix bit shift
 24.11.24: v0.78.2
   +Fix: bootloader delay providing a coldstart issue on several images
 23.11.24: v0.78.1
   +Fix: Spiradisc fix, screenupdate was before memcopy was generation an extra delay and thus failing with cross track sync
-
 22.11.24: v0.78
   +fix: WOZ more than 40 trk disk such as lode runner, add Max TRK
 22.11.24: v0.77
@@ -152,7 +161,6 @@ UART
   +add: define.h
   +fix: init chainedlist based screen with 0 and first row selected
   +refactor: display function
-
 31.10.24: v0.69
   +Add PO file support
   +Fix DSK driver getSdAddr 8*512 instead of 16*512, a track in DSK is 4096,8192
@@ -189,14 +197,13 @@ UART
 
 #include "display.h"
 #include "list.h"
-#include "driver_woz.h"
-#include "driver_nic.h"
-#include "driver_dsk.h"
+
+#include "emul_smartport.h"
+#include "emul_diskii.h"
 #include "configFile.h"
 #include "favorites.h"
 #include "log.h"
 
-//#include "parson.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -254,101 +261,45 @@ static void MX_TIM1_Init(void);
 static void MX_NVIC_Init(void);
 /* USER CODE BEGIN PFP */
 
+/*
+* 4 Physical button function
+*/
 void (*ptrbtnUp)(void *);                                 
 void (*ptrbtnDown)(void *);
 void (*ptrbtnEntr)(void *);
 void (*ptrbtnRet)(void *);
 
+// Hook function for different type emulation
+void (*ptrPhaseIRQ)();                                      // Pointer to function managing Ph0 to Ph3
+void (*ptrReceiveDataIRQ)();                                // Pointer to Received Data function with WR_DATA
+void (*ptrSendDataIRQ)();                                   // Pointer to Send Data function with RD_DATA
+void (*ptrWrReqIRQ)();                                      // Pointer to Interrupt function for WR_REQUEST
+int (*ptrDeviceEnableIRQ)(uint16_t GPIO_Pin);               // Pointer to Interrupt function for DEVICE_ENABLE
+enum STATUS (*ptrUnmountImage)();                           
+enum STATUS (*ptrMountImagefile)(char * filename);
+void (*ptrMainLoop)();                                      // Main Loop function pointer
+void (*ptrInit)();                                          // Init function pointer
+
 bool buttonDebounceState=true;
-
-volatile int ph_track=0;                                                // SDISK Physical track 0 - 139
-volatile int intTrk=0;                                                  // InterruptTrk                                    
-unsigned char prevTrk=35;                                               // prevTrk to keep track of the last head track
-
-unsigned char read_track_data_bloc[RAW_SD_TRACK_SIZE];                   // 
-volatile unsigned char DMA_BIT_TX_BUFFER[RAW_SD_TRACK_SIZE];             // DMA Buffer for READ Track
-volatile unsigned char DMA_BIT_RX_BUFFER[RAW_SD_TRACK_SIZE];             // DMA Buffer for WRITE Track
-
-uint8_t optimalBitTiming=32;
-
-extern woz_info_t wozFile;
-volatile unsigned int WR_REQ_PHASE=0;
 
 FATFS fs;                                                   // fatfs global variable <!> do not remount witihn a function the fatfs otherwise it breaks the rest
 long database=0;                                            // start of the data segment in FAT
 int csize=0;                                                // Cluster size
 
+extern char currentFullPath[MAX_FULLPATH_LENGTH];                    // current path from root
+extern char currentPath[MAX_PATH_LENGTH];                            // current directory name max 64 char
+extern char currentFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];  // fullpath from root image filename
+extern char tmpFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];      // fullpath from root image filename
+
 uint8_t flgSoundEffect=0;                                   // Activate Buzze
-volatile int flgWeakBit=0;                                       // Activate WeakBit only for Woz File
-uint8_t flgBitIndxCounter=0;                                // Keep track of Bit Index Counter when changing track (only for WOZ)
-
-volatile unsigned char flgDeviceEnable=0;
-unsigned char flgImageMounted=0;                            // Image file mount status flag
-unsigned char flgBeaming=0;                                 // DMA SPI1 to Apple II Databeaming status flag
-unsigned char flgWriteProtected=0;                          // Write Protected
-
-enum STATUS (*getTrackBitStream)(int,unsigned char*);       // pointer to readBitStream function according to driver woz/nic
-enum STATUS (*setTrackBitStream)(int,unsigned char*);       // pointer to writeBitStream function according to driver woz/nic
-long (*getSDAddr)(int ,int ,int , long);                    // pointer to getSDAddr function
-int  (*getTrackFromPh)(int);                                // pointer to track calculation function
-unsigned int  (*getTrackSize)(int);    
-
-enum action nextAction=NONE;
-
-char currentFullPath[MAX_FULLPATH_LENGTH];                    // current path from root
-char currentPath[MAX_PATH_LENGTH];                            // current directory name max 64 char
-char currentFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];  // fullpath from root image filename
-char tmpFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];      // fullpath from root image filename
-
-image_info_t mountImageInfo;
-
+uint8_t bootMode=0;
+uint8_t emulationType=0;
 list_t * dirChainedList;
+
 
 // DEBUG BLOCK
 
 unsigned long t1,t2,diff1;   
-
-int wrStartPtr=0;
-int wrEndPtr=0;
-int wrBitWritten=0;
-
-int wr_attempt=0;                                             // temp variable to keep incremental counter of the debug dump to file
-
-const uint8_t weakBitTank[]   ={1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0,
-                                1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0,
-                                1, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1,
-                                0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0,
-                                0, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1,
-                                1, 1, 1, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0,
-                                0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0,
-                                0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0,
-                                0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1,
-                                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 1,
-                                0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1,
-                                0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 1, 1, 0};
-
-volatile unsigned int weakBitTankPosition=0;
-
-const char fakeBitTank[]={
-0x1F, 0xCD, 0x7F, 0x58, 0x4E, 0xA4, 0x5A, 0x8F, 0xC6, 0x0D, 0xBE, 0xB5, 0xDA, 0x6D, 0xBC, 0x55, 
-0x98, 0x6B, 0x3B, 0x0C, 0x8B, 0x7B, 0xAC, 0x79, 0x70, 0x3E, 0x13, 0x74, 0xBD, 0xEB, 0x5F, 0xF5,
-0xAA, 0x45, 0x90, 0xB7, 0xF9, 0x65, 0xE5, 0xBC, 0x78, 0x0E, 0xD1, 0x86, 0x1F, 0x8C, 0x1B, 0xC6, 
-0x91, 0x69, 0x16, 0xFF, 0xBE, 0x36, 0x54, 0x6C, 0xDC, 0x37, 0x84, 0xEE, 0xD4, 0x86, 0xFD, 0x89, 
-0x02, 0xCD, 0x5D, 0x7B, 0xD9, 0x4A, 0xC5, 0x2E, 0x48, 0xEF, 0xFC, 0x74, 0xA1, 0xEA, 0xFD, 0x87, 
-0x2E, 0x53, 0x30, 0x91, 0xA1, 0x88, 0x78, 0x9B, 0x9B, 0xFD, 0xF7, 0x88, 0xCC, 0x97, 0xC5, 0x48, 
-0xBF, 0x36, 0x50, 0x00, 0xD3, 0xBA, 0x04, 0x64, 0x30, 0x1C, 0x3D, 0x40, 0xB4, 0x73, 0x3C, 0xA9, 
-0xBB, 0x4E, 0xF1, 0xE1, 0x46, 0xC2, 0x81, 0x04, 0xE9, 0x12, 0x09, 0x38, 0xA6, 0xCD, 0x9C, 0x97, 
-0x81, 0x50, 0x7E, 0xE5, 0xF4, 0x3D, 0x2E, 0x92, 0x8C, 0x43, 0xE6, 0xF7, 0x62, 0x41, 0xFA, 0x51, 
-0xAF, 0x66, 0x5A, 0x04, 0x56, 0xB8, 0xB0, 0x1C, 0x96, 0x48, 0x98, 0xF3, 0x00, 0x19, 0xFC, 0x0E, 
-0x87, 0x69, 0x9F, 0xC6, 0xD0, 0xA5, 0x36, 0x12, 0x1D, 0x8C, 0xB5, 0x06, 0x5A, 0xA5, 0x56, 0x90, 
-0x32, 0xEE, 0x37, 0x19, 0x81, 0xCD, 0x1C, 0x1C, 0x53, 0x9F, 0x79, 0x04, 0x8F, 0x34, 0xB1, 0x5B, 
-0x73, 0x44, 0x80, 0xC5, 0xE2, 0x4A, 0x20, 0x89, 0xB2, 0xFE, 0xEA, 0x5D, 0x37, 0x2F, 0x13, 0x22, 
-0xE5, 0x70, 0x90, 0x23, 0xCD, 0x62, 0x81, 0xC5, 0xCF, 0xBA, 0x22, 0x6A, 0xC3, 0x1A, 0x08, 0x4C, 
-0x4A, 0xB8, 0xEA, 0xB1, 0xF5, 0x70, 0x1A, 0xB6, 0xD9, 0x9C, 0x4E, 0xBF, 0x29, 0x93, 0xF5, 0x0F, 
-0x9F, 0xE6, 0x66, 0x20, 0x04, 0xB2, 0xBF, 0xF7, 0x64, 0x4C, 0x86, 0x67, 0x84, 0x27, 0x82, 0xAB
-};
-
-volatile unsigned int fakeBitTankPosition=0;                    // bit position in the fakeBitTank
 
 /* USER CODE END PFP */
 
@@ -366,14 +317,9 @@ void EnableTiming(void){
   *DWT_CONTROL |= 1 ;                                       // enable the counter
 }
 
-volatile uint8_t bitPtr=0;
-volatile int bitCounter=0;
-volatile int bytePtr=0;
-volatile int bitSize=0;
-
-uint8_t nextBit=0;
-volatile uint8_t *bbPtr=0x0;
-
+void nothingHook(void*){
+  return;
+}
 
 /**
   * @brief Button debouncer that reset the Timer 4
@@ -413,8 +359,6 @@ void TIM4_IRQHandler(void){
   TIM4->SR = 0;
 }
 
-volatile int zeroBits=0;                                  // Count number of consecutives zero bits
-
 /**
   * @brief TIMER 3 IRQ Interrupt is handling the reading process
   * @param None
@@ -423,74 +367,16 @@ volatile int zeroBits=0;                                  // Count number of con
 void TIM3_IRQHandler(void){
 
   if (TIM3->SR & TIM_SR_UIF){
-    TIM3->SR &= ~TIM_SR_UIF; 
-
-    RD_DATA_GPIO_Port->BSRR=nextBit;                      // start by outputing the nextBit and then due the internal cooking for the next one
-    //HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_SET);
-    bytePtr=bitCounter/8;
-    bitPtr=bitCounter%8;
-    nextBit=(*(bbPtr+bytePtr)>>(7-bitPtr) ) & 1;          // Assuming it is on GPIO PORT B and Pin 0 (0x1 Set and 0x01 << Reset)
-    
-    // ************  WEAKBIT ****************
-  
-#if WEAKBIT ==1
-    if ( nextBit==0 && flgWeakBit==1){
-      if (++zeroBits>3){
-        nextBit=weakBitTank[weakBitTankPosition] & 1;    // 30% of fakebit in the buffer as per AppleSauce reco
-        //log_info("wk");
-      
-        if (++weakBitTankPosition>208)
-          weakBitTankPosition=0;
-      }
-    }else{
-      zeroBits=0;
-    }
-#endif
-    // ************  WEAKBIT ****************
-
-    bitCounter++;
-    if (bitCounter>=bitSize){
-      bitCounter=0;
-    }
-                                                          // Clear the overflow interrupt 
+    TIM3->SR &= ~TIM_SR_UIF;                              // Clear the overflow interrupt 
+    ptrSendDataIRQ();
   }else if (TIM3->SR & TIM_SR_CC1IF){                     // Pulse compare interrrupt on Channel 1
     RD_DATA_GPIO_Port->BSRR=1U <<16;                      // Reset the RD_DATA GPIO
-    //HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_RESET);
     TIM3->SR &= ~TIM_SR_CC1IF;                            // Clear the compare interrupt flag
   }else
     TIM3->SR = 0;
 }
 
-/*
-WRITE PART:
-- TIMER2 is handling the write pulse from the Apple II and triggered by ETR1 => PA12
-    
-    PA12 : ETR1
-    PA07 : WR_DATA
-    PB09 : WR_REQ
-    
-    TIMER2 is 4 uS period (399)
-    CC2 is 200 pulse (in the middle of the bit cell)
-
-    0000 Reset state (WRDATA rising edge causing a short (i.e. 50ns) aysnchronous reset pulse of counter.
-    0001 1us later
-    0010 2 us later (half bit cell)
-    0011 3 us later
-    0100 4 us later (end bit cell, start new bit cell)
-    0101 5 us later
-    0110 6 us later (half bit cell)
-    0111 7 us later
-*/
 volatile enum FS_STATUS fsState=READY;
-
-volatile uint8_t wrData=0;
-volatile uint8_t prevWrData=0;
-volatile uint8_t xorWrData=0;
-volatile uint8_t wrBitPos=0;
-volatile unsigned int wrBitCounter=0;
-volatile unsigned int wrBytes=0;
-
-volatile unsigned char byteWindow=0x0;
 
 /**
   * @brief TIMER 2 IRQ Handler is managing the WR_DATA Signal from the A2,       
@@ -500,39 +386,19 @@ volatile unsigned char byteWindow=0x0;
 void TIM2_IRQHandler(void){
 
   if (TIM2->SR & TIM_SR_UIF){ 
-
     TIM2->SR &= ~TIM_SR_UIF;                                                  // Reset the Interrupt
-    //HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_SET);
-  
+    HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(RD_DATA_GPIO_Port,RD_DATA_Pin,GPIO_PIN_RESET);
+
   }else if (TIM2->SR & TIM_SR_CC2IF){                                        // The count & compare is on channel 2 to avoid issue with ETR1
-
     //HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_RESET);
-
-    wrData=HAL_GPIO_ReadPin(WR_DATA_GPIO_Port, WR_DATA_Pin);  // get WR_DATA
-
-    wrData^= 0x01u;                                                           // get /WR_DATA
-    xorWrData=wrData ^ prevWrData;                                            // Compute Magnetic polarity inversion
-    prevWrData=wrData;                                                        // for next cycle keep the wrData
-
-    byteWindow<<=1;
-    byteWindow|=xorWrData;
-
-    wrBitCounter++;                                                           // Next bit please ;)
-    wrBitWritten++;                                                           // Keep track of the number of bits written to update the TMAP
-
-    wrBitPos=wrBitCounter%8;
     
-    if (wrBitPos==0){
-      wrBytes=(wrBitCounter/8)-1;                                             // at 8th bit, we have the first Bytes in [0] psoition;
-      DMA_BIT_RX_BUFFER[wrBytes]=byteWindow;
-    }
-
-    if (wrBitCounter>=bitSize)                                                // Same Size as the original track size
-      wrBitCounter=0;                                                         // Start over at the beginning of the track
-
     TIM2->SR &= ~TIM_SR_CC2IF;                                                // clear the count & compare interrupt
+    ptrReceiveDataIRQ();
+
   }else{
-    //HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_SET);
+    HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(RD_DATA_GPIO_Port,RD_DATA_Pin,GPIO_PIN_RESET);
     TIM2->SR=0;
   }    
 }
@@ -602,8 +468,8 @@ enum STATUS dumpBufFile(char * filename,volatile unsigned char * buffer,int leng
   while(fsState!=READY){};
   fsState=BUSY;
   fres = f_open(&fil, filename, FA_WRITE | FA_OPEN_ALWAYS | FA_CREATE_ALWAYS);
-  if(fres != FR_OK) {
-	  log_error("f_open error (%i)\n", fres);
+  if (fres != FR_OK){
+	  log_error("f_open error (%i)", fres);
     fsState=READY;
     return RET_ERR;
   }
@@ -621,7 +487,7 @@ enum STATUS dumpBufFile(char * filename,volatile unsigned char * buffer,int leng
       fsState=READY;
       return RET_ERR;
     }
-    //log_info("%d",i);
+
     while(fsState!=READY){};
   }
 
@@ -869,7 +735,7 @@ enum STATUS processPath(char *path){
   */
 enum STATUS walkDir(char * path){
   DIR dir;
-  FRESULT     fres;  
+  FRESULT fres;  
 
   log_info("walkdir() path:%s",path);
   HAL_NVIC_EnableIRQ(SDIO_IRQn);
@@ -923,7 +789,7 @@ enum STATUS walkDir(char * path){
              !memcmp(fno.fname+(len-4),".DSK",4)  ||           // .DSK
              !memcmp(fno.fname+(len-4),".dsk",4)  ||           // .dsk
              !memcmp(fno.fname+(len-3),".PO",3)   ||           // .DSK
-             !memcmp(fno.fname+(len-3),".po",3)) &&           // .dsk
+             !memcmp(fno.fname+(len-3),".po",3)) &&            // .dsk
              !(fno.fattrib & AM_SYS) &&                        // Not System file
              !(fno.fattrib & AM_HID)                           // Not Hidden file
             )
@@ -968,9 +834,7 @@ char processSdEject(uint16_t GPIO_PIN){
   
   int sdEject=HAL_GPIO_ReadPin(SD_EJECT_GPIO_Port, GPIO_PIN);                 // Check if SDCard is ejected
   if (sdEject==1){  
-    flgImageMounted=0;
-    flgBeaming=0;
-
+    ptrUnmountImage();
     initErrorScreen("SD EJECTED");                                            // Display the message on screen
     
     do {  
@@ -979,61 +843,6 @@ char processSdEject(uint16_t GPIO_PIN){
   
   }
   return sdEject;
-}
-
-
-/**
-  * @brief  Check if DiskII is Enable / Disable => Device Select is active low
-  * @param None
-  * @retval None
-  */
-char processDeviceEnableInterrupt(uint16_t GPIO_Pin){
-  
-  // The DEVICE_ENABLE signal from the Disk controller is activeLow
-
-  uint8_t  a=HAL_GPIO_ReadPin(DEVICE_ENABLE_GPIO_Port,GPIO_Pin);
-  
-  GPIO_InitTypeDef GPIO_InitStruct = {0};
-
-  if (a==0 && flgBeaming==1){                                         // <!> TO BE TESTED 24/10
-    flgDeviceEnable=1;
-
-    GPIO_InitStruct.Pin   = RD_DATA_Pin;
-    GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP;
-    GPIO_InitStruct.Pull  = GPIO_PULLDOWN;
-    HAL_GPIO_Init(RD_DATA_GPIO_Port, &GPIO_InitStruct);
-
-    HAL_TIM_PWM_Start_IT(&htim3,TIM_CHANNEL_4);
-
-    GPIO_InitStruct.Pin   = WR_PROTECT_Pin;
-    GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP;
-    GPIO_InitStruct.Pull  = GPIO_PULLDOWN;
-    HAL_GPIO_Init(WR_PROTECT_GPIO_Port, &GPIO_InitStruct);
-
-    if (flgWriteProtected==1)
-      HAL_GPIO_WritePin(WR_PROTECT_GPIO_Port,WR_PROTECT_Pin,GPIO_PIN_SET);  // WRITE_PROTECT is enable
-    else
-      HAL_GPIO_WritePin(WR_PROTECT_GPIO_Port,WR_PROTECT_Pin,GPIO_PIN_RESET);
-  
-  }else if (flgDeviceEnable==1 && a==1 ){
-
-    flgDeviceEnable=0;
-    
-    GPIO_InitStruct.Pin   = RD_DATA_Pin;
-    GPIO_InitStruct.Mode  = GPIO_MODE_INPUT;
-    GPIO_InitStruct.Pull  = GPIO_NOPULL;
-    HAL_GPIO_Init(RD_DATA_GPIO_Port, &GPIO_InitStruct);
-
-    GPIO_InitStruct.Pin   = WR_PROTECT_Pin;
-    GPIO_InitStruct.Mode  = GPIO_MODE_INPUT;
-    GPIO_InitStruct.Pull  = GPIO_NOPULL;
-    HAL_GPIO_Init(WR_PROTECT_GPIO_Port, &GPIO_InitStruct);
-
-    HAL_TIM_PWM_Stop_IT(&htim3,TIM_CHANNEL_4);                                                // Stop the Timer
-    
-  }
-  log_info("flgDeviceEnable==%d",flgDeviceEnable);
-  return flgDeviceEnable;
 }
 
 /**
@@ -1058,80 +867,25 @@ void processBtnInterrupt(uint16_t GPIO_Pin){
       ptrbtnUp(NULL);
       log_debug("BTN UP"); 
       break;
+
     case BTN_DOWN_Pin:
       ptrbtnDown(NULL);
       log_debug("BTN DOWN");
       break;
+
     case BTN_ENTR_Pin:
       ptrbtnEntr(NULL);
       log_debug("BTN ENT");
       break;
+
     case BTN_RET_Pin:
       ptrbtnRet(NULL);
       log_debug("BTN RET");
       break;
+
     default:
       break;
   }       
-}
-
-// Magnet States --> Stepper Motor Position
-//
-//                N
-//               0001
-//        NW      |      NE
-//       1001     |     0011
-//                |
-// W 1000 ------- o ------- 0010 E
-//                |
-//       1100     |     0110
-//        SW      |      SE
-//               0100
-//                S
-
-volatile const int magnet2Position[16] = {
-//   0000 0001 0010 0011 0100 0101 0110 0111 1000 1001 1010 1011 1100 1101 1110 1111
-      -1,   0,   2,   1,   4,  -1,   3,  -1,   6,   7,  -1,  -1,   5,  -1,  -1,  -1
-};
-
-volatile const int position2Direction[8][8] = {               // position2Direction[X][Y] :X ROW Y: COLUMN 
-//     N  NE   E  SE   S  SW   W  NW
-//     0   1   2   3   4   5   6   7
-    {  0,  1,  2,  3,  0, -3, -2, -1 }, // 0 N
-    { -1,  0,  1,  2,  3,  0, -3, -2 }, // 1 NE
-    { -2, -1,  0,  1,  2,  3,  0, -3 }, // 2 E
-    { -3, -2, -1,  0,  1,  2,  3,  0 }, // 3 SE
-    {  0, -3, -2, -1,  0,  1,  2,  3 }, // 4 S
-    {  3,  0, -3, -2, -1,  0,  1,  2 }, // 5 SW
-    {  2,  3,  0, -3, -2, -1,  0,  1 }, // 6 W
-    {  1,  2,  3,  0, -3, -2, -1,  0 }, // 7 NW
-};
-
-void processDiskHeadMoveInterrupt(uint16_t GPIO_Pin){
-
-  if (flgDeviceEnable==0)
-    return;
-  
-  volatile unsigned char stp=(GPIOA->IDR&0b0000000000001111);
-  volatile int newPosition=magnet2Position[stp];
-
-  if (newPosition>=0){
-      
-    int lastPosition=ph_track&7;
-    int move=position2Direction[lastPosition][newPosition];
-    
-    ph_track+= move;
-  
-    if (ph_track<0)
-      ph_track=0;
-
-    else if (ph_track>159)                                                                 
-      ph_track=159;                                             
-
-    if (flgBeaming==1)                                     
-      intTrk=getTrackFromPh(ph_track);                                        // Get the current track from the accroding driver                   
-  }
-  return;
 }
 
 /**
@@ -1154,222 +908,21 @@ enum STATUS makeSDFS(){
     log_error("makeSDFS error %d",fr);
   }
 
-  /* Give a work area to the default drive */
-  
   return RET_ERR;
 }
 
-/**
-  * @brief  Mount the image 
-  * @param  filename: full path to the image file
-  * @retval STATUS RET_ERR/RET_OK
-*/
-enum STATUS mountImagefile(char * filename){
-  int l=0;
-  
-  flgImageMounted=0;
-  if (filename==NULL)
-    return RET_ERR;
-
-  FRESULT fr;
-  FILINFO fno;
-  
-  int len=strlen(filename);
-  int i=0;
-
-  if (len==0){
-    log_error("mount error filename is empty");
-    return RET_ERR;
-  }
-
-  for (i=len-1;i!=0;i--){
-    if (filename[i]=='/')
-      break;
-  }
-
-  snprintf(mountImageInfo.title,20,"%s",filename+i+1);
-
-  HAL_NVIC_EnableIRQ(SDIO_IRQn);
-  HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
-  HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
- 
-  log_info("Mounting image: %s",filename);
-  while(fsState!=READY){};
-  fsState=BUSY;
-
-  //fr = f_mount(&fs, "", 1);                 // to be checked 
-
-  fr = f_stat(filename, &fno);
-  switch (fr) {
-    case FR_OK:
-        log_info("Size: %lu", fno.fsize);
-        break;
-    case FR_NO_FILE:
-    case FR_NO_PATH:
-        log_error("\"%s\" does not exist.", filename);
-        fsState=READY;
-        return RET_ERR;
-        break;
-    default:
-        log_error("An error occured. (%d)", fr);
-        fsState=READY;
-        return RET_ERR;
-  }
-  fsState=READY;
-  l=strlen(filename);
-  if (l>4 && 
-      (!memcmp(filename+(l-4),".NIC",4)  ||           // .NIC
-       !memcmp(filename+(l-4),".nic",4))){            // .nic
-
-    if (mountNicFile(filename)!=RET_OK)
-        return RET_ERR;
-    
-    getSDAddr=getNicSDAddr;
-    getTrackBitStream=getNicTrackBitStream;
-    getTrackFromPh=getNicTrackFromPh;
-    getTrackSize=getNicTrackSize;
-    
-    mountImageInfo.optimalBitTiming=32;
-    mountImageInfo.writeProtected=0;
-    mountImageInfo.version=0;
-    mountImageInfo.cleaned=0;
-    mountImageInfo.type=0;
-
-    flgWriteProtected=0;
-
-  }else if (l>4 && 
-      (!memcmp(filename+(l-4),".WOZ",4)  ||           // .WOZ
-       !memcmp(filename+(l-4),".woz",4))) {           // .woz
-
-    if (mountWozFile(filename)!=RET_OK)
-      return RET_ERR;
-
-    getSDAddr=getWozSDAddr;
-    getTrackBitStream=getWozTrackBitStream;
-    setTrackBitStream=setWozTrackBitStream;
-    getTrackFromPh=getWozTrackFromPh;
-    getTrackSize=getWozTrackSize;
-    
-    mountImageInfo.optimalBitTiming=wozFile.opt_bit_timing;
-    mountImageInfo.writeProtected=wozFile.is_write_protected;
-    mountImageInfo.synced=wozFile.sync;
-    mountImageInfo.version=wozFile.version;
-    mountImageInfo.cleaned=wozFile.cleaned;
-    mountImageInfo.type=1;
-
-    flgWriteProtected=wozFile.is_write_protected;
-    
-  }else if (l>4 && 
-      (!memcmp(filename+(l-4),".DSK",4)  ||           // .DSK & PO
-      !memcmp(filename+(l-4),".dsk",4) ||
-      !memcmp(filename+(l-3),".po",3) ||
-      !memcmp(filename+(l-3),".PO",3))){ 
-  
-    if (mountDskFile(filename)!=RET_OK)
-      return RET_ERR;
-
-    getSDAddr=getDskSDAddr;
-    getTrackBitStream=getDskTrackBitStream;
-    setTrackBitStream=setDskTrackBitStream;
-    getTrackFromPh=getDskTrackFromPh;
-    getTrackSize=getDskTrackSize;
-    
-    mountImageInfo.optimalBitTiming=32;
-    mountImageInfo.writeProtected=0;
-    mountImageInfo.synced=0;
-    mountImageInfo.version=0;
-    mountImageInfo.cleaned=0;
-    if (!memcmp(filename+(l-4),".DSK",4) || !memcmp(filename+(l-4),".dsk",4))
-      mountImageInfo.type=2;                                // DSK type
-    else
-      mountImageInfo.type=3; 
-
-    flgWriteProtected=0;
-
-  }else{
-    return RET_ERR;
-  }
-
-  log_info("Mount image:OK");
-  flgImageMounted=1;
-  
-  if (mountImageInfo.cleaned==1)
-    flgWeakBit=1;
-
-  sprintf(currentFullPathImageFilename,"%s",filename);
-  log_info("currentFullPathImageFilename:%s",currentFullPathImageFilename);
-
-  if (isFavorite(currentFullPathImageFilename)==1)
-    mountImageInfo.favorite=1;
-  else
-    mountImageInfo.favorite=0;
-
-  return RET_OK;
-}
-
-enum STATUS unmountImage(){
-  flgImageMounted=0;
-  flgBeaming=0;
-  // TODO add stop timer
-  return RET_OK;
-}
-
 enum STATUS unlinkImageFile(char* fullpathfilename){
-  if (fullpathfilename==NULL){
-    log_error("filename is null");
-  }
+    if (fullpathfilename==NULL){
+        log_error("filename is null");
+    }
 
-  HAL_NVIC_EnableIRQ(SDIO_IRQn);
-  HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
-  HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
-  
-  f_unlink(fullpathfilename);
+    HAL_NVIC_EnableIRQ(SDIO_IRQn);
+    HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
+    HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
+    
+    f_unlink(fullpathfilename);
 
-  return RET_OK;
-}
-
-/**
-  * @brief  Inite Buffer to be send to the Apple II 
-  * @retval enum STATUS of the request
-  */
-enum STATUS initeBeaming(){
-  
-  if (flgImageMounted!=1){
-    log_error("initeBeaming error imageFile is not mounted");
-    return RET_ERR;
-  }
-
-  flgBeaming=0;
-
-  memset((unsigned char *)&DMA_BIT_TX_BUFFER,0,sizeof(char)*RAW_SD_TRACK_SIZE);
-  memset((unsigned char *)&DMA_BIT_RX_BUFFER,0,sizeof(char)*RAW_SD_TRACK_SIZE);
-  memset(read_track_data_bloc,0,sizeof(char)*RAW_SD_TRACK_SIZE);
-
-
-  DWT->CYCCNT = 0;                              // Reset cpu cycle counter
-  t1 = DWT->CYCCNT; 
- 
-  //flgWriteProtected=1;
-
-  if (flgWriteProtected==1)
-    HAL_GPIO_WritePin(WR_PROTECT_GPIO_Port,WR_PROTECT_Pin,GPIO_PIN_SET);                              // WRITE_PROTECT is enable
-  else
-    HAL_GPIO_WritePin(WR_PROTECT_GPIO_Port,WR_PROTECT_Pin,GPIO_PIN_RESET);  
-
-  HAL_GPIO_WritePin(RD_DATA_GPIO_Port,RD_DATA_Pin,GPIO_PIN_RESET); 
-
-  
-  bbPtr=(volatile u_int8_t*)&DMA_BIT_TX_BUFFER;
-  bitSize=6656*8;
-  bitCounter=0;
-
-  TIM3->ARR=(mountImageInfo.optimalBitTiming*12)-1;
-
-  log_info("initeBeaming optimalBitTiming:%d",mountImageInfo.optimalBitTiming);
-  
-  flgBeaming=1;
-
-  return RET_OK;
+    return RET_OK;
 }
 
 
@@ -1379,8 +932,7 @@ enum STATUS initeBeaming(){
   * @brief  The application entry point.
   * @retval int
   */
-int main(void)
-{
+int main(void){
 
   /* USER CODE BEGIN 1 */
 
@@ -1401,6 +953,21 @@ int main(void)
 
   /* USER CODE BEGIN SysInit */
 
+
+  // --------------------------------------------------------------------
+  // ptr declaration needs to be before NVIC init
+  // --------------------------------------------------------------------
+
+  ptrPhaseIRQ=nothingHook;
+  ptrReceiveDataIRQ=nothingHook;
+  ptrSendDataIRQ=nothingHook;
+  ptrWrReqIRQ=nothingHook;
+  ptrDeviceEnableIRQ=nothingHook;
+  ptrMainLoop=nothingHook;
+  ptrUnmountImage=nothingHook;
+  ptrMountImagefile=nothingHook;
+  ptrInit=nothingHook;
+  ptrDeviceEnableIRQ=nothingHook;
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
@@ -1421,9 +988,6 @@ int main(void)
 
   log_set_level(LOG_INFO);
 
-
-  int trk=35;
-  ph_track=0;                                           // Change for bootloader timing 
   currentFullPathImageFilename[0]=0x0;
   currentFullPath[0]=0x0;
   tmpFullPathImageFilename[0]=0x0;
@@ -1438,10 +1002,7 @@ int main(void)
 
   EnableTiming();                                                           // Enable WatchDog to get precise CPU Cycle counting
 
-
   TIM1->PSC=1000;
-//$TIM1->ARR=1000;
-//TIM1->CCR1=999;
 
   int T2_DIER=0x0;
   T2_DIER|=TIM_DIER_CC2IE;
@@ -1459,15 +1020,11 @@ int main(void)
   TIM3->DIER=dier;
   
   processSdEject(SD_EJECT_Pin);
-  processDeviceEnableInterrupt(DEVICE_ENABLE_Pin);
- 
-  dirChainedList = list_new();                                                       // ChainedList to manage File list in current path
+  
+  ptrDeviceEnableIRQ(DEVICE_ENABLE_Pin);
 
-  mountImageInfo.optimalBitTiming=32;
-  mountImageInfo.writeProtected=0;
-  mountImageInfo.version=0;
-  mountImageInfo.cleaned=0;
-  mountImageInfo.type=0;
+
+  dirChainedList = list_new();                                              // ChainedList to manage File list in current path                                                     
 
   fres = f_mount(&fs, "", 1);                                       
   
@@ -1475,9 +1032,11 @@ int main(void)
   database=fs.database;
   char * imgFile=NULL;
 
-  uint8_t bootMode=0;
+  // --------------------------------------------------------------------
+  // Load configuration variable
+  // --------------------------------------------------------------------
 
-  if (fres == FR_OK) {
+  if (fres == FR_OK){
 
     if (loadConfigFile()==RET_ERR){
       log_error("loading configFile error");
@@ -1490,19 +1049,22 @@ int main(void)
     }else{
       getFavorites();
       buildLstFromFavorites();
+      
       if (getConfigParamUInt8("bootMode",&bootMode)==RET_ERR)
         log_error("error getting bootMode from Config");
       else 
         log_info("bootMode=%d",bootMode);
 
-      log_info("loading configFile: OK");
-
+      if (getConfigParamUInt8("emulationType",&emulationType)==RET_ERR)
+        log_error("error getting emulationType from Config");
+      else 
+        log_info("emulationType=%d",emulationType);
+      
       if (getConfigParamUInt8("soundEffect",&flgSoundEffect)==RET_ERR)
         log_error("error getting soundEffect from Config");
       else 
         log_info("soundEffect=%d",flgSoundEffect);
 
-      log_info("loading configFile: OK");
     }
 
     imgFile=(char*)getConfigParamStr("lastFile");
@@ -1524,287 +1086,60 @@ int main(void)
     log_error("Error mounting sdcard %d",fres);
   }
 
+  // --------------------------------------------------------------------
+  // Prepate emulation mode
+  // --------------------------------------------------------------------
+  emulationType=DISKII;
+  emulationType=SMARTPORTHD;
 
-  if (bootMode==0){
-    if (mountImagefile(tmpFullPathImageFilename)==RET_OK){
-      
-      switchPage(IMAGE,currentFullPathImageFilename);
+  switch(emulationType){
+    case DISKII:
+      log_info("loading DiskII emulation");
+      ptrPhaseIRQ=DiskIIPhaseIRQ;
+      ptrReceiveDataIRQ=DiskIIReceiveDataIRQ;
+      ptrSendDataIRQ=DiskIISendDataIRQ;
+      ptrWrReqIRQ=DiskIIWrReqIRQ;
+      ptrDeviceEnableIRQ=DiskIIDeviceEnableIRQ;
+      ptrMainLoop=DiskIIMainLoop;
+      ptrUnmountImage=DiskIIUnmountImage;
+      ptrMountImagefile=DiskIIMountImagefile;
+      ptrInit=DiskIIInit;
+      break;
 
-      if (flgImageMounted==1){                                            // <!> TO BE TESTED
-        if (initeBeaming()==RET_OK)
-          processDeviceEnableInterrupt(DEVICE_ENABLE_Pin);
-      }
-    
-    }else{
-      if (tmpFullPathImageFilename[0]!=0x0)
-        log_error("imageFile mount error: %s",imgFile);
-      else
-        log_error("no imageFile to mount");
-      
-      switchPage(FS,currentFullPath);
-    }
-  }else if (bootMode==1){
-    switchPage(FS,currentFullPath);
-  }else if (bootMode==2){
-    switchPage(FAVORITE,NULL);
+    case DISK35:
+      log_info("loading Disk3.5 emulation");
+      break;
+
+    case SMARTPORTHD:
+      log_info("loading SmartPortHD emulation");
+      ptrPhaseIRQ=SmartPortPhaseIRQ;
+      ptrReceiveDataIRQ=SmartPortReceiveDataIRQ;
+      ptrSendDataIRQ=SmartPortSendDataIRQ;
+      ptrWrReqIRQ=SmartPortWrReqIRQ;
+      //ptrDeviceEnableIRQ=NULL;
+      ptrMainLoop=SmartPortMainLoop;
+      //ptrUnmountImage=NULL;
+      ptrMountImagefile=SmartPortMountImage;
+      ptrInit=SmartPortInit;
+      break;
+
   }
 
-  irqReadTrack();
-  //HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
+  // --------------------------------------------------------------------
+  // Init emulation
+  // --------------------------------------------------------------------
 
-    // char filename[128];
-    //sprintf(filename,"/Blank(5).woz");
-    //sprintf(filename,"/spiradisc/Frogger.woz");
-    //sprintf(filename,"/spiradisc/Lunar Leepers.woz");
-    
-    //sprintf(filename,"/Locksmith v6.0B.woz");
-    //sprintf(filename,"/DK.woz");                                                                      // WORKS only with 6656 DMABuf size;
-    //sprintf(filename,"/Bouncing Kamungas crk.woz");
-    //sprintf(filename,"/ER16.woz");                                                                    // WORKING
-    //sprintf(filename,"/MH.woz");
-    //sprintf(filename,"Locksmithcrk.nic");
-    //sprintf(filename,"Locksmith 6.0 Fast Disk.nic");
-    //sprintf(filename,"Locksmith.woz");
-    //sprintf(filename,"/Zaxxon.woz");
-    //sprintf(filename,"/Bouncing Kamungas.woz");                                                       // 22/08 NOT WORKING
-    //sprintf(filename,"/WOZ 2.0/Blazing Paddles (Baudville).woz");                                     // 21/08 WORKING
-    //sprintf(filename,"/WOZ 2.0/Border Zone - Disk 1, Side A.woz");                                    // 22/08 NOT WORKING
-    //sprintf(filename,"/WOZ 2.0/Bouncing Kamungas - Disk 1, Side A.woz");                              // 22/08 NOT WORKING
-    //sprintf(filename,"/WOZ 2.0/Commando - Disk 1, Side A.woz");                                       // 21/08 WORKING
-    //sprintf(filename,"/WOZ 2.0/Crisis Mountain - Disk 1, Side A.woz");                                // 21/08 WORKING
-    //sprintf(filename,"/WOZ 2.0/DOS 3.3 System Master.woz");                                           // 15/07 WORKING
-    //sprintf(filename,"/WOZ 2.0/Dino Eggs - Disk 1, Side A.woz");                                      // 22/08 WORKING
-    //sprintf(filename,"/WOZ 2.0/First Math Adventures - Understanding Word Problems.woz");             // 20/07 WORKING
-    //sprintf(filename,"/WOZ 1.0/Hard Hat Mack - Disk 1, Side A.woz");                                  // 22/08 WORKING
-    //sprintf(filename,"/WOZ 2.0/Miner 2049er II - Disk 1, Side A.woz");                                // 22/08 WORKING 
-    //sprintf(filename,"/WOZ 2.0/Planetfall - Disk 1, Side A.woz");                                     // 21/08 WORKING
-    //sprintf(filename,"/WOZ 2.0/Rescue Raiders - Disk 1, Side B.woz");                                 // 21/08 WORKING
-    //sprintf(filename,"/WOZ 2.0/Sammy Lightfoot - Disk 1, Side A.woz");                                // 21/08 WORKING
-    //sprintf(filename,"/WOZ 2.0/Stargate - Disk 1, Side A.woz");                                       // 21/08 NOT WORKING playing with /ENABLE
-    //sprintf(filename,"/WOZ 2.0/Stickybear Town Builder - Disk 1, Side A.woz");                        // 22/08 WORKING 
-    //sprintf(filename,"/WOZ 2.0/Take 1 (Baudville).woz");                                              // 21/08 WORKING
-    //sprintf(filename,"/WOZ 2.0/The Apple at Play.woz");                                               // 15/07 WORKING 
-    //sprintf(filename,"/WOZ 2.0/The Bilestoad - Disk 1, Side A.woz");                                    // 20/08 WORKING
-    //sprintf(filename,"/WOZ 2.0/The Print Shop Companion - Disk 1, Side A.woz");                       // 22/08 WORKING
-    //sprintf(filename,"/WOZ 2.0/Wings of Fury - Disk 1, Side A.woz");                                  // NOT Working missing 128K of RAM
-    //sprintf(filename,"/Monster Smash - Disk 1, Side A.woz");                                          // NOT WORKING 22/08
-    
-    //sprintf(filename,"diversidos_src working.woz");
-    /*
-    currentImageFilename=(char *)malloc(128*sizeof(char));
-    sprintf(currentImageFilename,"%s",filename);
-    
-    if ((mountImagefile(filename))==RET_ERR){
-      log_error("Mount Image Error");
-    }
-    */
+  ptrInit();
 
-    if (flgBeaming==1){
-      switchPage(IMAGE,currentFullPathImageFilename);
-    }
-    
-  unsigned long cAlive=0;
-  volatile int newBitSize=0;
-  //volatile uint32_t oldBitSize=0;
-  //volatile uint32_t oldBitCounter=0;
-  //volatile uint32_t newBitCounter=0;
+  // --------------------------------------------------------------------
+  // Execute emulation
+  // --------------------------------------------------------------------
 
-/* 
-  // Use to test a specific track
-  bitSize=getTrackSize(0); 
-  getTrackBitStream(0,DMA_BIT_TX_BUFFER);
-        
-  while(fsState!=READY){}
-  HAL_TIM_PWM_Start_IT(&htim3,TIM_CHANNEL_4);
-  while(1){}
-*/
+  ptrMainLoop();
 
-  //HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_RESET);
-
-/*
-  if (flgBeaming==1){
-      int i=0;
-    for (int i=1;i<2;i++){
-
-      trk=i;
-      getTrackBitStream(trk,read_track_data_bloc);
-      dumpBuf(read_track_data_bloc,1,1024);
-      newBitSize=getTrackSize(trk);
-      log_info("woz1.0 trk:%d bitsize:%ld",trk,newBitSize);
-    }
-    while(1);
-  }
-
-*/
-
-  while (1){
-
-    if (flgDeviceEnable==1 && prevTrk!=intTrk && flgBeaming==1){              // <!> TO Be tested
-
-      trk=intTrk;                                   // Track has changed, but avoid new change during the process
-      DWT->CYCCNT = 0;                              // Reset cpu cycle counter
-      t1 = DWT->CYCCNT;                                       
-      
-      if (trk==255){
-          for (int j=0;j<25;j++){
-            memcpy((unsigned char *)&DMA_BIT_TX_BUFFER+j*256,fakeBitTank,256);
-          }
-          bitSize=51200;
-          printf("ph:%02d newTrack:255 \n",ph_track);
-        
-        prevTrk=trk;
-        continue;
-      }
+  while(1){};
 
 
-
-      // --------------------------------------------------------------------
-      // PART 1 MAIN TRACK & RESTORE AS QUICKLY AS POSSIBLE THE DMA
-      // --------------------------------------------------------------------
-      
-      
-      
-      if (flgSoundEffect==1){
-        TIM1->PSC=1000;
-        HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_2);
-      }
- 
-      irqEnableSDIO();
-      getTrackBitStream(trk,read_track_data_bloc);
-      while(fsState!=READY){}
-      irqDisableSDIO();
-
-      memcpy((unsigned char *)&DMA_BIT_TX_BUFFER,read_track_data_bloc,RAW_SD_TRACK_SIZE);
-      
-      updateIMAGEScreen(0,trk);       // Put here otherwise Spiradisc is not working
-      /* FOR DEBUGGING PURPOSE ON TRACK 0 */
-      
-     /* if (intTrk==0){
-        HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_SET);
-      }else{
-        HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_RESET);
-      }*/
-      /* End of debug       */
-
-      //t2 = DWT->CYCCNT;
-      //diff1 = t2 - t1;
-      //oldBitSize=bitSize;                                               // TODO Fixe Index calculation on Big Long
-      //oldBitCounter=bitCounter;
-      newBitSize=getTrackSize(trk); 
-          
-      //newBitCounter = (oldBitCounter * oldBitSize) / newBitSize;       // TODO Fix this Long long computation
-      bitSize=newBitSize;
-
-      prevTrk=trk;
-      //printf("trk %d %d \n",trk,bitSize);
-      
-    }else if (nextAction!=NONE){                                         // Several action can not be done on Interrupt
-      
-      switch(nextAction){
-        //case MENUDISP:
-
-        case UPDIMGDISP:
-          updateIMAGEScreen(WR_REQ_PHASE,trk);
-        case WRITE_TRK:
-          
-          irqEnableSDIO();
-          setTrackBitStream(intTrk,DMA_BIT_TX_BUFFER);
-          irqDisableSDIO();
-
-          log_info("writing phtrack:%d trk:%d",ph_track,intTrk);
-          
-          nextAction=NONE;
-          
-          break;
-
-        case DUMP_TX:
-          
-          char filename[128];
-          sprintf(filename,"dump_rx_trk_%d_%d.bin",intTrk,wr_attempt);
-          wr_attempt++;
-          
-          irqEnableSDIO();
-          dumpBufFile(filename,DMA_BIT_RX_BUFFER,RAW_SD_TRACK_SIZE);
-          irqDisableSDIO();
-
-          log_info("dumpfile %s",filename);
-          //dumpBuf(DMA_BIT_RX_BUFFER,1,1024);
-
-          nextAction=NONE;
-          break;
-
-        case SYSRESET:
-          NVIC_SystemReset();
-          nextAction=NONE;
-          break;
-
-        case FSMOUNT:
-          // FSMOUNT will not work if SDCard is remove & reinserted...
-          // system reset is preferred
-          irqEnableSDIO();
-      
-          fres = f_mount(&fs, "", 1);
-          if (fres == FR_OK) {
-            log_info("FS mounting: OK");
-          }else{
-            log_error("FS mounting: KO fres:%d",fres);
-          }
-
-          csize=fs.csize;
-          database=fs.database;
-          nextAction=FSDISP;
-          break;
-
-        case FSDISP:
-          log_info("FSDISP fsState:%d",fsState);
-          list_destroy(dirChainedList);
-          log_info("FSDISP: currentFullPath:%s",currentFullPath);
-          walkDir(currentFullPath);
-          setConfigParamStr("currentPath",currentFullPath);
-          saveConfigFile();
-          initFSScreen(currentPath);
-          updateChainedListDisplay(-1,dirChainedList);
-          nextAction=NONE;
-          break;
-        
-        case IMG_MOUNT:
-          flgImageMounted=0;
-          flgBeaming=0;
-          
-          if (setConfigParamStr("lastFile",tmpFullPathImageFilename)==RET_ERR){
-            log_error("Error in setting param to configFie:lastImageFile %s",tmpFullPathImageFilename);
-          }
-
-          if(mountImagefile(tmpFullPathImageFilename)==RET_OK){
-            if (initeBeaming()==RET_OK){                                         // <!> TO Be tested
-              processDeviceEnableInterrupt(DEVICE_ENABLE_Pin);
-              switchPage(IMAGE,tmpFullPathImageFilename);
-            }
-
-            if (saveConfigFile()==RET_ERR){
-              log_error("Error in saving JSON to file");
-            }else{
-              log_info("saving configFile: OK");
-            }
-          }
-          sprintf(currentFullPathImageFilename,"%s",tmpFullPathImageFilename);
-          nextAction=NONE;
-          break;
-
-        default:
-          break;
-      }
-    }else{
-      cAlive++;
-      if (flgSoundEffect==1){
-        HAL_TIMEx_PWMN_Stop(&htim1,TIM_CHANNEL_2);
-      }
-      if (cAlive==5000000){
-        printf(".\n");
-        cAlive=0;
-      }
-    }
-  }
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -2076,7 +1411,7 @@ static void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 0;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 32*12-1;
+  htim2.Init.Period = 32*12-1-10;                      // Needs to be investigate -5 otherwise does not work 
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -2147,7 +1482,7 @@ static void MX_TIM3_Init(void)
   htim3.Instance = TIM3;
   htim3.Init.Prescaler = 0;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 399;
+  htim3.Init.Period = 32*12;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_OC_Init(&htim3) != HAL_OK)
@@ -2165,7 +1500,7 @@ static void MX_TIM3_Init(void)
     Error_Handler();
   }
   sConfigOC.OCMode = TIM_OCMODE_TIMING;
-  sConfigOC.Pulse = 132;
+  sConfigOC.Pulse =140;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   if (HAL_TIM_OC_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
@@ -2174,7 +1509,7 @@ static void MX_TIM3_Init(void)
   }
   __HAL_TIM_ENABLE_OCxPRELOAD(&htim3, TIM_CHANNEL_1);
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 120;
+  sConfigOC.Pulse = 140;
   if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_4) != HAL_OK)
   {
     Error_Handler();
@@ -2254,7 +1589,7 @@ static void MX_USART1_UART_Init(void)
 
   /* USER CODE END USART1_Init 1 */
   huart1.Instance = USART1;
-  huart1.Init.BaudRate = 115200;
+  huart1.Init.BaudRate = 230400__-;
   huart1.Init.WordLength = UART_WORDLENGTH_8B;
   huart1.Init.StopBits = UART_STOPBITS_1;
   huart1.Init.Parity = UART_PARITY_NONE;
@@ -2381,71 +1716,33 @@ static void MX_GPIO_Init(void)
   * @param  GPIO_Pin
   * @retval None
   */
-
-
-
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
-{
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 
   //printf("startr here 0 %d\n",GPIO_Pin);
-  if( GPIO_Pin == STEP0_Pin   ||               // Step 0 PB8
-      GPIO_Pin == STEP1_Pin   ||               // Step 1 PB9
-      GPIO_Pin == STEP2_Pin   ||               // Step 2 PB10
-      GPIO_Pin == STEP3_Pin 
-     ){            // Step 3 PB11
-    
-    processDiskHeadMoveInterrupt(GPIO_Pin);
+  if( GPIO_Pin == STEP0_Pin   ||               // Step 0 PA0
+      GPIO_Pin == STEP1_Pin   ||               // Step 1 PA1
+      GPIO_Pin == STEP2_Pin   ||               // Step 2 PA2
+      GPIO_Pin == STEP3_Pin                    // Step 3 PA3
   
+  ){            
+
+    ptrPhaseIRQ();
+    
   }else if (GPIO_Pin==DEVICE_ENABLE_Pin){
-    processDeviceEnableInterrupt(DEVICE_ENABLE_Pin);
+    ptrDeviceEnableIRQ(DEVICE_ENABLE_Pin);
+
   }else if ((GPIO_Pin == BTN_RET_Pin   ||      // BTN_RETURN
-            GPIO_Pin == BTN_ENTR_Pin  ||      // BTN_ENTER
-            GPIO_Pin == BTN_UP_Pin    ||      // BTN_UP
-            GPIO_Pin == BTN_DOWN_Pin          // BTN_DOWN
+            GPIO_Pin == BTN_ENTR_Pin  ||       // BTN_ENTER
+            GPIO_Pin == BTN_UP_Pin    ||       // BTN_UP
+            GPIO_Pin == BTN_DOWN_Pin           // BTN_DOWN
             ) && buttonDebounceState==true){
     
     debounceBtn(GPIO_Pin);
 
-
-  } else if (GPIO_Pin == WR_REQ_Pin){
-
-    if (WR_REQ_PHASE==0 && flgImageMounted==1){                     // WR_REQUEST IS ACTIVE LOW
-      WR_REQ_PHASE=1;  
-      
-      HAL_TIM_PWM_Stop_IT(&htim3,TIM_CHANNEL_4);
-      
-      irqWriteTrack();  
-      memset((unsigned char *)&DMA_BIT_RX_BUFFER,0,RAW_SD_TRACK_SIZE);   // Clean the RX_BUFFER 
-      HAL_TIM_PWM_Start_IT(&htim2,TIM_CHANNEL_3);                 // start the TIMER2
-                                                         // Write has begun :) not very clean, to be changed with value of GPIO
-      
-      wrBitWritten=0;                                                     // Count the number of bits sent from the A2
-      wrBitCounter=bitCounter-bitCounter%8;                               // Write position counter (handover from read)
-      wrStartPtr=wrBitCounter; 
-      //wrBitCounter=0;                                                   // Need to work on this sync track will cause an issue 
-      //bitSize=6656*8;                                                   // Size of the bitsize should be read from the woz TRACK_MAP 
-                                                    
-      //printf("Write started wrBitCounter:%d\n",wrBitCounter);             
-      
-    }else if (WR_REQ_PHASE==1 && flgImageMounted==1){
-      WR_REQ_PHASE=0;                                               // Write has just stopped
-
-      HAL_TIM_PWM_Stop_IT(&htim2,TIM_CHANNEL_3);           // Stop TIMER2 WRITE DATE
-      
-      irqReadTrack();
-
-      wrEndPtr=wrBitCounter;
-      bitCounter=wrBitCounter;
-      
-      memcpy((unsigned char *)&DMA_BIT_TX_BUFFER,(unsigned char *)&DMA_BIT_RX_BUFFER,RAW_SD_TRACK_SIZE);
-      HAL_TIM_PWM_Start_IT(&htim3,TIM_CHANNEL_4);
-      
-      nextAction=WRITE_TRK;
-      //nextAction=DUMP_TX;
-      //printf("Write end total %d %d/8, started:%d, ended:%d  wrBitCounter:%d bitSize:%d /8:%d\n",wrBitWritten,wrBitWritten/8,wrStartPtr,wrEndPtr,wrBitCounter,bitSize,bitSize/8);
-
-    }
-
+  }else if (GPIO_Pin == WR_REQ_Pin){
+    
+    ptrWrReqIRQ();
+    
   }else {
       __NOP();
   }

@@ -5,22 +5,25 @@
 #include <stdlib.h>
 #include "fatfs.h"
 
-#include "driver_dsk.h"
+#include "driver_2mg.h"
+#include "utils.h"
 #include "main.h"
 #include "log.h"
 
 extern long database;                                            // start of the data segment in FAT
 extern int csize;  
 extern volatile enum FS_STATUS fsState;
-unsigned int fatDskCluster[20];
+unsigned int fat2mgCluster[20];
 extern image_info_t mountImageInfo;
 
 #define NIBBLE_BLOCK_SIZE  416 //402
 #define NIBBLE_SECTOR_SIZE 512
 
+#define IMG2_HEADER_SIZE 64
+
 /*
 static const unsigned char scramble[] = {
-		0, 7, 14, 6, 13, 5, 12, 4, 11, 3, 10, 2, 9, 1, 8, 15
+	0, 7, 14, 6, 13, 5, 12, 4, 11, 3, 10, 2, 9, 1, 8, 15
 	};
 */
 
@@ -62,24 +65,28 @@ static const unsigned char FlipBit1[4] = { 0, 2, 1, 3 };
 static const unsigned char FlipBit2[4] = { 0, 8, 4, 12 };
 static const unsigned char FlipBit3[4] = { 0, 32, 16, 48 };
 
-int getDskTrackFromPh(int phtrack){
+__uint32_t IMG2_DataBlockCount;
+__uint32_t IMG2_DataOffset;
+__uint32_t IMG2_DataByteCount;
+
+int get2mgTrackFromPh(int phtrack){
     return phtrack >> 2;
 }
 
-unsigned int getDskTrackSize(int trk){
+unsigned int get2mgTrackSize(int trk){
     return 16*NIBBLE_BLOCK_SIZE*8;
 }
 
-long getDskSDAddr(int trk,int block,int csize, long database){
+long get2mgSDAddr(int trk,int block,int csize, long database){
     int long_sector = trk*8;                    // DSK & PO are 256 long and not 512 a track is 4096
     int long_cluster = long_sector >> 6;
-    int ft = fatDskCluster[long_cluster];
+    int ft = fat2mgCluster[long_cluster];
     long rSector=database+(ft-2)*csize+(long_sector & (csize-1));
     return rSector;
 }
 
-enum STATUS getDskTrackBitStream(int trk,unsigned char * buffer){
-    int addr=getDskSDAddr(trk,0,csize,database);
+enum STATUS get2mgTrackBitStream(int trk,unsigned char * buffer){
+    int addr=get2mgSDAddr(trk,0,csize,database);
     const unsigned int blockNumber=8; 
 
     if (addr==-1){
@@ -97,7 +104,7 @@ enum STATUS getDskTrackBitStream(int trk,unsigned char * buffer){
     getDataBlocksBareMetal(addr,tmp,blockNumber);          // Needs to be improved and to remove the zeros
     while (fsState!=READY){}
     
-    if (dsk2Nic(tmp,buffer,trk)==RET_ERR){
+    if (img22Nic(tmp,buffer,trk)==RET_ERR){
         log_error("dsk2nic return an error");
         free(tmp);
         return RET_ERR;
@@ -106,12 +113,12 @@ enum STATUS getDskTrackBitStream(int trk,unsigned char * buffer){
     return RET_OK;
 }
 
-enum STATUS setDskTrackBitStream(int trk,unsigned char * buffer){
+enum STATUS set2mgTrackBitStream(int trk,unsigned char * buffer){
 
 return RET_OK;
 }
 
-enum STATUS mountDskFile(char * filename){
+enum STATUS mount2mgFile(char * filename){
     FRESULT fres; 
     FIL fil;  
 
@@ -124,22 +131,58 @@ enum STATUS mountDskFile(char * filename){
 
     long clusty=fil.obj.sclust;
     int i=0;
-    fatDskCluster[i]=clusty;
+    fat2mgCluster[i]=clusty;
     log_info("file cluster %d:%ld\n",i,clusty);
     
     while (clusty!=1 && i<30){
         i++;
         clusty=get_fat((FFOBJID*)&fil,clusty);
         log_info("file cluster %d:%ld",i,clusty);
-        fatDskCluster[i]=clusty;
+        fat2mgCluster[i]=clusty;
     }
+
+    unsigned int pt;
+    char * img2_header=(char*)malloc(IMG2_HEADER_SIZE*sizeof(char));
+    f_read(&fil,img2_header,IMG2_HEADER_SIZE,&pt);
+
+    if (!memcmp(img2_header,"2IMG",4)){                    //57 4F 5A 31
+        log_info("Image:2mg 2IMG signature");
+
+    }else if (!memcmp(img2_header,"GIMI2",4)){
+        log_info("Image:2mg GIM2 Signature");
+    }else{
+        log_error("Error: not a woz file");
+        return RET_ERR;
+    }
+    char * creator_id=(char*)malloc(5*sizeof(char));
+    memcpy(creator_id,img2_header,4);
+    creator_id[5]=0x0;
+
+    log_info("creator ID:%s",creator_id);
+
+    IMG2_DataBlockCount=get_u32le(img2_header+0x14);
+    IMG2_DataOffset=get_u32le(img2_header+0x18);
+    IMG2_DataByteCount=get_u32le(img2_header+0x1c);
+
+    
+
+    if(IMG2_DataBlockCount != 1600 && IMG2_DataBlockCount != 16390){
+        log_error("Wrong 512x data block count ");
+        return RET_ERR;
+    }else{
+        log_info("2MG 512 data blocks:%ld",IMG2_DataBlockCount);
+        log_info("2MG Bytes size:%ld",IMG2_DataByteCount);
+    }
+		
+
+    free(img2_header);
 
     f_close(&fil);
 
     return 0;
 }
 
-enum STATUS dsk2Nic(unsigned char *rawByte,unsigned char *buffer,uint8_t trk){
+enum STATUS img22Nic(unsigned char *rawByte,unsigned char *buffer,uint8_t trk){
 
     const unsigned char volume = 0xfe;
 
@@ -236,7 +279,7 @@ enum STATUS dsk2Nic(unsigned char *rawByte,unsigned char *buffer,uint8_t trk){
 }
 
 
-enum STATUS nic2dsk(char *rawByte,unsigned char *buffer,uint8_t trk){
+enum STATUS nic22mg(char *rawByte,unsigned char *buffer,uint8_t trk){
 return RET_OK;
 }
 

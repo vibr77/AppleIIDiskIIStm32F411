@@ -41,6 +41,10 @@ Core/Src/ll_library.c \
 Core/Src/driver_nic.c \
 Core/Src/driver_woz.c \
 Core/Src/driver_dsk.c \
+Core/Src/driver_2mg.c \
+Core/Src/emul_diskii.c \
+Core/Src/emul_smartport.c \
+Core/Src/utils.c \
 Core/Src/log.c \
 Core/Src/display.c \
 Core/Src/configFile.c \

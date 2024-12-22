@@ -20,6 +20,7 @@ extern unsigned char flgImageMounted;
 extern uint8_t flgSoundEffect;
 extern image_info_t mountImageInfo;
 
+extern enum STATUS (*ptrUnmountImage)();
 
 /* BTN FUNCTION POINTER CALLED FROM IRQ*/
 extern void (*ptrbtnUp)(void *);                                 
@@ -97,6 +98,17 @@ enum STATUS switchPage(enum page newPage,void * arg){
       ptrbtnEntr=processSelectConfigItem;
       ptrbtnRet=processReturnConfigItem;
       currentPage=CONFIG;
+      break;
+
+    case EMULATIONTYPE:
+      initConfigEmulationScreen();
+      updateConfigMenuDisplay(0);
+      
+      ptrbtnUp=processPrevConfigItem;
+      ptrbtnDown=processNextConfigItem;
+      ptrbtnEntr=processSelectConfigItem;
+      ptrbtnRet=processReturnEmulationTypeItem;
+      currentPage=EMULATIONTYPE;
       break;
 
     case FAVORITE:
@@ -599,7 +611,8 @@ typedef struct MNUITEM{
   uint8_t ival;
 }MNUITEM_t;
 
-MNUITEM_t mnuItem[7]; // MENU ITEM DEFINITION
+MNUITEM_t mnuItem[8]; // MENU ITEM DEFINITION
+uint8_t mnuItemCount=0;
 
 void processBootOption(int arg){
   if (arg==0){
@@ -687,7 +700,6 @@ void processMakeFsBtnRet(){
 }
 
 
-
 void processPrevConfigItem(){
   uint8_t itemCount=sizeof(mnuItem)/sizeof(MNUITEM_t);
     
@@ -702,7 +714,13 @@ void processPrevConfigItem(){
     dispSelectedIndx--;
   }
   log_debug("currentClistPos:%d, dispSelectedIndx:%d",currentClistPos,dispSelectedIndx);
+  
   updateConfigMenuDisplay(-1);
+}
+
+void processDispEmulationScreen(){
+  switchPage(EMULATIONTYPE,0);
+  return;
 }
 
 void processNextConfigItem(){
@@ -738,7 +756,7 @@ void updateConfigMenuDisplay(int init){
 
   MNUITEM_t * cMnuItem;
   uint8_t mnuIndx=0;
-  uint8_t itemCount=sizeof(mnuItem)/sizeof(MNUITEM_t);
+  uint8_t itemCount=mnuItemCount;
 
   log_info("lst_count:%d init:%d",itemCount,init);
 
@@ -806,13 +824,13 @@ void updateConfigMenuDisplay(int init){
 
 void initConfigMenuScreen(int i){
   
-  u_int8_t numItems=7;
+  mnuItemCount=8;
 
-  if (i>=numItems)
+  if (i>=mnuItemCount)
     i=0;
 
   if (i<0)
-    i=numItems-1;
+    i=mnuItemCount-1;
 
   int bootMode=0;
   if (getConfigParamInt("bootMode",&bootMode)==RET_ERR)
@@ -826,7 +844,6 @@ void initConfigMenuScreen(int i){
   mnuItem[0].triggerfunction=processBootOption;
   mnuItem[0].arg=0;
   mnuItem[0].ival=0;
-
 
   sprintf(mnuItem[1].title,"Boot last dir");
   mnuItem[1].type=1;
@@ -844,30 +861,37 @@ void initConfigMenuScreen(int i){
 
   mnuItem[bootMode].ival=1;
 
-  sprintf(mnuItem[3].title,"Sound effect");
-  mnuItem[3].type=1;
-  mnuItem[3].icon=9;
-  mnuItem[3].triggerfunction=processSoundEffect;
-  mnuItem[3].arg=0;
-  mnuItem[3].ival=flgSoundEffect;
+  sprintf(mnuItem[3].title,"Emulation type");
+  mnuItem[3].type=0;
+  mnuItem[3].icon=10;
+  mnuItem[3].triggerfunction=processDispEmulationScreen;
+  mnuItem[3].arg=2;
+  mnuItem[3].ival=0;
 
-  sprintf(mnuItem[4].title,"Clear prefs");
-  mnuItem[4].type=0;
-  mnuItem[4].icon=8;
-  mnuItem[4].triggerfunction=processClearprefs;
+  sprintf(mnuItem[4].title,"Sound effect");
+  mnuItem[4].type=1;
+  mnuItem[4].icon=9;
+  mnuItem[4].triggerfunction=processSoundEffect;
   mnuItem[4].arg=0;
+  mnuItem[4].ival=flgSoundEffect;
 
-  sprintf(mnuItem[5].title,"Clear favorites");
+  sprintf(mnuItem[5].title,"Clear prefs");
   mnuItem[5].type=0;
   mnuItem[5].icon=8;
-  mnuItem[5].triggerfunction=processClearFavorites;
+  mnuItem[5].triggerfunction=processClearprefs;
   mnuItem[5].arg=0;
 
-  sprintf(mnuItem[6].title,"Make filesystem");
+  sprintf(mnuItem[6].title,"Clear favorites");
   mnuItem[6].type=0;
-  mnuItem[6].icon=11;
-  mnuItem[6].triggerfunction=processMakeFs;
+  mnuItem[6].icon=8;
+  mnuItem[6].triggerfunction=processClearFavorites;
   mnuItem[6].arg=0;
+
+  sprintf(mnuItem[7].title,"Make filesystem");
+  mnuItem[7].type=0;
+  mnuItem[7].icon=11;
+  mnuItem[7].triggerfunction=processMakeFs;
+  mnuItem[7].arg=0;
 
   clearScreen();
 
@@ -884,6 +908,92 @@ void initConfigMenuScreen(int i){
 
   return;
 
+}
+
+/**
+ * 
+ * 
+ * EMULATION TYPE SCREEN
+ * 
+ */
+
+void initConfigEmulationScreen(){
+
+  mnuItemCount=3;
+  u_int8_t i=0;
+  if (i>=mnuItemCount)
+    i=0;
+
+  if (i<0)
+    i=mnuItemCount-1;
+
+  int emulationType=0;
+  if (getConfigParamInt("emulationType",&emulationType)==RET_ERR)
+    log_warn("Warning: getting emulationType from Config failed");
+  else 
+    log_info("emulationType=%d",emulationType);
+
+  sprintf(mnuItem[0].title,"Disk II");
+  mnuItem[0].type=1;
+  mnuItem[0].icon=10;
+  mnuItem[0].triggerfunction=processEmulationTypeOption;
+  mnuItem[0].arg=0;
+  mnuItem[0].ival=0;
+
+  sprintf(mnuItem[1].title,"Smartport HD");
+  mnuItem[1].type=1;
+  mnuItem[1].icon=10;
+  mnuItem[1].triggerfunction=processEmulationTypeOption;
+  mnuItem[1].arg=1;
+  mnuItem[1].ival=0;
+
+  sprintf(mnuItem[2].title,"DISK 3.5");
+  mnuItem[2].type=1;
+  mnuItem[2].icon=10;
+  mnuItem[2].triggerfunction=processEmulationTypeOption;
+  mnuItem[2].arg=2;
+  mnuItem[2].ival=0;
+
+  mnuItem[emulationType].ival=1;
+
+  clearScreen();
+
+  ssd1306_SetColor(White);
+  displayStringAtPosition(0,0,"Emulation type");
+  ssd1306_DrawLine(0,8,127,8);
+
+  ssd1306_SetColor(White);
+  ssd1306_DrawLine(0,6*9-1,127,6*9-1);
+
+  displayStringAtPosition(1,6*9+1,"");
+  ssd1306_UpdateScreen();
+  return;
+}
+
+void processEmulationTypeOption(int arg){
+  
+  if (arg==0){
+    mnuItem[0].ival=1;
+    mnuItem[1].ival=0;
+    mnuItem[2].ival=0;
+  }else if (arg==1){
+    mnuItem[0].ival=0;
+    mnuItem[1].ival=1;
+    mnuItem[2].ival=0;
+  }else if (arg==2){
+    mnuItem[0].ival=0;
+    mnuItem[1].ival=0;
+    mnuItem[2].ival=1;
+  }
+  
+  updateConfigMenuDisplay(-1);
+  setConfigParamInt("emulationType",arg);
+  saveConfigFile();
+return;
+}
+
+void processReturnEmulationTypeItem(){
+  switchPage(CONFIG,NULL);
 }
 
 /*
@@ -911,21 +1021,18 @@ void processImageMenuScreen(){
 void processActiveImageMenuScreen(){
   switch(currentImageMenuItem){
     
-    case 0:
-      // Add / Remove from Favorite
+    case 0:                                                   // Add / Remove from Favorite
       toggleAddToFavorite();
       switchPage(IMAGE,NULL);
       break;
 
-    case 1:
-      // unmount();
-      unmountImage();
+    case 1:                                                  // unmount();
+      ptrUnmountImage();
       switchPage(FS,0x0);
       break;
 
-    case 2:
-      // unlink();
-      unmountImage();
+    case 2:                                                 // unlink();
+      ptrUnmountImage();
       unlinkImageFile(currentFullPathImageFilename);
       nextAction=FSDISP;
       break;
