@@ -8,6 +8,7 @@
 #include "emul_smartport.h"
 #include "utils.h"
 #include "main.h"
+#include "display.h"
 #include "log.h"
 
 // --------------------------------------------------------------------
@@ -250,7 +251,8 @@ void SmartPortInit(){
         }else{
             log_info("%s mounted",sztmp);
         }
-    }  
+    }
+    switchPage(SMARTPORTHD,NULL); 
 }
 
 void debugSend(){
@@ -354,7 +356,7 @@ void SmartPortMainLoop(){
             case 0x0b:
             case 0x0e:
             case 0x0f:
-                
+                HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);  // set RD_DATA LOW
                 setWPProtectPort(1);                                              // Set ack to output, sp bus is enabled
                 assertAck();                                                                // Ready for next request                                           
                 SmartportReceivePacket();                                                   // Receive Packet
@@ -368,6 +370,7 @@ void SmartPortMainLoop(){
                 // STEP 1 CHECK IF INIT PACKET 
                 //---------------------------------------------
                 
+                print_packet ((unsigned char*) packet_buffer, packet_length());
                                                                                             // lets check if the pkt is for us
                 if (packet_buffer[SP_COMMAND] != 0x85){                                     // if its an init pkt, then assume its for us and continue on
                     //log_info("cmd: not init:Ox85 ");
@@ -439,8 +442,8 @@ void SmartPortMainLoop(){
                     print_packet ((unsigned char*) packet_buffer, packet_length());
                 }
 
-                if (packet_buffer[SP_COMMAND]!=0x81)
-                    log_info("cmd:0x%02X dest:0x%02X",packet_buffer[SP_COMMAND], packet_buffer[SP_DEST]);
+                //if (packet_buffer[SP_COMMAND]!=0x81)
+                log_info("cmd:0x%02X dest:0x%02X",packet_buffer[SP_COMMAND], packet_buffer[SP_DEST]);
 
                 switch (packet_buffer[SP_COMMAND]) {
 
@@ -675,7 +678,9 @@ void SmartPortMainLoop(){
                 } 
             
             }
-            assertAck(); 
+            HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);  // set RD_DATA LOW
+                
+            assertAck();
         
         }            
 

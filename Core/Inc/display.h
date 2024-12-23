@@ -5,7 +5,7 @@
 #define disp
 
 
-enum page{FS,MOUNT,MENU,IMAGE,FAVORITE,CONFIG,EMULATIONTYPE,IMAGEMENU};
+enum page{FS,MOUNT,MENU,IMAGE,FAVORITE,CONFIG,EMULATIONTYPE,IMAGEMENU,SMARTPORTHDSCR};
 char * getImageNameFromFullPath(char * fullPathImageName);
 enum STATUS switchPage(enum page newPage,void * arg);
 void updateChainedListDisplay(int init, list_t * lst );
@@ -83,6 +83,8 @@ void processPrevFavoriteItem();
 void processNextFavoriteItem();
 void processReturnFavoriteItem();
 void processSelectFavoriteItem();
+
+void processSmartPortHDRetScreen();
 
 /*      DISPLAY PRIMITIVES              */
 void clearScreen();

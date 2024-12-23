@@ -80,12 +80,21 @@ enum STATUS switchPage(enum page newPage,void * arg){
   
   switch(newPage){
     
+    case SMARTPORTHDSCR:
+      initSmartPortHD();
+      ptrbtnUp=nothing;
+      ptrbtnDown=nothing;
+      ptrbtnEntr=nothing;
+      ptrbtnRet=processImageMenuScreen;
+      currentPage=SMARTPORTHDSCR;
+      break;
+
     case IMAGEMENU:
       initImageMenuScreen(0);
       ptrbtnUp=processPreviousImageMenuScreen;
       ptrbtnDown=processNextImageMenuScreen;
       ptrbtnEntr=processActiveImageMenuScreen;
-      ptrbtnRet=processImageMenuScreen;
+      ptrbtnRet=processSmartPortHDRetScreen;
       currentPage=IMAGEMENU;
       break;
 
@@ -1196,6 +1205,7 @@ void toggleMainMenuOption(int i){         // Todo checked if used ?
  *  SD EJECT SCREEN
  * 
  */
+
 void initErrorScreen(char * msg){
 
   clearScreen();
@@ -1299,6 +1309,27 @@ void initFavoriteScreen(){
 
 }
 
+/**
+ * 
+ * SMARTPORT HD EMULATION
+ * 
+ */
+
+void initSmartPortHD(){
+
+  clearScreen();
+  
+  ssd1306_SetColor(White);
+
+  displayStringAtPosition(30,3*9,"SMARTPORT HD");
+
+  ssd1306_UpdateScreen();
+
+}
+
+void processSmartPortHDRetScreen(){
+  switchPage(MENU,NULL);
+}
 /**
  * 
  * DISPLAY PRIMITIVE

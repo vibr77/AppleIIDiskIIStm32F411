@@ -1,8 +1,8 @@
 /* USER CODE BEGIN Header */
 /*
 __   _____ ___ ___        Author: Vincent BESSON
- \ \ / /_ _| _ ) _ \      Release: 0.78.4
-  \ V / | || _ \   /      Date: 2024.11.28
+ \ \ / /_ _| _ ) _ \      Release: 0.79
+  \ V / | || _ \   /      Date: 2024.12.22
    \_/ |___|___/_|_\      Description: Apple Disk II Emulator on STM32F4x
                 2024      Licence: Creative Commons
 ______________________
@@ -387,7 +387,7 @@ void TIM2_IRQHandler(void){
 
   if (TIM2->SR & TIM_SR_UIF){ 
     TIM2->SR &= ~TIM_SR_UIF;                                                  // Reset the Interrupt
-    HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_RESET);
+    //HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_RESET);
     HAL_GPIO_WritePin(RD_DATA_GPIO_Port,RD_DATA_Pin,GPIO_PIN_RESET);
 
   }else if (TIM2->SR & TIM_SR_CC2IF){                                        // The count & compare is on channel 2 to avoid issue with ETR1
@@ -397,7 +397,7 @@ void TIM2_IRQHandler(void){
     ptrReceiveDataIRQ();
 
   }else{
-    HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_RESET);
+    //HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_RESET);
     HAL_GPIO_WritePin(RD_DATA_GPIO_Port,RD_DATA_Pin,GPIO_PIN_RESET);
     TIM2->SR=0;
   }    
