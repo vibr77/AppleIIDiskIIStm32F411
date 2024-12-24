@@ -80,13 +80,13 @@ enum STATUS switchPage(enum page newPage,void * arg){
   
   switch(newPage){
     
-    case SMARTPORTHDSCR:
+    case SMARTPORT:
       initSmartPortHD();
       ptrbtnUp=nothing;
       ptrbtnDown=nothing;
       ptrbtnEntr=nothing;
       ptrbtnRet=processImageMenuScreen;
-      currentPage=SMARTPORTHDSCR;
+      currentPage=SMARTPORT;
       break;
 
     case IMAGEMENU:

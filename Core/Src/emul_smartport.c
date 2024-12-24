@@ -24,6 +24,8 @@ extern long database;                                     // start of the data s
 extern int csize;
 extern volatile enum FS_STATUS fsState;   
 
+extern uint8_t flgSoundEffect; 
+
 prodosPartition_t devices[MAX_PARTITIONS];
 
 //bool is_valid_image(File imageFile);
@@ -357,10 +359,17 @@ void SmartPortMainLoop(){
             case 0x0e:
             case 0x0f:
                 HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);  // set RD_DATA LOW
+                if (flgSoundEffect==1){
+                    TIM1->PSC=1000;
+                    HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_2);
+                }
                 setWPProtectPort(1);                                              // Set ack to output, sp bus is enabled
                 assertAck();                                                                // Ready for next request                                           
-                SmartportReceivePacket();                                                   // Receive Packet
                 
+                SmartportReceivePacket();                                                   // Receive Packet
+                if (flgSoundEffect==1){
+                    HAL_TIMEx_PWMN_Stop(&htim1,TIM_CHANNEL_2);
+                }
                 /*int i=verify_cmdpkt_checksum();                                             // Verify Packet checksum
                 if (i!=0){
                     log_error("Incomming checksum error");
