@@ -86,6 +86,7 @@ void processSelectFavoriteItem();
 
 void initSmartPortHD();
 void processSmartPortHDRetScreen();
+void updateSmartportHD();
 
 /*      DISPLAY PRIMITIVES              */
 void clearScreen();

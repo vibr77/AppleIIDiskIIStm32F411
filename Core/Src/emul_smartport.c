@@ -236,17 +236,88 @@ void setWPProtectPort(uint8_t direction){
 }
 
 
+char * SmartPortFindImage(char * pattern){
+    DIR dir;
+    FRESULT fres;  
+    char path[1];
+    path[0]=0x0;
+
+    HAL_NVIC_EnableIRQ(SDIO_IRQn);
+    HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
+    HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
+
+    while(fsState!=READY){};
+
+    fres = f_opendir(&dir, path);
+
+    if (fres != FR_OK){
+        log_error("f_opendir error (%i)\n",fres);
+        return NULL;
+    }
+    
+    char * fileName=NULL;
+    int len;
+
+    if (fres == FR_OK){
+        
+        while(1){
+            FILINFO fno;
+
+            fres = f_readdir(&dir, &fno);
+            log_info("readdir: %s",fno.fname);
+
+            if (fres != FR_OK){
+                log_error("Error f_readdir:%d path:%s\n", fres,path);
+                return NULL;
+            }
+
+            if ((fres != FR_OK) || (fno.fname[0] == 0))
+                break;
+
+            len=(int)strlen(fno.fname);                                      
+            
+
+            if (!(fno.fattrib & AM_DIR) && 
+                !(fno.fattrib & AM_HID) &&      
+                len>3                   &&
+                
+                (!memcmp(fno.fname+(len-3),".PO",3)   ||          // .PO
+                !memcmp(fno.fname+(len-3),".po",3)) &&            // .po
+                !(fno.fattrib & AM_SYS) &&                        // Not System file
+                !(fno.fattrib & AM_HID) &&                        // Not Hidden file
+    
+                strstr(fno.fname,pattern)
+                ){
+                
+            fileName=malloc(MAX_FILENAME_LENGTH*sizeof(char));
+            sprintf(fileName,"%s",fno.fname);
+            log_info("found %s",fileName);
+            f_closedir(&dir);
+            return fileName;
+                
+            } 
+        }
+    }
+
+    f_closedir(&dir);
+    return NULL;
+}
+
 void SmartPortInit(){
     log_info("SmartPort init");
     
     HAL_TIM_PWM_Stop_IT(&htim2,TIM_CHANNEL_3);
+    HAL_TIMEx_PWMN_Stop(&htim1,TIM_CHANNEL_2);
 
     TIM3->ARR=(32*12)-1;
 
     char sztmp[128];
+    char * szfile;
     for(uint8_t i=0; i<MAX_PARTITIONS; i++){
-        sprintf(sztmp,"vol_%02d.PO",i);
-        SmartPortMountImage(&devices[i],sztmp);
+        sprintf(sztmp,"vol%02d_",i);
+        szfile=SmartPortFindImage(sztmp);
+
+        SmartPortMountImage(&devices[i],szfile);
         
         if (devices[i].mounted!=1){
             log_error("Mount error: %s not mounted",sztmp);
@@ -254,7 +325,7 @@ void SmartPortInit(){
             log_info("%s mounted",sztmp);
         }
     }
-    switchPage(SMARTPORTHD,NULL); 
+    switchPage(SMARTPORT,NULL); 
 }
 
 void debugSend(){
@@ -265,10 +336,9 @@ void debugSend(){
 
 }
 void SmartPortSendPacket(unsigned char* buffer){
-   
     
     flgPacket=0;                                                                                    // Reset the flag before sending
-   
+
                                                                                                      // Clear out the packet buffer
     setRddataPort(1);
     setWPProtectPort(1);                                                                   // Set ACK Port to output
@@ -330,13 +400,15 @@ void SmartPortMainLoop(){
     HAL_GPIO_WritePin(RD_DATA_GPIO_Port, RD_DATA_Pin,GPIO_PIN_RESET);  // set RD_DATA LOW
     //HAL_TIM_PWM_Start_IT(&htim2,TIM_CHANNEL_3);
     //if (digitalRead(ejectPin) == HIGH) 
-        rotate_boot();
+    rotate_boot();
+    
     while (1) {
-        
+
         noid = 0;                                                                           // Reset noid flag
         setWPProtectPort(0);                                                     // Set ack (wrprot) to input to avoid clashing with other devices when sp bus is not enabled 
                                                                                             // read phase lines to check for smartport reset or enable
 
+        
         switch (phase) {
                                                                                             // phase lines for smartport bus reset
                                                                                             // ph3=0 ph2=1 ph1=0 ph0=1
@@ -358,18 +430,21 @@ void SmartPortMainLoop(){
             case 0x0b:
             case 0x0e:
             case 0x0f:
-                HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);  // set RD_DATA LOW
-                if (flgSoundEffect==1){
-                    TIM1->PSC=1000;
-                    HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_2);
-                }
+                //HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);  // set RD_DATA LOW
+                
                 setWPProtectPort(1);                                              // Set ack to output, sp bus is enabled
                 assertAck();                                                                // Ready for next request                                           
                 
                 SmartportReceivePacket();                                                   // Receive Packet
+                
                 if (flgSoundEffect==1){
+                    TIM1->PSC=1000;
+                    HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_2);
+                    HAL_Delay(15);
                     HAL_TIMEx_PWMN_Stop(&htim1,TIM_CHANNEL_2);
                 }
+                updateSmartportHD();
+
                 /*int i=verify_cmdpkt_checksum();                                             // Verify Packet checksum
                 if (i!=0){
                     log_error("Incomming checksum error");
@@ -379,12 +454,10 @@ void SmartPortMainLoop(){
                 // STEP 1 CHECK IF INIT PACKET 
                 //---------------------------------------------
                 
-                print_packet ((unsigned char*) packet_buffer, packet_length());
+                //print_packet ((unsigned char*) packet_buffer, packet_length());
+                
                                                                                             // lets check if the pkt is for us
                 if (packet_buffer[SP_COMMAND] != 0x85){                                     // if its an init pkt, then assume its for us and continue on
-                    //log_info("cmd: not init:Ox85 ");
-                    //log_info("not cmd:0x%02X dest:0x%02X",packet_buffer[SP_COMMAND], packet_buffer[SP_DEST]);
-                    //print_packet ((unsigned char*) packet_buffer, packet_length());
                         
                     for  (partition = 0; partition < MAX_PARTITIONS; partition++){          // else check if its our one of our id's
                         if ( devices[(partition + initPartition) % MAX_PARTITIONS].device_id != packet_buffer[SP_DEST])  //destination id
@@ -392,14 +465,13 @@ void SmartPortMainLoop(){
                     }
 
                     if (noid == MAX_PARTITIONS){  //not one of our id's
-                        //HAL_Delay(100);
+                        
                         log_info("Not our ID!");
                         
                         setWPProtectPort(0);                                      // set ack to input, so lets not interfere
                         
                         while (phase & 0x08);
                         
-                        //printf("a \r\n");
                         print_packet ((unsigned char*) packet_buffer, packet_length());
 
                                                                                             // Assume its a cmd packet, cmd code is in byte 14
@@ -451,8 +523,8 @@ void SmartPortMainLoop(){
                     print_packet ((unsigned char*) packet_buffer, packet_length());
                 }
 
-                //if (packet_buffer[SP_COMMAND]!=0x81)
-                log_info("cmd:0x%02X dest:0x%02X",packet_buffer[SP_COMMAND], packet_buffer[SP_DEST]);
+                if (packet_buffer[SP_COMMAND]!=0x81)
+                    log_info("cmd:0x%02X dest:0x%02X",packet_buffer[SP_COMMAND], packet_buffer[SP_DEST]);
 
                 switch (packet_buffer[SP_COMMAND]) {
 
@@ -484,9 +556,6 @@ void SmartPortMainLoop(){
 
                                 SmartPortSendPacket(packet_buffer);
                                 
-                                //log_info("msg:0x80 response sent:");
-                                //print_packet ((unsigned char*) packet_buffer,packet_length());
-
                             }
                         }
                         packet_buffer[0]=0x0;
@@ -510,7 +579,7 @@ void SmartPortMainLoop(){
 
                         for (partition = 0; partition < MAX_PARTITIONS; partition++) {                          // Check if its one of ours
                             uint8_t dev=(partition + initPartition) % MAX_PARTITIONS;
-                            if (devices[dev].device_id == dest) {      // yes it is, then reply
+                            if (devices[dev].device_id == dest) {                                               // yes it is, then reply
                                                                                                                 // Added (unsigned short) cast to ensure calculated block is not underflowing.
                                 status_code = (packet_buffer[16] & 0x7f);
                                 log_info("Extended Status CMD: %2X",status_code);
@@ -524,7 +593,6 @@ void SmartPortMainLoop(){
                                     log_info("  Status code:%2X",status_code);
                                     encode_extended_status_reply_packet(devices[dev]);        
                                 }
-
 
                                 SmartPortSendPacket(packet_buffer);
 
@@ -685,11 +753,12 @@ void SmartPortMainLoop(){
 
                         break;
                 } 
-            
+               
             }
             HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);  // set RD_DATA LOW
-                
+              
             assertAck();
+            
         
         }            
 
@@ -1525,7 +1594,11 @@ int rotate_boot (void){
 
 enum STATUS SmartPortMountImage( prodosPartition_t *d, char * filename ){
     FRESULT fres; 
-    //FIL fil=d->fil;
+    if (filename==NULL){
+        log_error("filename is null");
+        return RET_ERR;
+    }
+        
 
     while(fsState!=READY){};
     fsState=BUSY;
@@ -1535,8 +1608,7 @@ enum STATUS SmartPortMountImage( prodosPartition_t *d, char * filename ){
     fsState=READY;
 
     if(fres!=FR_OK){
-        log_error("     File must exist, be open and be a regular ");
-        log_error("     file before checking for valid image type!");
+        log_error("f_open error:%s",filename);
         d->mounted=0;
         return RET_ERR;
     }

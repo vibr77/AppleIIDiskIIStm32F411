@@ -26,6 +26,8 @@ This project relies on a STM32F411(BlackPill) with SDIO Port.
 | ./Middleware    | libraries used   |
 | ./FATFS   | fatfs wrapper  |
 | ./doc   | documentation used as reference  |
+| ./3DPrintCase   | 3D print file & Fusion 360 source to print case  |
+
 
 ## IMPORTANT NOTE ##
 
@@ -36,6 +38,8 @@ The J1 PWR located at top right of the PCB enable +5V from the Apple II to the S
 Regarding the OLED Screen: becareful of the Power pins order, some version have pin inversed
 
 R1,R2,R3 are not needed.
+
+Before hardware Rev 3 the board is not compatible with IIGS & IIC, trace between IDC pin 5 & 7 needs to be cut
 
 ## <!> SDCARD <!> ##
 
@@ -61,6 +65,12 @@ The list of features currently supported in this project:
 
 <img src="https://github.com/vibr77/AppleIIDiskIIStm32F411/blob/main/resources/PCB_REV_1_IMAGE.jpeg?raw=true" width="400px" />
 
+
+### Supported Emulation:
+| Emulation  | Status
+|:------  |:-----|
+| DISK II 5.25| YES   |
+| SMARTPORT HD| YES   |
 
 
 ### Supported disk image format:

@@ -26,7 +26,7 @@ void SmartPortInit();
 void assertAck();
 void deAssertAck();
 
-
+char * SmartPortFindImage(char * pattern);
 enum STATUS SmartPortMountImage( prodosPartition_t *d, char * filename );
 
 void setWPProtectPort(uint8_t direction);
