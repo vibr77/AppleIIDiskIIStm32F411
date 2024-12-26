@@ -108,6 +108,11 @@ UART
 
 // Changelog
 /*
+26.12.24 v0.79.2 
+  + Add Boot image index for Smartport
+
+26.12.24 v0.79.1
+  +Remove hardcoded emulation type
 13.12.24  v0.79
   +Fix: complete code restructuring to enable different emulation type
   +Feat: Add Smartport HD emulation type
@@ -294,6 +299,7 @@ extern char tmpFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];      // fullpath
 uint8_t flgSoundEffect=0;                                   // Activate Buzze
 uint8_t bootMode=0;
 uint8_t emulationType=0;
+uint8_t bootImageIndex=0;
 list_t * dirChainedList;
 
 
@@ -315,6 +321,14 @@ void EnableTiming(void){
   *DWT_LAR = 0xC5ACCE55;                                    // enable access
   *DWT_CYCCNT = 0;                                          // reset the counter
   *DWT_CONTROL |= 1 ;                                       // enable the counter
+}
+
+int ui16NothingHook(uint16_t GPIO_Pin){
+  return 0;
+}
+
+enum STATUS statusNothingHook(char * ptr){
+  return RET_ERR;
 }
 
 void nothingHook(void*){
@@ -962,12 +976,12 @@ int main(void){
   ptrReceiveDataIRQ=nothingHook;
   ptrSendDataIRQ=nothingHook;
   ptrWrReqIRQ=nothingHook;
-  ptrDeviceEnableIRQ=nothingHook;
+  ptrDeviceEnableIRQ=ui16NothingHook;
   ptrMainLoop=nothingHook;
-  ptrUnmountImage=nothingHook;
-  ptrMountImagefile=nothingHook;
+  ptrUnmountImage=statusNothingHook;
+  ptrMountImagefile=statusNothingHook;
   ptrInit=nothingHook;
-  ptrDeviceEnableIRQ=nothingHook;
+  
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
@@ -1060,6 +1074,12 @@ int main(void){
       else 
         log_info("emulationType=%d",emulationType);
       
+      if (getConfigParamUInt8("bootImageIndex",&bootImageIndex)==RET_ERR)
+        log_warn("warning getting bootImageIndex from Config");
+      else 
+        log_info("bootImageIndex=%d",bootImageIndex);
+
+      
       if (getConfigParamUInt8("soundEffect",&flgSoundEffect)==RET_ERR)
         log_error("error getting soundEffect from Config");
       else 
@@ -1090,7 +1110,7 @@ int main(void){
   // Prepate emulation mode
   // --------------------------------------------------------------------
   //emulationType=DISKII;
-  emulationType=SMARTPORTHD;
+  //emulationType=SMARTPORTHD;
 
   switch(emulationType){
     case DISKII:
@@ -1119,7 +1139,7 @@ int main(void){
       //ptrDeviceEnableIRQ=NULL;
       ptrMainLoop=SmartPortMainLoop;
       //ptrUnmountImage=NULL;
-      ptrMountImagefile=SmartPortMountImage;
+      //ptrMountImagefile=SmartPortMountImage;
       ptrInit=SmartPortInit;
       break;
 

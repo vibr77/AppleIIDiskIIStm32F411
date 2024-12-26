@@ -25,6 +25,7 @@ extern int csize;
 extern volatile enum FS_STATUS fsState;   
 
 extern uint8_t flgSoundEffect; 
+extern uint8_t bootImageIndex;
 
 prodosPartition_t devices[MAX_PARTITIONS];
 
@@ -264,7 +265,7 @@ char * SmartPortFindImage(char * pattern){
             FILINFO fno;
 
             fres = f_readdir(&dir, &fno);
-            log_info("readdir: %s",fno.fname);
+
 
             if (fres != FR_OK){
                 log_error("Error f_readdir:%d path:%s\n", fres,path);
@@ -290,7 +291,7 @@ char * SmartPortFindImage(char * pattern){
                 ){
                 
             fileName=malloc(MAX_FILENAME_LENGTH*sizeof(char));
-            sprintf(fileName,"%s",fno.fname);
+            snprintf(fileName,63,"%s",fno.fname);
             log_info("found %s",fileName);
             f_closedir(&dir);
             return fileName;
@@ -298,7 +299,7 @@ char * SmartPortFindImage(char * pattern){
             } 
         }
     }
-
+    log_warn("image %s not found",pattern);
     f_closedir(&dir);
     return NULL;
 }
@@ -314,7 +315,7 @@ void SmartPortInit(){
     char sztmp[128];
     char * szfile;
     for(uint8_t i=0; i<MAX_PARTITIONS; i++){
-        sprintf(sztmp,"vol%02d_",i);
+        sprintf(sztmp,"vol%02d_",i+1);
         szfile=SmartPortFindImage(sztmp);
 
         SmartPortMountImage(&devices[i],szfile);
@@ -400,15 +401,17 @@ void SmartPortMainLoop(){
     HAL_GPIO_WritePin(RD_DATA_GPIO_Port, RD_DATA_Pin,GPIO_PIN_RESET);  // set RD_DATA LOW
     //HAL_TIM_PWM_Start_IT(&htim2,TIM_CHANNEL_3);
     //if (digitalRead(ejectPin) == HIGH) 
-    rotate_boot();
+    //rotate_boot();
+    //initPartition=bootImageIndex;
     
     while (1) {
 
         noid = 0;                                                                           // Reset noid flag
-        setWPProtectPort(0);                                                     // Set ack (wrprot) to input to avoid clashing with other devices when sp bus is not enabled 
+        setWPProtectPort(0);                                                                // Set ack (wrprot) to input to avoid clashing with other devices when sp bus is not enabled 
                                                                                             // read phase lines to check for smartport reset or enable
 
-        
+        initPartition=bootImageIndex;
+
         switch (phase) {
                                                                                             // phase lines for smartport bus reset
                                                                                             // ph3=0 ph2=1 ph1=0 ph0=1
@@ -437,13 +440,7 @@ void SmartPortMainLoop(){
                 
                 SmartportReceivePacket();                                                   // Receive Packet
                 
-                if (flgSoundEffect==1){
-                    TIM1->PSC=1000;
-                    HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_2);
-                    HAL_Delay(15);
-                    HAL_TIMEx_PWMN_Stop(&htim1,TIM_CHANNEL_2);
-                }
-                updateSmartportHD();
+                
 
                 /*int i=verify_cmdpkt_checksum();                                             // Verify Packet checksum
                 if (i!=0){
@@ -603,6 +600,15 @@ void SmartPortMainLoop(){
                         break;
 
                     case 0x81:                                                                                  // is a readblock cmd
+                        
+
+                        if (flgSoundEffect==1){
+                            TIM1->PSC=1000;
+                            HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_2);
+                            HAL_Delay(15);
+                            HAL_TIMEx_PWMN_Stop(&htim1,TIM_CHANNEL_2);
+                        }
+                        updateSmartportHD();
 
                         dest = packet_buffer[SP_DEST];
                         // CMD 9
@@ -1434,8 +1440,8 @@ C3 81 80 80 80 80 82 81 80 81 83 82 80 88 80 80 - ..80808080..80...80.8080
 
 */
 
-    unsigned char oddcnt=packet_buffer[SP_ODDCNT] & 0x80;
-    unsigned char grpcnt=packet_buffer[SP_GRP7CNT] & 0x80;
+    //unsigned char oddcnt=packet_buffer[SP_ODDCNT] & 0x80;
+    //unsigned char grpcnt=packet_buffer[SP_GRP7CNT] & 0x80;
 
     //2 oddbytes in cmd packet
     calc_checksum ^= ((packet_buffer[SP_ODDMSB] << 1) & 0x80) | (packet_buffer[SP_COMMAND] & 0x7f);

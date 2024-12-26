@@ -1,4 +1,3 @@
-<<<<<<< Updated upstream
 {
 	"folders": [
 		{
@@ -6,8 +5,8 @@
 		}
 	],
 	"settings": {
-		"cortex-debug.armToolchainPath": "/Applications/ArmGNUToolchain/13.3.Rel1/arm-none-eabi/bin",
-		"cortex-debug.openocdPath": "/opt/homebrew/bin/openocd"
+		"cortex-debug.armToolchainPath": "/usr/bin",
+		"cortex-debug.openocdPath": "/usr/local/bin/openocd"
 	},
 	"tasks": {
 		"version": "2.0.0",
@@ -65,6 +64,3 @@
 		]
 	}
 }
-=======
-{}
->>>>>>> Stashed changes

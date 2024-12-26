@@ -18,6 +18,7 @@ extern char currentFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];  // fullpath
 extern char tmpFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];      // fullpath from root image filename
 extern unsigned char flgImageMounted;
 extern uint8_t emulationType;
+extern uint8_t bootImageIndex;
 extern uint8_t flgSoundEffect;
 extern image_info_t mountImageInfo;
 
@@ -434,6 +435,7 @@ void toggleMountOption(int i){
 
 void initSplashScreen(){
   ssd1306_Init();
+  
   ssd1306_FlipScreenVertically();
   
   ssd1306_Clear();
@@ -627,7 +629,7 @@ typedef struct MNUITEM{
   uint8_t ival;
 }MNUITEM_t;
 
-MNUITEM_t mnuItem[8]; // MENU ITEM DEFINITION
+MNUITEM_t mnuItem[16]; // MENU ITEM DEFINITION
 uint8_t mnuItemCount=0;
 
 void processBootOption(int arg){
@@ -777,8 +779,8 @@ void updateConfigMenuDisplay(int init){
   log_info("lst_count:%d init:%d",itemCount,init);
 
   if (init!=-1){
-    currentClistPos=init;
-    dispSelectedIndx=0;
+    currentClistPos=(init-dispSelectedIndx)%mnuItemCount;
+    //dispSelectedIndx=0;
   }
 
   for (int i=0;i<SCREEN_MAX_LINE_ITEM;i++){
@@ -827,8 +829,12 @@ void updateConfigMenuDisplay(int init){
           dispIcon(118,(1+i)*9+offset,7); // 7 FULL
         else
           dispIcon(118,(1+i)*9+offset,6); // 7 FULL
+      }else if (mnuItem[cMnuIndx].type==2){
+          char sztmp[5];
+          sprintf(sztmp,"%d",mnuItem[cMnuIndx].ival);
+          displayStringAtPosition(118,(1+i)*9+offset,sztmp); 
       }
-      
+
       if (mnuDispItem[i].selected==1){
         inverseStringAtPosition(1+i,offset);
       }
@@ -837,10 +843,19 @@ void updateConfigMenuDisplay(int init){
 
   ssd1306_UpdateScreen();
 }
+void processBootImageIndex(){
 
+  bootImageIndex=(bootImageIndex+1)%MAX_PARTITIONS;
+  mnuItem[4].ival=bootImageIndex+1;
+  setConfigParamInt("bootImageIndex",bootImageIndex);
+  saveConfigFile();
+ 
+  updateConfigMenuDisplay(4);
+  return;
+}
 void initConfigMenuScreen(int i){
   
-  mnuItemCount=8;
+  mnuItemCount=10;
 
   if (i>=mnuItemCount)
     i=0;
@@ -849,6 +864,7 @@ void initConfigMenuScreen(int i){
     i=mnuItemCount-1;
 
   int bootMode=0;
+
   if (getConfigParamInt("bootMode",&bootMode)==RET_ERR)
     log_warn("Warning: getting bootMode from Config failed");
   else 
@@ -884,30 +900,44 @@ void initConfigMenuScreen(int i){
   mnuItem[3].arg=2;
   mnuItem[3].ival=0;
 
-  sprintf(mnuItem[4].title,"Sound effect");
-  mnuItem[4].type=1;
-  mnuItem[4].icon=9;
-  mnuItem[4].triggerfunction=processSoundEffect;
+  sprintf(mnuItem[4].title,"Boot Img index");
+  mnuItem[4].type=2;
+  mnuItem[4].icon=10;
+  mnuItem[4].triggerfunction=processBootImageIndex;
   mnuItem[4].arg=0;
-  mnuItem[4].ival=flgSoundEffect;
+  mnuItem[4].ival=bootImageIndex+1;
 
-  sprintf(mnuItem[5].title,"Clear prefs");
+  sprintf(mnuItem[5].title,"Boot folder");
   mnuItem[5].type=0;
-  mnuItem[5].icon=8;
-  mnuItem[5].triggerfunction=processClearprefs;
+  mnuItem[5].icon=10;
+  mnuItem[5].triggerfunction=nothing;
   mnuItem[5].arg=0;
+  mnuItem[5].ival=bootImageIndex+1;
 
-  sprintf(mnuItem[6].title,"Clear favorites");
-  mnuItem[6].type=0;
-  mnuItem[6].icon=8;
-  mnuItem[6].triggerfunction=processClearFavorites;
+  sprintf(mnuItem[6].title,"Sound effect");
+  mnuItem[6].type=1;
+  mnuItem[6].icon=9;
+  mnuItem[6].triggerfunction=processSoundEffect;
   mnuItem[6].arg=0;
+  mnuItem[6].ival=flgSoundEffect;
 
-  sprintf(mnuItem[7].title,"Make filesystem");
+  sprintf(mnuItem[7].title,"Clear prefs");
   mnuItem[7].type=0;
-  mnuItem[7].icon=11;
-  mnuItem[7].triggerfunction=processMakeFs;
+  mnuItem[7].icon=8;
+  mnuItem[7].triggerfunction=processClearprefs;
   mnuItem[7].arg=0;
+
+  sprintf(mnuItem[8].title,"Clear favorites");
+  mnuItem[8].type=0;
+  mnuItem[8].icon=8;
+  mnuItem[8].triggerfunction=processClearFavorites;
+  mnuItem[8].arg=0;
+
+  sprintf(mnuItem[9].title,"Make filesystem");
+  mnuItem[9].type=0;
+  mnuItem[9].icon=11;
+  mnuItem[9].triggerfunction=processMakeFs;
+  mnuItem[9].arg=0;
 
   clearScreen();
 
@@ -1335,8 +1365,10 @@ void initSmartPortHD(){
 }
 void updateSmartportHD(){
   
-  if (currentPage!=SMARTPORT)
+  if (currentPage!=SMARTPORT){
     return;
+  }
+    
 
     ssd1306_SetColor(Black);
     ssd1306_FillRect(118,30,8,8);
