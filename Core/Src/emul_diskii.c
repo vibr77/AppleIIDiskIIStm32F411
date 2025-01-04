@@ -193,6 +193,17 @@ void DiskIIPhaseIRQ(){
     return;
 }
 
+uint8_t itmp=0;
+
+
+static volatile uint8_t wrData=0;
+static volatile uint8_t prevWrData=0;
+static volatile uint8_t xorWrData=0;
+static volatile uint8_t wrBitPos=0;
+static volatile unsigned char byteWindow=0x0;
+
+int dbg_s[256];
+int dbg_e[256];
 
 /**
   * @brief Write Req Interrupt function, Manage start and end of the write process.
@@ -202,23 +213,29 @@ void DiskIIPhaseIRQ(){
   */
 void DiskIIWrReqIRQ(){
 
+    WR_REQ_PHASE=HAL_GPIO_ReadPin(WR_REQ_GPIO_Port, WR_REQ_Pin);
+
     if (WR_REQ_PHASE==0 && flgDeviceEnable==1 && flgImageMounted==1){                       // WR_REQUEST IS ACTIVE LOW
-        WR_REQ_PHASE=1;  
+        //WR_REQ_PHASE=1;  
         
-        updateIMAGEScreen(1,intTrk);                                            // Update Screen for Write
+        //updateIMAGEScreen(1,intTrk);                                            // Update Screen for Write
 
         HAL_TIM_PWM_Stop_IT(&htim3,TIM_CHANNEL_4);
         
         irqWriteTrack();  
-        memset((unsigned char *)&DMA_BIT_RX_BUFFER,0,RAW_SD_TRACK_SIZE);                    // Clean the RX_BUFFER 
-        HAL_TIM_PWM_Start_IT(&htim2,TIM_CHANNEL_3);                                // Start the TIMER2
-                                                                                            // Write has begun :) not very clean, to be changed with value of GPIO
+        //memset((unsigned char *)&DMA_BIT_RX_BUFFER,0,RAW_SD_TRACK_SIZE);                  // Clean the RX_BUFFER 
+        byteWindow=0;
         wrBitWritten=0;                                                                     // Count the number of bits sent from the A2
-        wrBitCounter=bitCounter-bitCounter%8;                                               // Write position counter (handover from read)
+        //wrBitCounter=bitCounter+(8-bitCounter%8);
+        prevWrData=0;
+        wrBitCounter=bitCounter+1;                                                          // Write position counter (handover from read)
         wrStartPtr=wrBitCounter; 
+        HAL_TIM_PWM_Start_IT(&htim2,TIM_CHANNEL_3);                                         // Start the TIMER2
+                                                                                            // Write has begun :) not very clean, to be changed with value of GPIO
+
 
     }else if (WR_REQ_PHASE==1 && flgDeviceEnable==1 && flgImageMounted==1){
-        WR_REQ_PHASE=0;                                                                     // Write has just stopped
+        //WR_REQ_PHASE=0;                                                                     // Write has just stopped
 
         HAL_TIM_PWM_Stop_IT(&htim2,TIM_CHANNEL_3);                                 // Stop TIMER2 WRITE DATE
         
@@ -226,11 +243,12 @@ void DiskIIWrReqIRQ(){
 
         wrEndPtr=wrBitCounter;
         bitCounter=wrBitCounter;
-        
-        memcpy((unsigned char *)&DMA_BIT_TX_BUFFER,(unsigned char *)&DMA_BIT_RX_BUFFER,RAW_SD_TRACK_SIZE);
+        dbg_s[itmp]=wrStartPtr;
+        dbg_e[itmp]=wrBitCounter;
+        //memcpy((unsigned char *)&DMA_BIT_TX_BUFFER,(unsigned char *)&DMA_BIT_RX_BUFFER,RAW_SD_TRACK_SIZE);
         HAL_TIM_PWM_Start_IT(&htim3,TIM_CHANNEL_4);
-        
-        nextAction=WRITE_TRK;
+        itmp++;
+        //nextAction=WRITE_TRK;
         //nextAction=DUMP_TX;
         //printf("Write end total %d %d/8, started:%d, ended:%d  wrBitCounter:%d bitSize:%d /8:%d\n",wrBitWritten,wrBitWritten/8,wrStartPtr,wrEndPtr,wrBitCounter,bitSize,bitSize/8);
     }
@@ -259,11 +277,7 @@ WRITE PART:
 */
 
 
-static volatile uint8_t wrData=0;
-static volatile uint8_t prevWrData=0;
-static volatile uint8_t xorWrData=0;
-static volatile uint8_t wrBitPos=0;
-static volatile unsigned char byteWindow=0x0;
+
 
 /**
   * @brief 
@@ -281,15 +295,42 @@ void DiskIIReceiveDataIRQ(){
     byteWindow<<=1;
     byteWindow|=xorWrData;
 
+                                                          // Keep track of the number of bits written to update the TMAP
     wrBitCounter++;                                                           // Next bit please ;)
-    wrBitWritten++;                                                           // Keep track of the number of bits written to update the TMAP
+    wrBitWritten++;
 
     wrBitPos=wrBitCounter%8;
+    //wrBytes=wrBitCounter/8;
+    //byteWindow=DMA_BIT_TX_BUFFER[wrBytes];
     
-    if (wrBitPos==0){
-        wrBytes=(wrBitCounter/8)-1;                                           // at 8th bit, we have the first Bytes in [0] psoition;
-        DMA_BIT_RX_BUFFER[wrBytes]=byteWindow;
-    }
+    /*if (xorWrData==1){
+       byteWindow |= (1 << wrBitPos);
+    }else{
+       byteWindow &= ~(1 << wrBitPos); 
+    }*/
+    
+    //DMA_BIT_TX_BUFFER[wrBytes]=byteWindow;
+    
+       if (byteWindow & 0x80){                                                 // Check if ByteWindow Bit 7 is 1 meaning we have a full bytes 0b1xxxxxxx 0x80
+            wrBytes=wrBitCounter/8;
+            //wrBytes++;                                          // at 8th bit, we have the first Bytes in [0] psoition;
+            DMA_BIT_TX_BUFFER[wrBytes]=byteWindow;
+            //packet_buffer[wrBytes]=byteWindow;
+            //packet_buffer[(wrBytes+1)%603]=0x0;                               // seems to be obvious but to be tested
+            //if (byteWindow==0xC3 && wrStartOffset==0)                           // Identify when the message start
+                //wrStartOffset=wrBitCounter;
+            
+            byteWindow=0x0;
+
+            //if (wrStartOffset!=0)                                               // Start writing to packet_buffer only if offset is not 0 (after sync byte)
+               //wrBytes++;
+            //wrCycleWithNoBytes=0;
+        } 
+
+    //if (wrBitPos==0){
+    //    wrBytes=(wrBitCounter/8)-1;                                           // at 8th bit, we have the first Bytes in [0] psoition;
+    //    DMA_BIT_TX_BUFFER[wrBytes]=byteWindow;
+    //}
 
     if (wrBitCounter>=bitSize)                                                // Same Size as the original track size
       wrBitCounter=0;                                                         // Start over at the beginning of the track
@@ -820,6 +861,14 @@ void DiskIIMainLoop(){
             if (cAlive==5000000){
                 printf(".\n");
                 cAlive=0;
+                if (itmp!=0){
+                    dumpBuf(DMA_BIT_TX_BUFFER,0,6378);
+                    for (int j=0;j<itmp;j++){
+                        printf("dbg s:%05d e:%05d len:%d\n",dbg_s[j],dbg_e[j],dbg_e[j]-dbg_s[j]);
+                    }
+                    itmp=0;
+                    
+                }
             }
         }
     }

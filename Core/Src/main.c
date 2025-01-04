@@ -1264,7 +1264,7 @@ static void MX_NVIC_Init(void)
   HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
  
   /* EXTI9_5_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 4, 0);
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);     // change from 4 to 0
   HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
   /* EXTI15_10_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(EXTI15_10_IRQn, 13, 0);

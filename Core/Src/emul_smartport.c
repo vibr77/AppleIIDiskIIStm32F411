@@ -153,7 +153,7 @@ void SmartPortReceiveDataIRQ(){
             
             packet_buffer[wrBytes]=byteWindow;
             //packet_buffer[(wrBytes+1)%603]=0x0;                               // seems to be obvious but to be tested
-            if (byteWindow==0xC3 && wrStartOffset==0)                           // Identify when the message start
+            if (byteWindow==0xC3 && wrBitCounter>10 && wrStartOffset==0)                           // Identify when the message start
                 wrStartOffset=wrBitCounter;
             
             byteWindow=0x0;
