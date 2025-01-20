@@ -1358,34 +1358,68 @@ void initSmartPortHD(){
   
   ssd1306_SetColor(White);
   dispIcon32x32(1,18,1);
-  displayStringAtPosition(35,3*9,"SMARTPORT");
-  displayStringAtPosition(35,4*9,"HD");
+  displayStringAtPosition(35,2*9,"SMARTPORT");
+  displayStringAtPosition(35,3*9,"HD");
   ssd1306_UpdateScreen();
 
 }
-void updateSmartportHD(){
+
+void updateImageSmartPortHD(char * filename,uint8_t i){
+  // Display the 4 image Filename without with extension and only 10 char.
+  
+  ssd1306_SetColor(White);
+  if (filename!=NULL){
+    uint8_t len=strlen(filename);
+    len=(len-3)%10;                                   // Remove 3 char (.PO) and limit to 10 char
+    char tmp[13];
+    snprintf(tmp,12,"%d:%s",i,filename+len);
+    if (i%2==0)
+      displayStringAtPosition(1,(4+i/2)*9,tmp);       // 1st left half of the screen Line 1 & 2 
+    else
+      displayStringAtPosition(60,(4+i/4)*9,tmp);      // 2nd half of the screen Line 3 & 4 
+  }
+  ssd1306_UpdateScreen();
+}
+
+void updateSmartportHD(uint8_t imageIndex, enum EMUL_CMD cmd ){
   
   if (currentPage!=SMARTPORT){
     return;
   }
-    
 
-    ssd1306_SetColor(Black);
-    ssd1306_FillRect(118,30,8,8);
-    ssd1306_SetColor(White);
+  uint8_t icoVOffset=21;
+  uint8_t icoHOffset=118;
+
+  ssd1306_SetColor(Black);
+  ssd1306_FillRect(icoHOffset,icoVOffset,8,8);
+  ssd1306_SetColor(White);
     
-    if (harvey_ball==0){
+  if (harvey_ball==0){
       harvey_ball=1;
-      dispIcon(118,30,12);
-    }else{
+      dispIcon(icoHOffset,icoVOffset,12);
+  }else{
       harvey_ball=0;
-      dispIcon(118,30,13);
-    }
+      dispIcon(icoHOffset,icoVOffset,13);
+  }
+  
+  char szTmp[5];
+  if (cmd == EMUL_READ){
+    sprintf(szTmp,"RD %d",imageIndex);
+  }else if (cmd == EMUL_WRITE){
+    sprintf(szTmp,"WR %d",imageIndex);                            // Need to change to short instead of printing int 0-65000
+  }else{
+    sprintf(szTmp,"  %d",imageIndex);
+  }
+
+  displayStringAtPosition(icoVOffset,icoHOffset-40,szTmp);      // 2nd half of the screen Line 3 & 4 
   ssd1306_UpdateScreen();  
+
 }
+
 void processSmartPortHDRetScreen(){
   switchPage(MENU,NULL);
 }
+
 /**
  * 
  * DISPLAY PRIMITIVE
@@ -1467,7 +1501,7 @@ void dispIcon(int x,int y,int indx){
     0x00, 0x04, 0x7c, 0x46, 0x46, 0x7c, 0x04, 0x00,   // indx=8   'trash',        8x8px
     0x18, 0x18, 0x24, 0x42, 0x7e, 0x00, 0x24, 0x18,   // indx=9   'sound',        8x8px
     0x00, 0x66, 0x42, 0x18, 0x18, 0x42, 0x66, 0x00,   // indx=10  'boot',         8x8px
-    0xaa, 0xee, 0xea, 0xba, 0xba, 0xea, 0xee, 0xaa,    // indx=11  'makefs',       8x8px
+    0xaa, 0xee, 0xea, 0xba, 0xba, 0xea, 0xee, 0xaa,   // indx=11  'makefs',       8x8px
     0x3c, 0x4e, 0x8f, 0x8f, 0xf1, 0xf1, 0x72, 0x3c,   // indx=12  'Harvey1',      8x8px
     0x3c, 0x72, 0xf1, 0xf1, 0x8f, 0x8f, 0x4e, 0x3c    // indx=13  'Harvey2',      8x8px
   };

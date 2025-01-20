@@ -14,6 +14,8 @@ typedef struct prodosPartition_s{
     unsigned int header_offset;           
     uint8_t mounted;
     uint8_t writeable;
+    char * filename;
+    uint8_t dispIndex;
 } prodosPartition_t;
 
 void SmartPortWrReqIRQ();

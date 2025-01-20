@@ -20,7 +20,7 @@ extern TIM_HandleTypeDef htim2;                             // Timer2 is handlin
 extern TIM_HandleTypeDef htim3;                             // Timer3 is handling RD_DATA
 
 extern FATFS fs;                                            // fatfs global variable <!> do not remount witihn a function the fatfs otherwise it breaks the rest
-extern long database;                                     // start of the data segment in FAT
+extern long database;                                       // start of the data segment in FAT
 extern int csize;
 extern volatile enum FS_STATUS fsState;   
 
@@ -314,10 +314,12 @@ void SmartPortInit(){
 
     char sztmp[128];
     char * szfile;
-    for(uint8_t i=0; i<MAX_PARTITIONS; i++){
+    for(uint8_t i=0; i< MAX_PARTITIONS; i++){
         sprintf(sztmp,"vol%02d_",i+1);
         szfile=SmartPortFindImage(sztmp);
-
+        devices[i].filename=szfile;
+        
+        
         SmartPortMountImage(&devices[i],szfile);
         
         if (devices[i].mounted!=1){
@@ -326,13 +328,22 @@ void SmartPortInit(){
             log_info("%s mounted",sztmp);
         }
     }
-    switchPage(SMARTPORT,NULL); 
+    switchPage(SMARTPORT,NULL);                                                                     // Display the Frame of the screen
+
+    for (uint8_t i=0;i<MAX_PARTITIONS;i++){
+        uint8_t indx=(i+bootImageIndex)%MAX_PARTITIONS;
+        devices[indx].dispIndex=indx;
+        updateImageSmartPortHD(devices[indx].filename,i);                                        // Display the name of the PO according to the position
+
+    }
+
 }
+
+
 
 void debugSend(){
     HAL_Delay(50);
     //log_info("%d",nextBit);
-    
     SmartPortSendDataIRQ();
 
 }
@@ -362,7 +373,6 @@ void SmartPortSendPacket(unsigned char* buffer){
 }
 
 void SmartportReceivePacket(){
-    
     
     setRddataPort(1);
     flgPacket=0;
@@ -608,7 +618,7 @@ void SmartPortMainLoop(){
                             HAL_Delay(15);
                             HAL_TIMEx_PWMN_Stop(&htim1,TIM_CHANNEL_2);
                         }
-                        updateSmartportHD();
+                        //updateSmartportHD();                                                                          // Move Below to have the imageIndex
 
                         dest = packet_buffer[SP_DEST];
                         // CMD 9
@@ -630,6 +640,7 @@ void SmartPortMainLoop(){
 
                             if (devices[dev].device_id == dest) {                                                       // yes it is, then do the read
                                 
+                                updateSmartportHD(devices[dev].dispIndex,EMUL_READ);                                    // Pass the rightImageIndex    
                                                                                                                         // block num 1st byte
                                 block_num = (LBN & 0x7f) | (((unsigned short)LBH << 3) & 0x80);                         // Added (unsigned short) cast to ensure calculated block is not underflowing.
                                 block_num = block_num + (((LBL & 0x7f) | (((unsigned short)LBH << 4) & 0x80)) << 8);    // block num second byte, Added (unsigned short) cast to ensure calculated block is not underflowing.
@@ -665,6 +676,15 @@ void SmartPortMainLoop(){
                     case 0x82:                                                                                      // is a writeblock cmd
                         dest = packet_buffer[SP_DEST];
 
+
+
+                        if (flgSoundEffect==1){
+                            TIM1->PSC=1000;
+                            HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_2);
+                            HAL_Delay(15);
+                            HAL_TIMEx_PWMN_Stop(&htim1,TIM_CHANNEL_2);
+                        }
+
                         // CMD 9
                         // PARMCNT 10
                         // LBH  11
@@ -683,6 +703,9 @@ void SmartPortMainLoop(){
                             uint8_t dev=(partition + initPartition) % MAX_PARTITIONS;
                             if (devices[dev].device_id == dest) {          // yes it is, then do the write
                                 
+
+                                updateSmartportHD(devices[dev].dispIndex,EMUL_WRITE);
+
                                 block_num = (LBN & 0x7f) | (((unsigned short)LBH << 3) & 0x80);                         // Added (unsigned short) cast to ensure calculated block is not underflowing.
                                 block_num = block_num + (((LBL & 0x7f) | (((unsigned short)LBH << 4) & 0x80)) << 8);    // block num second byte, Added (unsigned short) cast to ensure calculated block is not underflowing.
                                 block_num = block_num + (((LBT & 0x7f) | (((unsigned short)LBH << 5) & 0x80)) << 16);   // block num third byte, Added (unsigned short) cast to ensure calculated block is not underflowing.

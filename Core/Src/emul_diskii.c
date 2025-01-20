@@ -95,6 +95,9 @@ static int wrEndPtr=0;
 static int wrBitWritten=0;
 static int wr_attempt=0;                                             // temp variable to keep incremental counter of the debug dump to file
 
+unsigned long cAlive=0;
+
+
 const uint8_t weakBitTank[]   ={1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0,
                                 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0,
                                 1, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1,
@@ -195,7 +198,7 @@ void DiskIIPhaseIRQ(){
 
 uint8_t itmp=0;
 
-
+static volatile uint8_t pendingWriteTrk=0;
 static volatile uint8_t wrData=0;
 static volatile uint8_t prevWrData=0;
 static volatile uint8_t xorWrData=0;
@@ -216,38 +219,39 @@ void DiskIIWrReqIRQ(){
     WR_REQ_PHASE=HAL_GPIO_ReadPin(WR_REQ_GPIO_Port, WR_REQ_Pin);
 
     if (WR_REQ_PHASE==0 && flgDeviceEnable==1 && flgImageMounted==1){                       // WR_REQUEST IS ACTIVE LOW
-        //WR_REQ_PHASE=1;  
-        
+          
+        cAlive=0;
         //updateIMAGEScreen(1,intTrk);                                            // Update Screen for Write
 
         HAL_TIM_PWM_Stop_IT(&htim3,TIM_CHANNEL_4);
         
         irqWriteTrack();  
-        //memset((unsigned char *)&DMA_BIT_RX_BUFFER,0,RAW_SD_TRACK_SIZE);                  // Clean the RX_BUFFER 
+        
         byteWindow=0;
         wrBitWritten=0;                                                                     // Count the number of bits sent from the A2
-        //wrBitCounter=bitCounter+(8-bitCounter%8);
+        wrBitPos=0;
         prevWrData=0;
-        wrBitCounter=bitCounter+1;                                                          // Write position counter (handover from read)
+        wrBitCounter=bitCounter+(8-bitCounter%8);
+        //wrBitCounter=bitCounter+1;                                                          // Write position counter (handover from read)
+        wrBytes=(wrBitCounter)/8;
         wrStartPtr=wrBitCounter; 
         HAL_TIM_PWM_Start_IT(&htim2,TIM_CHANNEL_3);                                         // Start the TIMER2
                                                                                             // Write has begun :) not very clean, to be changed with value of GPIO
-
-
     }else if (WR_REQ_PHASE==1 && flgDeviceEnable==1 && flgImageMounted==1){
-        //WR_REQ_PHASE=0;                                                                     // Write has just stopped
+
 
         HAL_TIM_PWM_Stop_IT(&htim2,TIM_CHANNEL_3);                                 // Stop TIMER2 WRITE DATE
         
         irqReadTrack();
-
+       
+        HAL_TIM_PWM_Start_IT(&htim3,TIM_CHANNEL_4);
         wrEndPtr=wrBitCounter;
         bitCounter=wrBitCounter;
-        dbg_s[itmp]=wrStartPtr;
-        dbg_e[itmp]=wrBitCounter;
-        //memcpy((unsigned char *)&DMA_BIT_TX_BUFFER,(unsigned char *)&DMA_BIT_RX_BUFFER,RAW_SD_TRACK_SIZE);
-        HAL_TIM_PWM_Start_IT(&htim3,TIM_CHANNEL_4);
-        itmp++;
+        //dbg_s[itmp]=wrStartPtr;
+        //dbg_e[itmp]=wrBitCounter;
+        //itmp++;
+        pendingWriteTrk=1;
+        cAlive=0;
         //nextAction=WRITE_TRK;
         //nextAction=DUMP_TX;
         //printf("Write end total %d %d/8, started:%d, ended:%d  wrBitCounter:%d bitSize:%d /8:%d\n",wrBitWritten,wrBitWritten/8,wrStartPtr,wrEndPtr,wrBitCounter,bitSize,bitSize/8);
@@ -294,13 +298,19 @@ void DiskIIReceiveDataIRQ(){
 
     byteWindow<<=1;
     byteWindow|=xorWrData;
-
-                                                          // Keep track of the number of bits written to update the TMAP
-    wrBitCounter++;                                                           // Next bit please ;)
-    wrBitWritten++;
-
-    wrBitPos=wrBitCounter%8;
-    //wrBytes=wrBitCounter/8;
+                                                                              // Keep track of the number of bits written to update the TMAP
+    //wrBitPos=wrBitCounter%8;
+    wrBitPos++;
+    if (wrBitPos==8){
+        //wrBytes=((wrBitCounter-8)%bitSize)/8;
+        DMA_BIT_TX_BUFFER[wrBytes]=byteWindow;
+        byteWindow=0x0;
+        wrBitPos=0;
+        wrBytes++;
+        //cAlive=0;
+        if (wrBytes==bitSize/8)
+            wrBytes=0;
+    }
     //byteWindow=DMA_BIT_TX_BUFFER[wrBytes];
     
     /*if (xorWrData==1){
@@ -311,7 +321,10 @@ void DiskIIReceiveDataIRQ(){
     
     //DMA_BIT_TX_BUFFER[wrBytes]=byteWindow;
     
-       if (byteWindow & 0x80){                                                 // Check if ByteWindow Bit 7 is 1 meaning we have a full bytes 0b1xxxxxxx 0x80
+    wrBitCounter++;                                                           // Next bit please ;)
+    wrBitWritten++;
+
+       /*if (byteWindow & 0x80){                                                 // Check if ByteWindow Bit 7 is 1 meaning we have a full bytes 0b1xxxxxxx 0x80
             wrBytes=wrBitCounter/8;
             //wrBytes++;                                          // at 8th bit, we have the first Bytes in [0] psoition;
             DMA_BIT_TX_BUFFER[wrBytes]=byteWindow;
@@ -326,6 +339,7 @@ void DiskIIReceiveDataIRQ(){
                //wrBytes++;
             //wrCycleWithNoBytes=0;
         } 
+        */
 
     //if (wrBitPos==0){
     //    wrBytes=(wrBitCounter/8)-1;                                           // at 8th bit, we have the first Bytes in [0] psoition;
@@ -422,6 +436,8 @@ int DiskIIDeviceEnableIRQ(uint16_t GPIO_Pin){
     }else if (flgDeviceEnable==1 && a==1 ){
 
         flgDeviceEnable=0;
+
+
         
         GPIO_InitStruct.Pin   = RD_DATA_Pin;
         GPIO_InitStruct.Mode  = GPIO_MODE_INPUT;
@@ -725,7 +741,7 @@ void DiskIIInit(){
   */
 void DiskIIMainLoop(){
 
-    unsigned long cAlive=0;
+    
     int trk=0;
     while(1){
         if (flgDeviceEnable==1 && prevTrk!=intTrk && flgBeaming==1){              // <!> TO Be tested
@@ -734,6 +750,14 @@ void DiskIIMainLoop(){
             DWT->CYCCNT = 0;                              // Reset cpu cycle counter
             t1 = DWT->CYCCNT;                                       
             
+            if (pendingWriteTrk==1){
+                irqEnableSDIO();
+                setTrackBitStream(prevTrk,DMA_BIT_TX_BUFFER);
+                irqDisableSDIO();
+                pendingWriteTrk=0;
+                //printf("Wr Trk");
+            }
+
             if (trk==255 ){
                 bitSize=51200;
                 printf("ph:%02d fakeTrack:255\n",ph_track);
@@ -775,7 +799,7 @@ void DiskIIMainLoop(){
                 setTrackBitStream(intTrk,DMA_BIT_TX_BUFFER);
                 irqDisableSDIO();
 
-                log_info("writing phtrack:%d trk:%d",ph_track,intTrk);
+                //log_info("writing phtrack:%d trk:%d",ph_track,intTrk);
                 nextAction=NONE;
                 
                 break;
@@ -787,7 +811,7 @@ void DiskIIMainLoop(){
                 wr_attempt++;
                 
                 irqEnableSDIO();
-                dumpBufFile(filename,DMA_BIT_RX_BUFFER,RAW_SD_TRACK_SIZE);
+                dumpBufFile(filename,DMA_BIT_TX_BUFFER,RAW_SD_TRACK_SIZE);
                 irqDisableSDIO();
                 
                 nextAction=NONE;
@@ -858,17 +882,32 @@ void DiskIIMainLoop(){
             if (flgSoundEffect==1){
                 HAL_TIMEx_PWMN_Stop(&htim1,TIM_CHANNEL_2);
             }
+            /*if (cAlive==3000 && pendingWriteTrk==1){
+                irqEnableSDIO();
+                setTrackBitStream(prevTrk,DMA_BIT_TX_BUFFER);
+                irqDisableSDIO();
+                pendingWriteTrk=0;
+                //printf("W");
+            }*/
             if (cAlive==5000000){
                 printf(".\n");
+                
                 cAlive=0;
-                if (itmp!=0){
-                    dumpBuf(DMA_BIT_TX_BUFFER,0,6378);
+                
+                /*if (itmp!=0){
+                    nextAction=DUMP_TX;
+                    //dumpBuf(DMA_BIT_TX_BUFFER,0,6378);
+                    for (int j=0;j<itmp;j++){
+                        printf("dbg s:%05d e:%05d len:%d\n",dbg_s[j],dbg_e[j],dbg_e[j]-dbg_s[j]);
+                        if (dbg_e[j]-dbg_s[j]>0)
+                        dumpBuf(DMA_BIT_TX_BUFFER+dbg_s[j]/8,0,(dbg_e[j]-dbg_s[j])/8);
+                    }
                     for (int j=0;j<itmp;j++){
                         printf("dbg s:%05d e:%05d len:%d\n",dbg_s[j],dbg_e[j],dbg_e[j]-dbg_s[j]);
                     }
                     itmp=0;
-                    
-                }
+                   
+                }*/
             }
         }
     }

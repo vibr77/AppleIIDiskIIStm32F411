@@ -4,8 +4,9 @@
 #ifndef disp
 #define disp
 
-
+enum EMUL_CMD{EMUL_READ,EMUL_WRITE};
 enum page{FS,MOUNT,MENU,IMAGE,FAVORITE,CONFIG,EMULATIONTYPE,IMAGEMENU,SMARTPORT};
+
 char * getImageNameFromFullPath(char * fullPathImageName);
 enum STATUS switchPage(enum page newPage,void * arg);
 void updateChainedListDisplay(int init, list_t * lst );
@@ -85,8 +86,10 @@ void processReturnFavoriteItem();
 void processSelectFavoriteItem();
 
 void initSmartPortHD();
+void updateImageSmartPortHD(char * filename,uint8_t i);
 void processSmartPortHDRetScreen();
-void updateSmartportHD();
+void updateSmartportHD(uint8_t imageIndex,enum EMUL_CMD cmd);
+
 
 /*      DISPLAY PRIMITIVES              */
 void clearScreen();
