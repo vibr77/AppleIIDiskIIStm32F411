@@ -6,7 +6,8 @@
 	],
 	"settings": {
 		"cortex-debug.armToolchainPath": "/usr/bin",
-		"cortex-debug.openocdPath": "/usr/local/bin/openocd"
+		"cortex-debug.openocdPath": "/usr/local/bin/openocd",
+		"makefile.configureOnOpen": false
 	},
 	"tasks": {
 		"version": "2.0.0",

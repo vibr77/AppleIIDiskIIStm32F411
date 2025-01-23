@@ -16,7 +16,7 @@
 #include "main.h"
 #include "log.h"
 
-static unsigned long t1,t2,diff1;
+static unsigned long t1,t2,diff1=0,maxdiff1=0;
 
 volatile int ph_track=0;                                                // SDISK Physical track 0 - 139
 volatile int ph_track_b=0;                                              // SDISK Physical track 0 - 139 for DISK B 
@@ -89,6 +89,7 @@ static volatile uint8_t bitPtr=0;
 static volatile int bitCounter=0;
 static volatile int bytePtr=0;
 static volatile int bitSize=0;
+static volatile int ByteSize=0;
 
 static int wrStartPtr=0;
 static int wrEndPtr=0;
@@ -221,36 +222,36 @@ void DiskIIWrReqIRQ(){
     if (WR_REQ_PHASE==0 && flgDeviceEnable==1 && flgImageMounted==1){                       // WR_REQUEST IS ACTIVE LOW
           
         cAlive=0;
-        //updateIMAGEScreen(1,intTrk);                                            // Update Screen for Write
+        //updateIMAGEScreen(1,intTrk);                                                      // Update Screen for Write
 
         HAL_TIM_PWM_Stop_IT(&htim3,TIM_CHANNEL_4);
-        
         irqWriteTrack();  
         
         byteWindow=0;
         wrBitWritten=0;                                                                     // Count the number of bits sent from the A2
         wrBitPos=0;
         prevWrData=0;
-        wrBitCounter=bitCounter+(8-bitCounter%8);
-        //wrBitCounter=bitCounter+1;                                                          // Write position counter (handover from read)
+        wrBitCounter=bitCounter+(8-bitCounter%8);                                           // Make it 8 Bit aligned
+        
+        //wrBitCounter=bitCounter+1;                                                        // Write position counter (handover from read)
         wrBytes=(wrBitCounter)/8;
-        wrStartPtr=wrBitCounter; 
-        HAL_TIM_PWM_Start_IT(&htim2,TIM_CHANNEL_3);                                         // Start the TIMER2
-                                                                                            // Write has begun :) not very clean, to be changed with value of GPIO
+         
+        HAL_TIM_PWM_Start_IT(&htim2,TIM_CHANNEL_3);                                         // Start the TIMER2 to get WR signals
+        wrStartPtr=wrBitCounter;
+
     }else if (WR_REQ_PHASE==1 && flgDeviceEnable==1 && flgImageMounted==1){
 
 
-        HAL_TIM_PWM_Stop_IT(&htim2,TIM_CHANNEL_3);                                 // Stop TIMER2 WRITE DATE
-        
+        HAL_TIM_PWM_Stop_IT(&htim2,TIM_CHANNEL_3);                                          // Stop TIMER2 WRITE DATE
         irqReadTrack();
-       
         HAL_TIM_PWM_Start_IT(&htim3,TIM_CHANNEL_4);
+        
         wrEndPtr=wrBitCounter;
         bitCounter=wrBitCounter;
         //dbg_s[itmp]=wrStartPtr;
         //dbg_e[itmp]=wrBitCounter;
         //itmp++;
-        pendingWriteTrk=1;
+        pendingWriteTrk=1;                                                      
         cAlive=0;
         //nextAction=WRITE_TRK;
         //nextAction=DUMP_TX;
@@ -289,67 +290,50 @@ WRITE PART:
   * @retval None
   */
 void DiskIIReceiveDataIRQ(){
-
-    wrData=HAL_GPIO_ReadPin(WR_DATA_GPIO_Port, WR_DATA_Pin);  // get WR_DATA
+    //t1 = DWT->CYCCNT;
+    
+    wrData=HAL_GPIO_ReadPin(WR_DATA_GPIO_Port, WR_DATA_Pin);                  // get WR_DATA
 
     wrData^= 0x01u;                                                           // get /WR_DATA
     xorWrData=wrData ^ prevWrData;                                            // Compute Magnetic polarity inversion
     prevWrData=wrData;                                                        // for next cycle keep the wrData
 
-    byteWindow<<=1;
-    byteWindow|=xorWrData;
+    byteWindow<<=1;                                                           // Shift left 1 bit to get the next one
+    byteWindow|=xorWrData;                                                    // Write the next bit to the byteWindow
                                                                               // Keep track of the number of bits written to update the TMAP
-    //wrBitPos=wrBitCounter%8;
-    wrBitPos++;
-    if (wrBitPos==8){
-        //wrBytes=((wrBitCounter-8)%bitSize)/8;
+    wrBitPos++;                                                               // Increase the WR Bit index
+    if (wrBitPos==8){                                                         // After 8 Bits are received store the Byte
+        
         DMA_BIT_TX_BUFFER[wrBytes]=byteWindow;
         byteWindow=0x0;
         wrBitPos=0;
         wrBytes++;
-        //cAlive=0;
-        if (wrBytes==bitSize/8)
+
+        if (wrBytes==ByteSize)
             wrBytes=0;
     }
     //byteWindow=DMA_BIT_TX_BUFFER[wrBytes];
     
-    /*if (xorWrData==1){
+    /*
+    if (xorWrData==1){
        byteWindow |= (1 << wrBitPos);
     }else{
        byteWindow &= ~(1 << wrBitPos); 
-    }*/
-    
-    //DMA_BIT_TX_BUFFER[wrBytes]=byteWindow;
-    
+    }
+    */
+        
     wrBitCounter++;                                                           // Next bit please ;)
-    wrBitWritten++;
-
-       /*if (byteWindow & 0x80){                                                 // Check if ByteWindow Bit 7 is 1 meaning we have a full bytes 0b1xxxxxxx 0x80
-            wrBytes=wrBitCounter/8;
-            //wrBytes++;                                          // at 8th bit, we have the first Bytes in [0] psoition;
-            DMA_BIT_TX_BUFFER[wrBytes]=byteWindow;
-            //packet_buffer[wrBytes]=byteWindow;
-            //packet_buffer[(wrBytes+1)%603]=0x0;                               // seems to be obvious but to be tested
-            //if (byteWindow==0xC3 && wrStartOffset==0)                           // Identify when the message start
-                //wrStartOffset=wrBitCounter;
-            
-            byteWindow=0x0;
-
-            //if (wrStartOffset!=0)                                               // Start writing to packet_buffer only if offset is not 0 (after sync byte)
-               //wrBytes++;
-            //wrCycleWithNoBytes=0;
-        } 
-        */
-
-    //if (wrBitPos==0){
-    //    wrBytes=(wrBitCounter/8)-1;                                           // at 8th bit, we have the first Bytes in [0] psoition;
-    //    DMA_BIT_TX_BUFFER[wrBytes]=byteWindow;
-    //}
+    //wrBitWritten++;
 
     if (wrBitCounter>=bitSize)                                                // Same Size as the original track size
-      wrBitCounter=0;                                                         // Start over at the beginning of the track
-}
+        wrBitCounter=0;                                                       // Start over at the beginning of the track
+    
+    //t2 = DWT->CYCCNT;
+    //diff1=t2-t1;
+    //if (diff1>maxdiff1)
+    //    maxdiff1=diff1;
 
+}
 
 
 uint8_t nextBit=0;
@@ -693,7 +677,8 @@ void DiskIIInit(){
     }else if (bootMode==2){
         switchPage(FAVORITE,NULL);
     }
-
+    HAL_TIM_PWM_Start_IT(&htim2,TIM_CHANNEL_3); 
+    
     irqReadTrack();
 
     //sprintf(filename,"/WOZ 2.0/Blazing Paddles (Baudville).woz");                                     // 21/08 WORKING
@@ -749,17 +734,19 @@ void DiskIIMainLoop(){
             trk=intTrk;                                   // Track has changed, but avoid new change during the process
             DWT->CYCCNT = 0;                              // Reset cpu cycle counter
             t1 = DWT->CYCCNT;                                       
-            
+            cAlive=0;
             if (pendingWriteTrk==1){
                 irqEnableSDIO();
                 setTrackBitStream(prevTrk,DMA_BIT_TX_BUFFER);
                 irqDisableSDIO();
                 pendingWriteTrk=0;
-                //printf("Wr Trk");
+                //printf("Wr");
             }
+            
 
             if (trk==255 ){
                 bitSize=51200;
+                ByteSize=6400;
                 printf("ph:%02d fakeTrack:255\n",ph_track);
                 prevTrk=trk;
                 continue;
@@ -783,7 +770,8 @@ void DiskIIMainLoop(){
             
             updateIMAGEScreen(0,trk);                                   // Put here otherwise Spiradisc is not working
 
-            bitSize=getTrackSize(trk); 
+            bitSize=getTrackSize(trk);
+            ByteSize=bitSize/8; 
             prevTrk=trk;
         }else if (nextAction!=NONE){                                            // Several action can not be done on Interrupt
         
@@ -882,16 +870,19 @@ void DiskIIMainLoop(){
             if (flgSoundEffect==1){
                 HAL_TIMEx_PWMN_Stop(&htim1,TIM_CHANNEL_2);
             }
-            /*if (cAlive==3000 && pendingWriteTrk==1){
+            
+            if (cAlive==30000 && pendingWriteTrk==1){
+                
                 irqEnableSDIO();
                 setTrackBitStream(prevTrk,DMA_BIT_TX_BUFFER);
                 irqDisableSDIO();
                 pendingWriteTrk=0;
                 //printf("W");
-            }*/
+            }
+            
             if (cAlive==5000000){
                 printf(".\n");
-                
+                printf("%ld",maxdiff1);
                 cAlive=0;
                 
                 /*if (itmp!=0){
