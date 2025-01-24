@@ -24,9 +24,8 @@ volatile int ph_track_b=0;                                              // SDISK
 volatile int intTrk=0;                                                  // InterruptTrk                            
 unsigned char prevTrk=35;                                               // prevTrk to keep track of the last head track
 
-unsigned char read_track_data_bloc[RAW_SD_TRACK_SIZE];                   // 
-volatile unsigned char DMA_BIT_TX_BUFFER[RAW_SD_TRACK_SIZE];             // DMA Buffer for READ Track
-volatile unsigned char DMA_BIT_RX_BUFFER[RAW_SD_TRACK_SIZE];             // DMA Buffer for WRITE Track
+unsigned char read_track_data_bloc[RAW_SD_TRACK_SIZE];                  // 
+volatile unsigned char DMA_BIT_TX_BUFFER[RAW_SD_TRACK_SIZE];            // DMA Buffer for READ Track
 
 volatile int flgWeakBit=0;                                       // Activate WeakBit only for Woz File
 uint8_t flgBitIndxCounter=0;                                // Keep track of Bit Index Counter when changing track (only for WOZ)
@@ -217,7 +216,12 @@ int dbg_e[256];
   */
 void DiskIIWrReqIRQ(){
 
-    WR_REQ_PHASE=HAL_GPIO_ReadPin(WR_REQ_GPIO_Port, WR_REQ_Pin);
+   // WR_REQ_PHASE=HAL_GPIO_ReadPin(WR_REQ_GPIO_Port, WR_REQ_Pin);
+    
+    if ((WR_REQ_GPIO_Port->IDR & WR_REQ_Pin)==0)
+        WR_REQ_PHASE=0;
+    else
+        WR_REQ_PHASE=1;
 
     if (WR_REQ_PHASE==0 && flgDeviceEnable==1 && flgImageMounted==1){                       // WR_REQUEST IS ACTIVE LOW
           
@@ -232,8 +236,7 @@ void DiskIIWrReqIRQ(){
         wrBitPos=0;
         prevWrData=0;
         wrBitCounter=bitCounter+(8-bitCounter%8);                                           // Make it 8 Bit aligned
-        
-        //wrBitCounter=bitCounter+1;                                                        // Write position counter (handover from read)
+
         wrBytes=(wrBitCounter)/8;
          
         HAL_TIM_PWM_Start_IT(&htim2,TIM_CHANNEL_3);                                         // Start the TIMER2 to get WR signals
@@ -248,13 +251,10 @@ void DiskIIWrReqIRQ(){
         
         wrEndPtr=wrBitCounter;
         bitCounter=wrBitCounter;
-        //dbg_s[itmp]=wrStartPtr;
-        //dbg_e[itmp]=wrBitCounter;
-        //itmp++;
+
         pendingWriteTrk=1;                                                      
         cAlive=0;
-        //nextAction=WRITE_TRK;
-        //nextAction=DUMP_TX;
+
         //printf("Write end total %d %d/8, started:%d, ended:%d  wrBitCounter:%d bitSize:%d /8:%d\n",wrBitWritten,wrBitWritten/8,wrStartPtr,wrEndPtr,wrBitCounter,bitSize,bitSize/8);
     }
 }
@@ -290,10 +290,12 @@ WRITE PART:
   * @retval None
   */
 void DiskIIReceiveDataIRQ(){
-    //t1 = DWT->CYCCNT;
     
-    wrData=HAL_GPIO_ReadPin(WR_DATA_GPIO_Port, WR_DATA_Pin);                  // get WR_DATA
-
+    if ((GPIOA->IDR & WR_DATA_Pin)==0)                                       // get WR_DATA DO NOT USE THE HAL function creating an overhead
+        wrData=0;
+    else
+        wrData=1;
+    
     wrData^= 0x01u;                                                           // get /WR_DATA
     xorWrData=wrData ^ prevWrData;                                            // Compute Magnetic polarity inversion
     prevWrData=wrData;                                                        // for next cycle keep the wrData
@@ -312,26 +314,11 @@ void DiskIIReceiveDataIRQ(){
         if (wrBytes==ByteSize)
             wrBytes=0;
     }
-    //byteWindow=DMA_BIT_TX_BUFFER[wrBytes];
-    
-    /*
-    if (xorWrData==1){
-       byteWindow |= (1 << wrBitPos);
-    }else{
-       byteWindow &= ~(1 << wrBitPos); 
-    }
-    */
         
     wrBitCounter++;                                                           // Next bit please ;)
-    //wrBitWritten++;
 
     if (wrBitCounter>=bitSize)                                                // Same Size as the original track size
         wrBitCounter=0;                                                       // Start over at the beginning of the track
-    
-    //t2 = DWT->CYCCNT;
-    //diff1=t2-t1;
-    //if (diff1>maxdiff1)
-    //    maxdiff1=diff1;
 
 }
 
@@ -393,11 +380,16 @@ void DiskIISendDataIRQ(){
   */
 int DiskIIDeviceEnableIRQ(uint16_t GPIO_Pin){
     // The DEVICE_ENABLE signal from the Disk controller is activeLow
+    
+    uint8_t  a=0;
+    if ((GPIOA->IDR & GPIO_Pin)==0)
+        a=0;
+    else
+        a=1;
 
-    uint8_t  a=HAL_GPIO_ReadPin(DEVICE_ENABLE_GPIO_Port,GPIO_Pin);
     GPIO_InitTypeDef GPIO_InitStruct = {0};
 
-    if (a==0 && flgBeaming==1){                                         // <!> TO BE TESTED 24/10
+    if (a==0 && flgBeaming==1){                                                                 // <!> TO BE TESTED 24/10
         flgDeviceEnable=1;
 
         GPIO_InitStruct.Pin   = RD_DATA_Pin;
@@ -413,7 +405,7 @@ int DiskIIDeviceEnableIRQ(uint16_t GPIO_Pin){
         HAL_GPIO_Init(WR_PROTECT_GPIO_Port, &GPIO_InitStruct);
 
         if (flgWriteProtected==1)
-            HAL_GPIO_WritePin(WR_PROTECT_GPIO_Port,WR_PROTECT_Pin,GPIO_PIN_SET);  // WRITE_PROTECT is enable
+            HAL_GPIO_WritePin(WR_PROTECT_GPIO_Port,WR_PROTECT_Pin,GPIO_PIN_SET);                // WRITE_PROTECT is enable
         else
             HAL_GPIO_WritePin(WR_PROTECT_GPIO_Port,WR_PROTECT_Pin,GPIO_PIN_RESET);
     
@@ -421,8 +413,6 @@ int DiskIIDeviceEnableIRQ(uint16_t GPIO_Pin){
 
         flgDeviceEnable=0;
 
-
-        
         GPIO_InitStruct.Pin   = RD_DATA_Pin;
         GPIO_InitStruct.Mode  = GPIO_MODE_INPUT;
         GPIO_InitStruct.Pull  = GPIO_NOPULL;
@@ -611,9 +601,8 @@ enum STATUS DiskIIiniteBeaming(){
     flgBeaming=0;
 
     memset((unsigned char *)&DMA_BIT_TX_BUFFER,0,sizeof(char)*RAW_SD_TRACK_SIZE);
-    memset((unsigned char *)&DMA_BIT_RX_BUFFER,0,sizeof(char)*RAW_SD_TRACK_SIZE);
+    //memset((unsigned char *)&DMA_BIT_RX_BUFFER,0,sizeof(char)*RAW_SD_TRACK_SIZE);
     memset(read_track_data_bloc,0,sizeof(char)*RAW_SD_TRACK_SIZE);
-
 
     DWT->CYCCNT = 0;                              // Reset cpu cycle counter
     t1 = DWT->CYCCNT; 
@@ -624,7 +613,6 @@ enum STATUS DiskIIiniteBeaming(){
     HAL_GPIO_WritePin(WR_PROTECT_GPIO_Port,WR_PROTECT_Pin,GPIO_PIN_RESET);  
 
     HAL_GPIO_WritePin(RD_DATA_GPIO_Port,RD_DATA_Pin,GPIO_PIN_RESET); 
-
 
     bbPtr=(volatile u_int8_t*)&DMA_BIT_TX_BUFFER;
     bitSize=6656*8;
@@ -715,6 +703,22 @@ void DiskIIInit(){
     if (flgBeaming==1){
         switchPage(IMAGE,currentFullPathImageFilename);
     }
+
+    // ONLY FOR DEBUG
+    /*
+        byteWindow=0;
+        wrBitWritten=0;                                                                     // Count the number of bits sent from the A2
+        wrBitPos=0;
+        prevWrData=0;
+        wrBitCounter=bitCounter+(8-bitCounter%8);                                           // Make it 8 Bit aligned
+        wrBytes=(wrBitCounter)/8;
+        ByteSize=6384;
+
+        for (int i=0;i<8;i++){
+            DiskIIReceiveDataIRQ();
+        }
+    */
+    // ONLY FOR DEBUG
 }
 
 
