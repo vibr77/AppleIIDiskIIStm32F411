@@ -108,9 +108,14 @@ UART
 
 // Changelog
 /*
-26.12.24 v0.79.2 
+24.01.25 v0.79.2 
   + Add Boot image index for Smartport
-
+  + Woz write process working
+  + bug fix on DMA management
+  + Smartport fix (still need to work on the write process...)
+  + Fix the TIMER perid to receive data
+  + Move away ffrom HAL function and use baremetal GPIO 
+  
 26.12.24 v0.79.1
   +Remove hardcoded emulation type
 13.12.24  v0.79
