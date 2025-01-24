@@ -115,7 +115,9 @@ UART
   + Smartport fix (still need to work on the write process...)
   + Fix the TIMER perid to receive data
   + Move away ffrom HAL function and use baremetal GPIO 
-  
+  + Freeup unused buffer 6K
+  + Init DOS3.3 working with delay write
+
 26.12.24 v0.79.1
   +Remove hardcoded emulation type
 13.12.24  v0.79
