@@ -108,6 +108,10 @@ UART
 
 // Changelog
 /*
+26.01.25 v0.79.3
+  + Smartport HD list of loaded image on screen
+  + Smartport HD remove HAL GPIO overhead on WRITE Process
+  + Case v3 
 24.01.25 v0.79.2 
   + Add Boot image index for Smartport
   + Woz write process working
@@ -1015,6 +1019,11 @@ int main(void){
   log_info("**     This is the sound of sea !    **");
   log_info("***************************************");
   
+  fres = f_mount(&fs, "", 1);                                       
+  
+  csize=fs.csize;
+  database=fs.database;
+
   initSplashScreen();                                                       // I2C Screen init                  
                                             
   HAL_Delay(SPLASHSCREEN_DURATION);
@@ -1045,10 +1054,7 @@ int main(void){
 
   dirChainedList = list_new();                                              // ChainedList to manage File list in current path                                                     
 
-  fres = f_mount(&fs, "", 1);                                       
   
-  csize=fs.csize;
-  database=fs.database;
   char * imgFile=NULL;
 
   // --------------------------------------------------------------------

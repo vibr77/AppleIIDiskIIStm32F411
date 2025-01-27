@@ -102,4 +102,6 @@ void displayStringAtPosition(int x,int y,char * str);
 void inverseStringAtPosition(int lineNumber,int offset);
 void clearLineStringAtPosition(int lineNumber,int offset);
 
+enum STATUS makeScreenShot(uint8_t screenShotIndex);
+
 #endif

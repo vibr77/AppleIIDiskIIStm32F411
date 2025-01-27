@@ -67,11 +67,20 @@ static volatile uint8_t flgPacket=2;
 
 static volatile int flgdebug=0;
 
+static volatile unsigned int WR_REQ_PHASE=0;
+
 static u_int8_t dbgbuf[512];
 
+
 void SmartPortWrReqIRQ(){
-    if (HAL_GPIO_ReadPin(WR_REQ_GPIO_Port, WR_REQ_Pin)==0){
-        //memset(packet_buffer,0,604);
+
+     if ((WR_REQ_GPIO_Port->IDR & WR_REQ_Pin)==0)
+        WR_REQ_PHASE=0;
+    else
+        WR_REQ_PHASE=1;
+
+    if (WR_REQ_PHASE==0){
+
         flgPacket=0;
         wrData=0;
         prevWrData=0;
@@ -83,7 +92,6 @@ void SmartPortWrReqIRQ(){
         HAL_TIM_PWM_Stop_IT(&htim2,TIM_CHANNEL_3);
         packet_buffer[wrBytesReceived++]=0x0;
         flgPacket=1;
-        
     }
         
 }
@@ -131,18 +139,16 @@ void printbits(){
   * @retval None
   */
 void SmartPortReceiveDataIRQ(){
-    // ADD WR_REQ IRQ TO MANAGE START & STOP OF THE TIMER
+        // ADD WR_REQ IRQ TO MANAGE START & STOP OF THE TIMER
 
-    //if (flgPacket==0){
-        HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_SET);
+        if ((GPIOA->IDR & WR_DATA_Pin)==0)                                       // get WR_DATA DO NOT USE THE HAL function creating an overhead
+            wrData=0;
+        else
+            wrData=1;
 
-        wrData=HAL_GPIO_ReadPin(WR_DATA_GPIO_Port, WR_DATA_Pin);  // get WR_DATA
-        
         wrData^= 0x01u;                                                           // get /WR_DATA
         xorWrData=wrData ^ prevWrData;                                            // Compute Magnetic polarity inversion
         prevWrData=wrData; 
-        //setRddataPort(1);                                                       // for next cycle keep the wrData
-        //HAL_GPIO_WritePin(RD_DATA_GPIO_Port,RD_DATA_Pin,xorWrData);
 
         byteWindow<<=1;
         byteWindow|=xorWrData;
@@ -153,29 +159,18 @@ void SmartPortReceiveDataIRQ(){
             
             packet_buffer[wrBytes]=byteWindow;
             //packet_buffer[(wrBytes+1)%603]=0x0;                               // seems to be obvious but to be tested
-            if (byteWindow==0xC3 && wrBitCounter>10 && wrStartOffset==0)                           // Identify when the message start
+            if (byteWindow==0xC3 && wrBitCounter>10 && wrStartOffset==0)       // Identify when the message start
                 wrStartOffset=wrBitCounter;
             
             byteWindow=0x0;
 
             if (wrStartOffset!=0)                                               // Start writing to packet_buffer only if offset is not 0 (after sync byte)
                 wrBytes++;
-            //wrCycleWithNoBytes=0;
-        }
-        //dbgbuf[wrBitCounter]=xorWrData;
 
-        wrBitCounter++;                                                           // Next bit please ;)
-        //wrCycleWithNoBytes++;
-        wrBytesReceived=wrBytes;
-        /*
-        if (wrCycleWithNoBytes>16){                                               // Assuming that with 32 x 4us with no Bytes we have a timeout
-            flgPacket=1;
-            //wrBytesReceived=wrBytes;
-            wrBytes=0;
-            log_info("never hit");
         }
-        */
-    //}
+        wrBitCounter++;                                                           // Next bit please ;)
+        wrBytesReceived=wrBytes;
+        
 }
 
 static uint8_t nextBit=0;
@@ -306,6 +301,8 @@ char * SmartPortFindImage(char * pattern){
 
 void SmartPortInit(){
     log_info("SmartPort init");
+
+    HAL_GPIO_WritePin(GPIOB,GPIO_PIN_8,GPIO_PIN_RESET);                                    // we need to set it High
     
     HAL_TIM_PWM_Stop_IT(&htim2,TIM_CHANNEL_3);
     HAL_TIMEx_PWMN_Stop(&htim1,TIM_CHANNEL_2);

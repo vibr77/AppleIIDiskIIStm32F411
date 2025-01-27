@@ -1,5 +1,12 @@
+#include <ctype.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 
-#include "stdio.h"
+#include "fatfs.h"
+
+
 #include "display.h"
 #include "ssd1306.h"
 #include "defines.h"
@@ -9,6 +16,10 @@
 #include "log.h"
 #include "favorites.h"
 #include "configFile.h"
+
+
+
+
 
 extern list_t * dirChainedList;
 extern list_t * favoritesChainedList;
@@ -22,7 +33,17 @@ extern uint8_t bootImageIndex;
 extern uint8_t flgSoundEffect;
 extern image_info_t mountImageInfo;
 
+extern uint8_t SSD1306_Buffer[SSD1306_BUFFER_SIZE];
+
+extern FATFS fs;                                            // fatfs global variable <!> do not remount witihn a function the fatfs otherwise it breaks the rest
+extern long database;                                     // start of the data segment in FAT
+extern int csize;
+extern volatile enum FS_STATUS fsState; 
+
 extern enum STATUS (*ptrUnmountImage)();
+
+uint8_t scrI=0;
+
 
 /* BTN FUNCTION POINTER CALLED FROM IRQ*/
 extern void (*ptrbtnUp)(void *);                                 
@@ -268,10 +289,10 @@ void updateChainedListDisplay(int init, list_t * lst ){
     if (fsDispItem[i].status!=0){
       
       ssd1306_SetColor(White);
-      dispIcon(1,(1+i)*9+offset,fsDispItem[i].icon);
+      dispIcon(1,(1+i)*SCREEN_LINE_HEIGHT+offset,fsDispItem[i].icon);
 
       ssd1306_SetColor(White);
-      displayStringAtPosition(1+h_offset,(1+i)*9+offset,fsDispItem[i].title);
+      displayStringAtPosition(1+h_offset,(1+i)*SCREEN_LINE_HEIGHT+offset,fsDispItem[i].title);
       if (fsDispItem[i].selected==1){
         inverseStringAtPosition(1+i,offset);
       }
@@ -283,9 +304,12 @@ void updateChainedListDisplay(int init, list_t * lst ){
     sprintf(tmp,"%02d/%02d",selectedIndx+1,lstCount);
   else
     sprintf(tmp,"Empty");
-  displayStringAtPosition(96,6*9+1,tmp);
+  displayStringAtPosition(96,6*SCREEN_LINE_HEIGHT+1,tmp);
 
   ssd1306_UpdateScreen();
+  
+  makeScreenShot(scrI);
+  scrI++;
 }
 
 
@@ -351,6 +375,7 @@ void processUpdirFSItem(){
     if (i==0)
       currentFullPath[0]=0x0;
   }
+
 }
 
 void processSelectFSItem(){
@@ -414,23 +439,31 @@ void mountImageScreen(char * filename){
   #pragma GCC diagnostic pop
   
   ssd1306_SetColor(White);
-  displayStringAtPosition(5,1*9,"Mounting:");
-  displayStringAtPosition(5,2*9,tmp2);
+  displayStringAtPosition(5,1*SCREEN_LINE_HEIGHT,"Mounting:");
+  displayStringAtPosition(5,2*SCREEN_LINE_HEIGHT,tmp2);
   
-  displayStringAtPosition(30,4*9,"YES");
-  displayStringAtPosition(30,5*9,"NO");
+  displayStringAtPosition(30,4*SCREEN_LINE_HEIGHT,"YES");
+  displayStringAtPosition(30,5*SCREEN_LINE_HEIGHT,"NO");
   
   ssd1306_SetColor(Inverse);
-  ssd1306_FillRect(30-5,4*9-1,50,9);
+  ssd1306_FillRect(30-5,4*SCREEN_LINE_HEIGHT-1,50,9);
   ssd1306_UpdateScreen();
+
+  makeScreenShot(scrI);
+  scrI++;
+
 }
 
 void toggleMountOption(int i){
   
   ssd1306_SetColor(Inverse);
-  ssd1306_FillRect(30-5,4*9-1,50,9);
-  ssd1306_FillRect(30-5,5*9-1,50,9);
+  ssd1306_FillRect(30-5,4*SCREEN_LINE_HEIGHT-1,50,9);
+  ssd1306_FillRect(30-5,5*SCREEN_LINE_HEIGHT-1,50,9);
   ssd1306_UpdateScreen();
+
+  makeScreenShot(scrI);
+  scrI++;
+
 }
 
 void initSplashScreen(){
@@ -441,9 +474,13 @@ void initSplashScreen(){
   ssd1306_Clear();
   ssd1306_SetColor(White);
   dispIcon32x32(1,15,0);
-  displayStringAtPosition(35,3*9,"SmartDisk ][");
-  displayStringAtPosition(78,6*9,_VERSION);
+  displayStringAtPosition(35,3*SCREEN_LINE_HEIGHT,"SmartDisk ][");
+  displayStringAtPosition(78,6*SCREEN_LINE_HEIGHT,_VERSION);
   ssd1306_UpdateScreen();
+
+  makeScreenShot(scrI);
+  scrI++;
+
 }
 
 /*
@@ -460,19 +497,19 @@ enum STATUS initIMAGEScreen(char * imageName,int type){
   ssd1306_SetColor(White);
   
   char CL,WP,SYN;
-  displayStringAtPosition(5,1*9,mountImageInfo.title);
+  displayStringAtPosition(5,1*SCREEN_LINE_HEIGHT,mountImageInfo.title);
   if (mountImageInfo.type==0)
-    displayStringAtPosition(5,2*9,"type: NIC");
+    displayStringAtPosition(5,2*SCREEN_LINE_HEIGHT,"type: NIC");
   else if (mountImageInfo.type==1)
-    displayStringAtPosition(5,2*9,"type: WOZ");
+    displayStringAtPosition(5,2*SCREEN_LINE_HEIGHT,"type: WOZ");
   else if (mountImageInfo.type==2)
-    displayStringAtPosition(5,2*9,"type: DSK");
+    displayStringAtPosition(5,2*SCREEN_LINE_HEIGHT,"type: DSK");
   else if (mountImageInfo.type==3)
-    displayStringAtPosition(5,2*9,"type: PO ");
+    displayStringAtPosition(5,2*SCREEN_LINE_HEIGHT,"type: PO ");
   else
-    displayStringAtPosition(5,2*9,"type: ERR ");
+    displayStringAtPosition(5,2*SCREEN_LINE_HEIGHT,"type: ERR ");
   
-  displayStringAtPosition(5,3*9,"Track: 0");
+  displayStringAtPosition(5,3*SCREEN_LINE_HEIGHT,"Track: 0");
 
   if (mountImageInfo.cleaned==1)
     CL='Y';
@@ -490,15 +527,19 @@ enum STATUS initIMAGEScreen(char * imageName,int type){
     SYN='N';
 
   sprintf(tmp,"CL:%c OT:%d",CL,mountImageInfo.optimalBitTiming);
-  displayStringAtPosition(5,5*9,tmp);
+  displayStringAtPosition(5,5*SCREEN_LINE_HEIGHT,tmp);
 
   sprintf(tmp,"WP:%c SYN:%c V:%d",WP,SYN,mountImageInfo.version);
-  displayStringAtPosition(5,6*9,tmp);
+  displayStringAtPosition(5,6*SCREEN_LINE_HEIGHT,tmp);
   if (mountImageInfo.favorite==1)
     dispIcon12x12(115,18,0);
   else
     dispIcon12x12(115,18,1);
   ssd1306_UpdateScreen();
+
+  makeScreenShot(scrI);
+  scrI++;
+
   return RET_OK;
 }
 
@@ -514,16 +555,16 @@ void updateIMAGEScreen(uint8_t status,uint8_t trk){
 
     if (currentTrk!=trk){
       sprintf(tmp,"TRACK: %02d",trk);
-      displayStringAtPosition(5,3*9,tmp);
+      displayStringAtPosition(5,3*SCREEN_LINE_HEIGHT,tmp);
       currentTrk=trk;
     }
     
     if (status==0){
       sprintf(tmp,"RD");
-      displayStringAtPosition(72,3*9,tmp);
+      displayStringAtPosition(72,3*SCREEN_LINE_HEIGHT,tmp);
     }else if(status==1){
       sprintf(tmp,"WR");
-      displayStringAtPosition(72,3*9,tmp);
+      displayStringAtPosition(72,3*SCREEN_LINE_HEIGHT,tmp);
     }
     
     ssd1306_SetColor(Black);
@@ -670,7 +711,7 @@ void processSoundEffect(){
 
 void processClearprefs(){
   deleteConfigFile();
-  displayStringAtPosition(1,6*9+1,"Prefs cleared");
+  displayStringAtPosition(1,6*SCREEN_LINE_HEIGHT+1,"Prefs cleared");
   ssd1306_UpdateScreen();
 }
 
@@ -678,12 +719,12 @@ void processClearFavorites(){
   wipeFavorites();
   saveConfigFile();
   buildLstFromFavorites();
-  displayStringAtPosition(1,6*9+1,"Favorites cleared");
+  displayStringAtPosition(1,6*SCREEN_LINE_HEIGHT+1,"Favorites cleared");
   ssd1306_UpdateScreen();
 }
 
 void processMakeFs(){
-  displayStringAtPosition(1,6*9+1,"CONFIRM ?");
+  displayStringAtPosition(1,6*SCREEN_LINE_HEIGHT+1,"CONFIRM ?");
   mnuItem[6].triggerfunction=processMakeFsConfirmed;
   ptrbtnRet=processMakeFsBtnRet;
   ssd1306_UpdateScreen();
@@ -713,7 +754,7 @@ void processMakeFsConfirmed(){
 void processMakeFsBtnRet(){
   mnuItem[6].triggerfunction=processMakeFs;
   ptrbtnRet=processBtnRet;
-  displayStringAtPosition(1,6*9+1,"         ");
+  displayStringAtPosition(1,6*SCREEN_LINE_HEIGHT+1,"         ");
   ssd1306_UpdateScreen();
 }
 
@@ -819,20 +860,20 @@ void updateConfigMenuDisplay(int init){
     if (mnuDispItem[i].status!=0){
       uint8_t cMnuIndx=mnuDispItem[i].mnuItemIndx;
       ssd1306_SetColor(White);
-      dispIcon(1,(1+i)*9+offset,mnuItem[cMnuIndx].icon);
+      dispIcon(1,(1+i)*SCREEN_LINE_HEIGHT+offset,mnuItem[cMnuIndx].icon);
 
       ssd1306_SetColor(White);
-      displayStringAtPosition(1+h_offset,(1+i)*9+offset,mnuItem[cMnuIndx].title);
+      displayStringAtPosition(1+h_offset,(1+i)*SCREEN_LINE_HEIGHT+offset,mnuItem[cMnuIndx].title);
       
       if (mnuItem[cMnuIndx].type==1){
         if (mnuItem[cMnuIndx].ival==1)
-          dispIcon(118,(1+i)*9+offset,7); // 7 FULL
+          dispIcon(118,(1+i)*SCREEN_LINE_HEIGHT+offset,7); // 7 FULL
         else
-          dispIcon(118,(1+i)*9+offset,6); // 7 FULL
+          dispIcon(118,(1+i)*SCREEN_LINE_HEIGHT+offset,6); // 7 FULL
       }else if (mnuItem[cMnuIndx].type==2){
           char sztmp[5];
           sprintf(sztmp,"%d",mnuItem[cMnuIndx].ival);
-          displayStringAtPosition(118,(1+i)*9+offset,sztmp); 
+          displayStringAtPosition(118,(1+i)*SCREEN_LINE_HEIGHT+offset,sztmp); 
       }
 
       if (mnuDispItem[i].selected==1){
@@ -842,6 +883,10 @@ void updateConfigMenuDisplay(int init){
   }
 
   ssd1306_UpdateScreen();
+
+  makeScreenShot(scrI);
+  scrI++;
+
 }
 void processBootImageIndex(){
 
@@ -946,11 +991,13 @@ void initConfigMenuScreen(int i){
   ssd1306_DrawLine(0,8,127,8);
 
   ssd1306_SetColor(White);
-  ssd1306_DrawLine(0,6*9-1,127,6*9-1);
+  ssd1306_DrawLine(0,6*SCREEN_LINE_HEIGHT-1,127,6*SCREEN_LINE_HEIGHT-1);
 
-  displayStringAtPosition(1,6*9+1,"");
+  displayStringAtPosition(1,6*SCREEN_LINE_HEIGHT+1,"");
   ssd1306_UpdateScreen();
 
+  makeScreenShot(scrI);
+  scrI++;
 
   return;
 
@@ -1009,10 +1056,14 @@ void initConfigEmulationScreen(){
   ssd1306_DrawLine(0,8,127,8);
 
   ssd1306_SetColor(White);
-  ssd1306_DrawLine(0,6*9-1,127,6*9-1);
+  ssd1306_DrawLine(0,6*SCREEN_LINE_HEIGHT-1,127,6*SCREEN_LINE_HEIGHT-1);
 
-  displayStringAtPosition(1,6*9+1,"");
+  displayStringAtPosition(1,6*SCREEN_LINE_HEIGHT+1,"");
   ssd1306_UpdateScreen();
+
+  makeScreenShot(scrI);
+  scrI++;
+
   return;
 }
 
@@ -1035,6 +1086,8 @@ void processEmulationTypeOption(int arg){
   updateConfigMenuDisplay(-1);
   setConfigParamInt("emulationType",arg);
   saveConfigFile();
+
+  
 return;
 }
 
@@ -1118,19 +1171,23 @@ void initImageMenuScreen(int i){
 
   ssd1306_SetColor(White);
   for (int j=0;j<numItems;j++){
-    displayStringAtPosition(1+h_offset,(1+j)*9+5,menuItem[j]);
-    dispIcon(1,(1+j)*9+5,menuIcon[j]);
+    displayStringAtPosition(1+h_offset,(1+j)*SCREEN_LINE_HEIGHT+5,menuItem[j]);
+    dispIcon(1,(1+j)*SCREEN_LINE_HEIGHT+5,menuIcon[j]);
   }
 
   ssd1306_SetColor(Inverse);
-  ssd1306_FillRect(1,(1+i)*9-1+5,126,9);
+  ssd1306_FillRect(1,(1+i)*SCREEN_LINE_HEIGHT-1+5,126,9);
   
   ssd1306_SetColor(White);
-  ssd1306_DrawLine(0,6*9-1,127,6*9-1);
+  ssd1306_DrawLine(0,6*SCREEN_LINE_HEIGHT-1,127,6*SCREEN_LINE_HEIGHT-1);
 
-  displayStringAtPosition(1,6*9+1,_VERSION);
+  displayStringAtPosition(1,6*SCREEN_LINE_HEIGHT+1,_VERSION);
   ssd1306_UpdateScreen();
   currentImageMenuItem=i;
+
+  makeScreenShot(scrI);
+  scrI++;
+
   return;
 
 }
@@ -1211,20 +1268,23 @@ menuIcon[3]=3;
 
   ssd1306_SetColor(White);
   for (int j=0;j<numItems;j++){
-    displayStringAtPosition(1+h_offset,(1+j)*9+5,menuItem[j]);
+    displayStringAtPosition(1+h_offset,(1+j)*SCREEN_LINE_HEIGHT+5,menuItem[j]);
 
-    dispIcon(1,(1+j)*9+5,menuIcon[j]);
+    dispIcon(1,(1+j)*SCREEN_LINE_HEIGHT+5,menuIcon[j]);
   }
 
   ssd1306_SetColor(Inverse);
-  ssd1306_FillRect(1,(1+i)*9-1+5,126,9);
+  ssd1306_FillRect(1,(1+i)*SCREEN_LINE_HEIGHT-1+5,126,9);
   
   ssd1306_SetColor(White);
-  ssd1306_DrawLine(0,6*9-1,127,6*9-1);
+  ssd1306_DrawLine(0,6*-1,127,6*SCREEN_LINE_HEIGHT-1);
 
-  displayStringAtPosition(1,6*9+1,_VERSION);
+  displayStringAtPosition(1,6*SCREEN_LINE_HEIGHT+1,_VERSION);
   ssd1306_UpdateScreen();
   currentMainMenuItem=i;
+
+  makeScreenShot(scrI);
+  scrI++;
   return;
 
 }
@@ -1233,8 +1293,8 @@ void toggleMainMenuOption(int i){         // Todo checked if used ?
   
 
   ssd1306_SetColor(Inverse);
-  ssd1306_FillRect(30-5,4*9-1,50,9);
-  ssd1306_FillRect(30-5,5*9-1,50,9);
+  ssd1306_FillRect(30-5,4*SCREEN_LINE_HEIGHT-1,50,9);
+  ssd1306_FillRect(30-5,5*SCREEN_LINE_HEIGHT-1,50,9);
   ssd1306_UpdateScreen();
 }
 /*
@@ -1247,8 +1307,8 @@ void initErrorScreen(char * msg){
 
   clearScreen();
   ssd1306_SetColor(White);
-  displayStringAtPosition(30,3*9, "ERROR:");
-  displayStringAtPosition(30,4*9, msg);
+  displayStringAtPosition(30,3*SCREEN_LINE_HEIGHT, "ERROR:");
+  displayStringAtPosition(30,4*SCREEN_LINE_HEIGHT, msg);
   dispIcon24x24(5,22,1);
   ssd1306_UpdateScreen();
 }
@@ -1260,16 +1320,16 @@ void initFSScreen(char * path){
   ssd1306_SetColor(White);
   displayStringAtPosition(0,0,"File listing");
   ssd1306_DrawLine(0,8,127,8);
-  ssd1306_DrawLine(0,6*9-1,127,6*9-1);
+  ssd1306_DrawLine(0,6*SCREEN_LINE_HEIGHT-1,127,6*SCREEN_LINE_HEIGHT-1);
   
   char tmp[32];
   sprintf(tmp,"xx/xx");
-  displayStringAtPosition(96,6*9+1,tmp);
+  displayStringAtPosition(96,6*SCREEN_LINE_HEIGHT+1,tmp);
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wformat-truncation"
   snprintf(tmp,18,"%s",currentPath);
 #pragma GCC diagnostic pop
-  displayStringAtPosition(0,6*9+1,tmp);
+  displayStringAtPosition(0,6*SCREEN_LINE_HEIGHT+1,tmp);
 
   ssd1306_UpdateScreen();
 }
@@ -1336,11 +1396,11 @@ void initFavoriteScreen(){
   ssd1306_SetColor(White);
   displayStringAtPosition(0,0,"Favorites");
   ssd1306_DrawLine(0,8,127,8);
-  ssd1306_DrawLine(0,6*9-1,127,6*9-1);
+  ssd1306_DrawLine(0,6*SCREEN_LINE_HEIGHT-1,127,6*SCREEN_LINE_HEIGHT-1);
   
   char tmp[32];
   sprintf(tmp,"xx/10");
-  displayStringAtPosition(96,6*9+1,tmp);
+  displayStringAtPosition(96,6*SCREEN_LINE_HEIGHT+1,tmp);
 
   ssd1306_UpdateScreen();
 
@@ -1357,28 +1417,36 @@ void initSmartPortHD(){
   clearScreen();
   
   ssd1306_SetColor(White);
-  dispIcon32x32(1,18,1);
-  displayStringAtPosition(35,2*9,"SMARTPORT");
-  displayStringAtPosition(35,3*9,"HD");
+  dispIcon32x32(1,1,1);
+  displayStringAtPosition(35,1*SCREEN_LINE_HEIGHT,"SMARTPORT HD");
+  //displayStringAtPosition(35,2*9,"HD");
   ssd1306_UpdateScreen();
 
 }
 
 void updateImageSmartPortHD(char * filename,uint8_t i){
   // Display the 4 image Filename without with extension and only 10 char.
-  
+
+  char tmp[22]; 
   ssd1306_SetColor(White);
+
   if (filename!=NULL){
     uint8_t len=strlen(filename);
-    len=(len-3)%10;                                   // Remove 3 char (.PO) and limit to 10 char
-    char tmp[13];
-    snprintf(tmp,12,"%d:%s",i,filename+len);
-    if (i%2==0)
-      displayStringAtPosition(1,(4+i/2)*9,tmp);       // 1st left half of the screen Line 1 & 2 
-    else
-      displayStringAtPosition(60,(4+i/4)*9,tmp);      // 2nd half of the screen Line 3 & 4 
+    len=(len-3-5);                                  // Remove 3 char (.PO) and limit to 10 char
+    if (len>16)
+      len=16;
+
+    filename[6]=toupper(filename[6]);
+    snprintf(tmp,len+2,"%d:%s",i,filename+6);
+    
+    displayStringAtPosition(1,(3+i)*SCREEN_LINE_HEIGHT,tmp); 
+  }else{
+    sprintf(tmp,"%d:Empty",i);
+    displayStringAtPosition(1,(3+i)*SCREEN_LINE_HEIGHT,tmp); 
   }
   ssd1306_UpdateScreen();
+  makeScreenShot(scrI);
+  scrI++;
 }
 
 void updateSmartportHD(uint8_t imageIndex, enum EMUL_CMD cmd ){
@@ -1387,7 +1455,7 @@ void updateSmartportHD(uint8_t imageIndex, enum EMUL_CMD cmd ){
     return;
   }
 
-  uint8_t icoVOffset=21;
+  uint8_t icoVOffset=8;
   uint8_t icoHOffset=118;
 
   ssd1306_SetColor(Black);
@@ -1404,14 +1472,14 @@ void updateSmartportHD(uint8_t imageIndex, enum EMUL_CMD cmd ){
   
   char szTmp[5];
   if (cmd == EMUL_READ){
-    sprintf(szTmp,"RD %d",imageIndex);
+    sprintf(szTmp,"RD");
   }else if (cmd == EMUL_WRITE){
-    sprintf(szTmp,"WR %d",imageIndex);                            // Need to change to short instead of printing int 0-65000
+    sprintf(szTmp,"WR");                            // Need to change to short instead of printing int 0-65000
   }else{
-    sprintf(szTmp,"  %d",imageIndex);
+    sprintf(szTmp,"I");
   }
 
-  displayStringAtPosition(icoVOffset,icoHOffset-40,szTmp);      // 2nd half of the screen Line 3 & 4 
+  displayStringAtPosition(128-2*7,(3+imageIndex)*SCREEN_LINE_HEIGHT,szTmp);      // 2nd half of the screen Line 3 & 4 
   ssd1306_UpdateScreen();  
 
 }
@@ -1440,7 +1508,6 @@ void dispIcon32x32(int x,int y,uint8_t indx){
     0x24, 0xc4, 0x02, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0x00, 0x00, 
     0x00, 0x00, 0x3f, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x27, 
     0x28, 0x27, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x3f, 0x00, 0x00,
-    // Smartport
     // 'smartport', 32x32px,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
@@ -1450,10 +1517,8 @@ void dispIcon32x32(int x,int y,uint8_t indx){
     0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x98, 0x98, 0x98, 0x98, 0x80, 0x80, 0xff, 0x00, 0x00, 
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-
-
-
   };
+
   ssd1306_DrawBitmap(x,y,32,32,icon32x32+128*indx);
 }
 
@@ -1471,20 +1536,20 @@ void dispIcon24x24(int x,int y,uint8_t indx){
     0x00, 0x00, 0x18, 0x1e, 0x33, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x33, 0x33, 0x30, 0x30, 0x30, 
     0x30, 0x30, 0x30, 0x33, 0x1e, 0x18, 0x00, 0x00
   };
+
   ssd1306_DrawBitmap(x,y,24,24,icon24x24+72*indx);
 }
 
 void dispIcon12x12(int x,int y,int indx){
   const unsigned char icon12x12[]={
-
     // 'fav_full_12x12', 12x12px
     0x00, 0x70, 0xf8, 0xfc, 0xfc, 0xf8, 0xf8, 0xfc, 0xfc, 0xf8, 0x70, 0x00, 0x00, 0x00, 0x00, 0x01, 
     0x03, 0x07, 0x07, 0x03, 0x01, 0x00, 0x00, 0x00,
-    
     // 'fav_empty_12x12', 12x12px
     0x00, 0x70, 0xf8, 0x9c, 0x0c, 0x08, 0x08, 0x0c, 0x9c, 0xf8, 0x70, 0x00, 0x00, 0x00, 0x00, 0x01, 
     0x03, 0x06, 0x06, 0x03, 0x01, 0x00, 0x00, 0x00
   };
+
   ssd1306_DrawBitmap(x,y,12,12,icon12x12+24*indx);
 }
 
@@ -1521,10 +1586,72 @@ void displayStringAtPosition(int x,int y,char * str){
 
 void inverseStringAtPosition(int lineNumber,int offset){
   ssd1306_SetColor(Inverse);
-  ssd1306_FillRect(0,lineNumber*9-1+offset,127,9);
+  ssd1306_FillRect(0,lineNumber*SCREEN_LINE_HEIGHT-1+offset,127,9);
 }
 
 void clearLineStringAtPosition(int lineNumber,int offset){
   ssd1306_SetColor(Black);
-  ssd1306_FillRect(0,lineNumber*9+offset,127,9);
+  ssd1306_FillRect(0,lineNumber*SCREEN_LINE_HEIGHT+offset,127,9);
+}
+
+enum STATUS makeScreenShot(uint8_t screenShotIndex){
+
+#if SCREENSHOT==0
+  return RET_OK;
+#endif
+
+  char filename[32];
+  FIL fil; 		                                                    //File handle
+  FRESULT fres;                                                   //Result after operations
+
+  sprintf(filename,"scr_%03d.scr",screenShotIndex);
+                 
+  HAL_NVIC_EnableIRQ(SDIO_IRQn);
+  HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
+  HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
+
+  while(fsState!=READY){};
+  fsState=BUSY;
+  
+  fres = f_open(&fil, filename, FA_WRITE | FA_OPEN_ALWAYS | FA_CREATE_ALWAYS);
+  
+  if (fres != FR_OK){
+	  log_error("f_open error (%i)", fres);
+    fsState=READY;
+    HAL_NVIC_DisableIRQ(SDIO_IRQn);
+    HAL_NVIC_DisableIRQ(DMA2_Stream3_IRQn);
+    HAL_NVIC_DisableIRQ(DMA2_Stream6_IRQn);
+    return RET_ERR;
+  }
+ 
+  UINT bytesWrote;
+  UINT totalBytes=0;
+
+  for (int i=0;i<2;i++){
+    fsState=WRITING;
+    fres = f_write(&fil, (unsigned char *)SSD1306_Buffer+i*512, 512, &bytesWrote);
+    
+    if(fres == FR_OK) {
+      totalBytes+=bytesWrote;
+    }else{
+	    log_error("f_write error (%i)\n",fres);
+      fsState=READY;
+      HAL_NVIC_DisableIRQ(SDIO_IRQn);
+      HAL_NVIC_DisableIRQ(DMA2_Stream3_IRQn);
+      HAL_NVIC_DisableIRQ(DMA2_Stream6_IRQn);
+      return RET_ERR;
+    }
+
+    while(fsState!=READY){};
+  }
+
+  log_info("screenShot: Wrote %i bytes to '%s'!\n", totalBytes,filename);
+  f_close(&fil);
+  fsState=READY;
+  
+  HAL_NVIC_DisableIRQ(SDIO_IRQn);
+  HAL_NVIC_DisableIRQ(DMA2_Stream3_IRQn);
+  HAL_NVIC_DisableIRQ(DMA2_Stream6_IRQn);
+
+  return RET_OK;
 }

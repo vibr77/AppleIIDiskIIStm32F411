@@ -29,7 +29,7 @@
 // Screen object
 static SSD1306_t SSD1306;
 // Screenbuffer
-static uint8_t SSD1306_Buffer[SSD1306_BUFFER_SIZE];
+uint8_t SSD1306_Buffer[SSD1306_BUFFER_SIZE];
 // SSD1306 display geometry
 SSD1306_Geometry display_geometry = SSD1306_GEOMETRY;
 
