@@ -108,6 +108,9 @@ UART
 
 // Changelog
 /*
+30.01.25 v0.79.4
+  + Fix Menu item (Emulation / Sound)
+  + Fix Menu <4 item navigation 
 26.01.25 v0.79.3
   + Smartport HD list of loaded image on screen
   + Smartport HD remove HAL GPIO overhead on WRITE Process

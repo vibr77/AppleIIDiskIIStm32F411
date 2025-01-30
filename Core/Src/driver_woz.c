@@ -191,7 +191,11 @@ enum STATUS mountWozFile(char * filename){
 
     unsigned int pt;
     char * woz_header=(char*)malloc(6*sizeof(char));
+    
+    //while (fsState!=READY){}
     f_read(&fil,woz_header,4,&pt);
+    //while (fsState!=READY){}
+    //log_info("header:%s",woz_header);
     if (!memcmp(woz_header,"\x57\x4F\x5A\x31",4)){                    //57 4F 5A 31
         log_info("Image:woz version 1");
         wozFile.version=1;

@@ -636,6 +636,8 @@ void DiskIIInit(){
     
     ph_track=0;
 
+    HAL_GPIO_WritePin(GPIOB,GPIO_PIN_8,GPIO_PIN_RESET);                     // DISK II PIN 8 IS GND
+
     mountImageInfo.optimalBitTiming=32;
     mountImageInfo.writeProtected=0;
     mountImageInfo.version=0;

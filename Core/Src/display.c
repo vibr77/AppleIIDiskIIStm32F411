@@ -695,14 +695,14 @@ return;
 }
 
 void processSoundEffect(){
-  if (mnuItem[4].ival==1){
+  if (mnuItem[6].ival==1){
     setConfigParamInt("soundEffect",0);
     flgSoundEffect=0;
-    mnuItem[4].ival=0;
+    mnuItem[6].ival=0;
   }else{
     setConfigParamInt("soundEffect",1);
     flgSoundEffect=1;
-    mnuItem[34].ival=1;
+    mnuItem[6].ival=1;
   }
     
   saveConfigFile();
@@ -760,7 +760,8 @@ void processMakeFsBtnRet(){
 
 
 void processPrevConfigItem(){
-  uint8_t itemCount=sizeof(mnuItem)/sizeof(MNUITEM_t);
+  //uint8_t itemCount=sizeof(mnuItem)/sizeof(MNUITEM_t);
+  uint8_t itemCount=mnuItemCount;
     
   if (itemCount<=SCREEN_MAX_LINE_ITEM && dispSelectedIndx==0){
     dispSelectedIndx=itemCount-1;
@@ -783,8 +784,9 @@ void processDispEmulationScreen(){
 }
 
 void processNextConfigItem(){
-  uint8_t itemCount=sizeof(mnuItem)/sizeof(MNUITEM_t);
-    
+  //uint8_t itemCount=sizeof(mnuItem)/sizeof(MNUITEM_t);
+  uint8_t itemCount=mnuItemCount;
+  log_info("item cnt %d dispSelectedIndx:%d",itemCount,dispSelectedIndx);
   if (itemCount<=SCREEN_MAX_LINE_ITEM && dispSelectedIndx==itemCount-1){
     dispSelectedIndx=0;
   }else if (dispSelectedIndx==(SCREEN_MAX_LINE_ITEM-1))
@@ -1013,6 +1015,7 @@ void initConfigMenuScreen(int i){
 void initConfigEmulationScreen(){
 
   mnuItemCount=3;
+  dispSelectedIndx=0;
   u_int8_t i=0;
   if (i>=mnuItemCount)
     i=0;
@@ -1277,7 +1280,7 @@ menuIcon[3]=3;
   ssd1306_FillRect(1,(1+i)*SCREEN_LINE_HEIGHT-1+5,126,9);
   
   ssd1306_SetColor(White);
-  ssd1306_DrawLine(0,6*-1,127,6*SCREEN_LINE_HEIGHT-1);
+  ssd1306_DrawLine(0,6*SCREEN_LINE_HEIGHT-1,127,6*SCREEN_LINE_HEIGHT-1);
 
   displayStringAtPosition(1,6*SCREEN_LINE_HEIGHT+1,_VERSION);
   ssd1306_UpdateScreen();
