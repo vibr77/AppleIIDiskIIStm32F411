@@ -891,15 +891,21 @@ void updateConfigMenuDisplay(int init){
 
 }
 void processBootImageIndex(){
+  bootImageIndex++;
 
-  bootImageIndex=(bootImageIndex+1)%MAX_PARTITIONS;
-  mnuItem[4].ival=bootImageIndex+1;
+  if (bootImageIndex==5)
+    bootImageIndex=1;
+  //bootImageIndex=(bootImageIndex+1)%(MAX_PARTITIONS+1);
+  
+  mnuItem[4].ival=bootImageIndex;
+
   setConfigParamInt("bootImageIndex",bootImageIndex);
   saveConfigFile();
  
   updateConfigMenuDisplay(4);
   return;
 }
+
 void initConfigMenuScreen(int i){
   
   mnuItemCount=10;
@@ -952,14 +958,14 @@ void initConfigMenuScreen(int i){
   mnuItem[4].icon=10;
   mnuItem[4].triggerfunction=processBootImageIndex;
   mnuItem[4].arg=0;
-  mnuItem[4].ival=bootImageIndex+1;
+  mnuItem[4].ival=bootImageIndex;
 
   sprintf(mnuItem[5].title,"Boot folder");
   mnuItem[5].type=0;
   mnuItem[5].icon=10;
   mnuItem[5].triggerfunction=nothing;
   mnuItem[5].arg=0;
-  mnuItem[5].ival=bootImageIndex+1;
+  mnuItem[5].ival=0;
 
   sprintf(mnuItem[6].title,"Sound effect");
   mnuItem[6].type=1;
@@ -1070,6 +1076,7 @@ void initConfigEmulationScreen(){
   return;
 }
 
+uint8_t emulationTypeChanged=0;
 void processEmulationTypeOption(int arg){
   
   if (arg==0){
@@ -1089,12 +1096,18 @@ void processEmulationTypeOption(int arg){
   updateConfigMenuDisplay(-1);
   setConfigParamInt("emulationType",arg);
   saveConfigFile();
-
+  emulationTypeChanged=1;
   
 return;
 }
 
 void processReturnEmulationTypeItem(){
+  if (emulationTypeChanged==1){
+    HAL_Delay(300);
+    NVIC_SystemReset();
+
+    return;
+  }
   switchPage(CONFIG,NULL);
 }
 
@@ -1440,11 +1453,18 @@ void updateImageSmartPortHD(char * filename,uint8_t i){
       len=16;
 
     filename[6]=toupper(filename[6]);
-    snprintf(tmp,len+2,"%d:%s",i,filename+6);
+  
+    if ((i+1)==bootImageIndex)
+      snprintf(tmp,len+2,"*:%s",filename+6);
+    else
+      snprintf(tmp,len+2,"%d:%s",i+1,filename+6);
     
     displayStringAtPosition(1,(3+i)*SCREEN_LINE_HEIGHT,tmp); 
   }else{
-    sprintf(tmp,"%d:Empty",i);
+    if ((i+1)==bootImageIndex)
+      sprintf(tmp,"*:Empty");
+    else
+      sprintf(tmp,"%d:Empty",i+1);
     displayStringAtPosition(1,(3+i)*SCREEN_LINE_HEIGHT,tmp); 
   }
   ssd1306_UpdateScreen();
@@ -1472,14 +1492,21 @@ void updateSmartportHD(uint8_t imageIndex, enum EMUL_CMD cmd ){
       harvey_ball=0;
       dispIcon(icoHOffset,icoVOffset,13);
   }
-  
   char szTmp[5];
+
+  sprintf(szTmp,"  ");
+  for (int i=0;i<4;i++){
+    displayStringAtPosition(128-2*7,(3+i)*SCREEN_LINE_HEIGHT,szTmp);      // 2nd half of the screen Line 3 & 4 
+  }
+
   if (cmd == EMUL_READ){
     sprintf(szTmp,"RD");
   }else if (cmd == EMUL_WRITE){
     sprintf(szTmp,"WR");                            // Need to change to short instead of printing int 0-65000
+  }else if (cmd== EMUL_STATUS){
+    sprintf(szTmp,"I ");
   }else{
-    sprintf(szTmp,"I");
+    sprintf(szTmp,"  ");
   }
 
   displayStringAtPosition(128-2*7,(3+imageIndex)*SCREEN_LINE_HEIGHT,szTmp);      // 2nd half of the screen Line 3 & 4 

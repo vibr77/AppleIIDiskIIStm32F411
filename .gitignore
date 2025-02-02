@@ -15,3 +15,10 @@ CMake*
 STM32F411CEUX_FLASH_bkp*
 .DS_Store
 blink.ino.uf2
+<<<<<<< Updated upstream
+=======
+*.scr
+*.scr.bmp
+tmp.c
+
+>>>>>>> Stashed changes

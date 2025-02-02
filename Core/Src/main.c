@@ -108,6 +108,16 @@ UART
 
 // Changelog
 /*
+02.02.25 v0.79.6
+  + [Smartport] Fixing boot duration adjust to 500ms IIGS boot issue
+02.02.25 v0.79.5
+  + [ALL] Changing Timer 2 period -1
+  + [SmartPort] Fixing mounting image
+  + [SmartPort] Fixing SmartPort boot order
+  + [SmartPort] Fixing SmartPort boot index
+  + [SmartPort] Fixing display Image
+  + [SmartPort] Adding display status
+
 30.01.25 v0.79.4
   + Fix Menu item (Emulation / Sound)
   + Fix Menu <4 item navigation 
@@ -1013,14 +1023,18 @@ int main(void){
   /* USER CODE BEGIN 2 */
 
   log_set_level(LOG_INFO);
+  
+  //HAL_GPIO_WritePin(GPIOB,GPIO_PIN_8,GPIO_PIN_RESET);                                    // we need to set it High
+  //HAL_GPIO_WritePin(GPIOA,GPIO_PIN_11,GPIO_PIN_RESET);
 
   currentFullPathImageFilename[0]=0x0;
   currentFullPath[0]=0x0;
   tmpFullPathImageFilename[0]=0x0;
 
-  log_info("************** BOOTING ****************");                      // Data to send
+  //log_info("************** BOOTING ****************");                      // Data to send
   log_info("**     This is the sound of sea !    **");
-  log_info("***************************************");
+  //log_info("***************************************");
+  
   
   fres = f_mount(&fs, "", 1);                                       
   
@@ -1445,7 +1459,7 @@ static void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 0;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 32*12-1-5;                      // Needs to be investigate -5 otherwise does not work 
+  htim2.Init.Period = 32*12-1-2;                      // Needs to be investigate -5 otherwise does not work 
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)

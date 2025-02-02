@@ -300,10 +300,10 @@ char * SmartPortFindImage(char * pattern){
 }
 
 void SmartPortInit(){
-    log_info("SmartPort init");
+    //log_info("SmartPort init");
 
-    HAL_GPIO_WritePin(GPIOB,GPIO_PIN_8,GPIO_PIN_RESET);                                    // we need to set it High
-    
+    //HAL_GPIO_WritePin(GPIOB,GPIO_PIN_8,GPIO_PIN_SET);                                    // we need to set it High
+    //HAL_GPIO_WritePin(GPIOA,GPIO_PIN_11,GPIO_PIN_SET); 
     HAL_TIM_PWM_Stop_IT(&htim2,TIM_CHANNEL_3);
     HAL_TIMEx_PWMN_Stop(&htim1,TIM_CHANNEL_2);
 
@@ -328,10 +328,9 @@ void SmartPortInit(){
     switchPage(SMARTPORT,NULL);                                                                     // Display the Frame of the screen
 
     for (uint8_t i=0;i<MAX_PARTITIONS;i++){
-        uint8_t indx=(i+bootImageIndex)%MAX_PARTITIONS;
-        devices[indx].dispIndex=indx;
-        updateImageSmartPortHD(devices[indx].filename,i);                                        // Display the name of the PO according to the position
-
+        //uint8_t indx=(i+bootImageIndex)%MAX_PARTITIONS;
+        devices[i].dispIndex=i;
+        updateImageSmartPortHD(devices[i].filename,i);                                        // Display the name of the PO according to the position
     }
 
 }
@@ -409,15 +408,18 @@ void SmartPortMainLoop(){
     //HAL_TIM_PWM_Start_IT(&htim2,TIM_CHANNEL_3);
     //if (digitalRead(ejectPin) == HIGH) 
     //rotate_boot();
-    //initPartition=bootImageIndex;
+    if (bootImageIndex==0)
+        bootImageIndex=1;
+
+    initPartition=bootImageIndex-1;
     
     while (1) {
 
-        noid = 0;                                                                           // Reset noid flag
+        //noid = 0;                                                                           // Reset noid flag
         setWPProtectPort(0);                                                                // Set ack (wrprot) to input to avoid clashing with other devices when sp bus is not enabled 
                                                                                             // read phase lines to check for smartport reset or enable
 
-        initPartition=bootImageIndex;
+        //initPartition=bootImageIndex;
 
         switch (phase) {
                                                                                             // phase lines for smartport bus reset
@@ -462,10 +464,17 @@ void SmartPortMainLoop(){
                 
                                                                                             // lets check if the pkt is for us
                 if (packet_buffer[SP_COMMAND] != 0x85){                                     // if its an init pkt, then assume its for us and continue on
-                        
+                    noid = 0;
                     for  (partition = 0; partition < MAX_PARTITIONS; partition++){          // else check if its our one of our id's
-                        if ( devices[(partition + initPartition) % MAX_PARTITIONS].device_id != packet_buffer[SP_DEST])  //destination id
-                        noid++;
+                        uint8_t dev=(partition + initPartition) % MAX_PARTITIONS;
+                        if ( devices[dev].device_id != packet_buffer[SP_DEST]){
+                            noid++;
+                        } else{
+                            break;
+                        }
+                        
+                        //if ( devices[(partition + initPartition) % MAX_PARTITIONS].device_id != packet_buffer[SP_DEST])  //destination id
+                        //noid++;
                     }
 
                     if (noid == MAX_PARTITIONS){  //not one of our id's
@@ -538,12 +547,14 @@ void SmartPortMainLoop(){
                         for (partition = 0; partition < MAX_PARTITIONS; partition++) {                                  // Check if its one of ours
                             uint8_t dev=(partition + initPartition) % MAX_PARTITIONS;
                             if (devices[dev].device_id == dest && devices[dev].mounted==1 ) {                           // yes it is, and it's online, then reply
+                                
+                                updateSmartportHD(devices[dev].dispIndex,EMUL_STATUS);
                                                                                                                         // Added (unsigned short) cast to ensure calculated block is not underflowing.
                                 status_code = (packet_buffer[14] & 0x7f);                                               // | (((unsigned short)packet_buffer[16] << 3) & 0x80);
                                 log_info(" Status code: %2X",status_code);
                                 
                                 decode_data_packet();
-                                print_packet((unsigned char*) packet_buffer, 9);                            // Standard SmartPort command is 9 bytes
+                                //print_packet((unsigned char*) packet_buffer, 9);                                        // Standard SmartPort command is 9 bytes
                                 
                                 if (status_code == 0x03) {                                                              // if statcode=3, then status with device info block
                                     log_info("******** Sending DIB! ********");
@@ -551,10 +562,10 @@ void SmartPortMainLoop(){
                                     print_packet ((unsigned char*) packet_buffer,packet_length());
                                     
                                 } else {                                                                                // else just return device status
-                                    log_info("Sending status:");
+                                    /*log_info("Sending status:");
                                     log_info("  dest: %2X",dest);
                                     log_info("  Partition ID: %2X",devices[dev].device_id);
-                                    log_info("  Status code:%2X",status_code);
+                                    log_info("  Status code:%2X",status_code);*/
                                     encode_status_reply_packet(devices[dev]);        
                                 }
 
@@ -587,7 +598,7 @@ void SmartPortMainLoop(){
                                                                                                                 // Added (unsigned short) cast to ensure calculated block is not underflowing.
                                 status_code = (packet_buffer[16] & 0x7f);
                                 log_info("Extended Status CMD: %2X",status_code);
-                                print_packet ((unsigned char*) packet_buffer,packet_length());
+                                //print_packet ((unsigned char*) packet_buffer,packet_length());
                                 if (status_code == 0x03) {                                                      // if statcode=3, then status with device info block
                                     log_info("Extended status DIB!");
                                 } else {                                                                        // else just return device status
@@ -760,7 +771,36 @@ void SmartPortMainLoop(){
                     case 0x85:                                                                                              // INIT CMD
 
                         dest = packet_buffer[SP_DEST];
+                        log_info("dbg %d %d",number_partitions_initialised,dest );
+                        
+                        uint numMountedPartition=0;
+                        for (partition = 0; partition < MAX_PARTITIONS; partition++) { 
+                            uint8_t dev=(partition + initPartition) % MAX_PARTITIONS;
+                            if (devices[dev].mounted==1)
+                                numMountedPartition++;
+                        }
 
+                        if (number_partitions_initialised <numMountedPartition)
+                            status = 0x80;                          // Not the last one
+                        else
+                            status = 0xFF;                          // the Last one
+
+                        for (partition = 0; partition < MAX_PARTITIONS; partition++) { 
+                            uint8_t dev=(partition + initPartition) % MAX_PARTITIONS;  
+                            if (devices[dev].mounted==1 && devices[dev].device_id == dest){
+                                log_info("A %d %d",dev,dest);
+                                number_partitions_initialised++;
+                                break;
+                            }
+                            else if (devices[dev].mounted==1 && devices[dev].device_id == 0){
+                                devices[dev].device_id=dest;
+                                log_info("B %d %d",dev,dest);
+                                number_partitions_initialised++;
+                                break;
+                            }
+                        
+                        }
+                        /*
                         if (number_partitions_initialised < MAX_PARTITIONS) {                                                // are all init'd yet
                             devices[(number_partitions_initialised - 1 + initPartition) % MAX_PARTITIONS].device_id = dest; //remember dest id for partition
                             number_partitions_initialised++;
@@ -770,12 +810,19 @@ void SmartPortMainLoop(){
                             devices[(number_partitions_initialised - 1 + initPartition) % MAX_PARTITIONS].device_id = dest; //remember dest id for partition
                             number_partitions_initialised++;
                             status = 0xff;
-                        }
+                        }*/
 
+                        /*for (partition = 0; partition < MAX_PARTITIONS; partition++) { 
+                            uint8_t dev=(partition + initPartition) % MAX_PARTITIONS;
+                            log_info("dest %d deviceid:%d",dev,devices[dev].device_id);
+                        }*/
+                        log_info("status dest %d:%02X",dest,status);
                         encode_init_reply_packet(dest, status);
                         SmartPortSendPacket(packet_buffer);
 
                         packet_buffer[0]=0x0; 
+
+                        
 
                         break;
                 } 

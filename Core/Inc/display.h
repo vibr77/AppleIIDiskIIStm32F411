@@ -4,7 +4,7 @@
 #ifndef disp
 #define disp
 
-enum EMUL_CMD{EMUL_READ,EMUL_WRITE};
+enum EMUL_CMD{EMUL_READ,EMUL_WRITE,EMUL_STATUS};
 enum page{FS,MOUNT,MENU,IMAGE,FAVORITE,CONFIG,EMULATIONTYPE,IMAGEMENU,SMARTPORT};
 
 char * getImageNameFromFullPath(char * fullPathImageName);
