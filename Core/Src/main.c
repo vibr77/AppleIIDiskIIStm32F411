@@ -108,6 +108,10 @@ UART
 
 // Changelog
 /*
+06.02.25 v0.80.1
+  + [SmartPort] Fixing Smartport write process, and it WORKS!!!
+  + [SmartPort] Managing incomming checksum command
+  + [SmartPort] Optimizing read time 
 02.02.25 v0.79.6
   + [Smartport] Fixing boot duration adjust to 500ms IIGS boot issue
 02.02.25 v0.79.5

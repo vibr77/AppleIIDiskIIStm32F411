@@ -444,17 +444,14 @@ void SmartPortMainLoop(){
             case 0x0f:
                 //HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);  // set RD_DATA LOW
                 
-                setWPProtectPort(1);                                              // Set ack to output, sp bus is enabled
+                setWPProtectPort(1);                                                        // Set ack to output, sp bus is enabled
                 assertAck();                                                                // Ready for next request                                           
                 
                 SmartportReceivePacket();                                                   // Receive Packet
-                
-                
-
-                /*int i=verify_cmdpkt_checksum();                                             // Verify Packet checksum
-                if (i!=0){
-                    log_error("Incomming checksum error");
-                }*/
+                                                                                            // Verify Packet checksum
+                if ( verify_cmdpkt_checksum()==RET_ERR  ){
+                    log_error("Incomming command checksum error");
+                }
                 
                 //---------------------------------------------
                 // STEP 1 CHECK IF INIT PACKET 
@@ -551,15 +548,15 @@ void SmartPortMainLoop(){
                                 updateSmartportHD(devices[dev].dispIndex,EMUL_STATUS);
                                                                                                                         // Added (unsigned short) cast to ensure calculated block is not underflowing.
                                 status_code = (packet_buffer[14] & 0x7f);                                               // | (((unsigned short)packet_buffer[16] << 3) & 0x80);
-                                log_info(" Status code: %2X",status_code);
+                                //log_info(" Status code: %2X",status_code);
                                 
-                                decode_data_packet();
+                                
                                 //print_packet((unsigned char*) packet_buffer, 9);                                        // Standard SmartPort command is 9 bytes
                                 
                                 if (status_code == 0x03) {                                                              // if statcode=3, then status with device info block
                                     log_info("******** Sending DIB! ********");
                                     encode_status_dib_reply_packet(devices[dev]);
-                                    print_packet ((unsigned char*) packet_buffer,packet_length());
+                                    //print_packet ((unsigned char*) packet_buffer,packet_length());
                                     
                                 } else {                                                                                // else just return device status
                                     /*log_info("Sending status:");
@@ -684,8 +681,6 @@ void SmartPortMainLoop(){
                     case 0x82:                                                                                      // is a writeblock cmd
                         dest = packet_buffer[SP_DEST];
 
-
-
                         if (flgSoundEffect==1){
                             TIM1->PSC=1000;
                             HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_2);
@@ -712,7 +707,7 @@ void SmartPortMainLoop(){
                             if (devices[dev].device_id == dest) {          // yes it is, then do the write
                                 
 
-                                updateSmartportHD(devices[dev].dispIndex,EMUL_WRITE);
+                                //updateSmartportHD(devices[dev].dispIndex,EMUL_WRITE);
 
                                 block_num = (LBN & 0x7f) | (((unsigned short)LBH << 3) & 0x80);                         // Added (unsigned short) cast to ensure calculated block is not underflowing.
                                 block_num = block_num + (((LBL & 0x7f) | (((unsigned short)LBH << 4) & 0x80)) << 8);    // block num second byte, Added (unsigned short) cast to ensure calculated block is not underflowing.
@@ -771,7 +766,7 @@ void SmartPortMainLoop(){
                     case 0x85:                                                                                              // INIT CMD
 
                         dest = packet_buffer[SP_DEST];
-                        log_info("dbg %d %d",number_partitions_initialised,dest );
+                        //log_info("dbg %d %d",number_partitions_initialised,dest );
                         
                         uint numMountedPartition=0;
                         for (partition = 0; partition < MAX_PARTITIONS; partition++) { 
@@ -788,13 +783,13 @@ void SmartPortMainLoop(){
                         for (partition = 0; partition < MAX_PARTITIONS; partition++) { 
                             uint8_t dev=(partition + initPartition) % MAX_PARTITIONS;  
                             if (devices[dev].mounted==1 && devices[dev].device_id == dest){
-                                log_info("A %d %d",dev,dest);
+                                //log_info("A %d %d",dev,dest);
                                 number_partitions_initialised++;
                                 break;
                             }
                             else if (devices[dev].mounted==1 && devices[dev].device_id == 0){
                                 devices[dev].device_id=dest;
-                                log_info("B %d %d",dev,dest);
+                                //log_info("B %d %d",dev,dest);
                                 number_partitions_initialised++;
                                 break;
                             }
@@ -822,8 +817,6 @@ void SmartPortMainLoop(){
 
                         packet_buffer[0]=0x0; 
 
-                        
-
                         break;
                 } 
                
@@ -831,8 +824,7 @@ void SmartPortMainLoop(){
             HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);  // set RD_DATA LOW
               
             assertAck();
-            
-        
+    
         }            
 
     return;
@@ -994,21 +986,21 @@ int decode_data_packet (void){
     unsigned char checksum = 0, bit0to6, bit7, oddbits, evenbits;
     unsigned char group_buffer[8];
 
-    numodd = packet_buffer[11] & 0x7f;                                                              // Handle arbitrary length packets :) 
-    numgrps = packet_buffer[12] & 0x7f;
+    numodd = packet_buffer[6] & 0x7f;                                                              // Handle arbitrary length packets :) 
+    numgrps = packet_buffer[7] & 0x7f;
 
-    for (count = 6; count < 13; count++)                                                            // First, checksum  packet header, because we're about to destroy it
+    for (count = 1; count < 8; count++)                                                            // First, checksum  packet header, because we're about to destroy it
         checksum = checksum ^ packet_buffer[count];                                                 // now xor the packet header bytes
 
-    evenbits = packet_buffer[599] & 0x55;
-    oddbits = (packet_buffer[600] & 0x55 ) << 1;
+    evenbits = packet_buffer[594] & 0x55;
+    oddbits = (packet_buffer[595] & 0x55 ) << 1;
 
     for(int i = 0; i < numodd; i++){                                                                 //add oddbyte(s), 1 in a 512 data packet
-        packet_buffer[i] = ((packet_buffer[13] << (i+1)) & 0x80) | (packet_buffer[14+i] & 0x7f);
+        packet_buffer[i] = ((packet_buffer[8] << (i+1)) & 0x80) | (packet_buffer[9+i] & 0x7f);
     }
 
     for (grpcount = 0; grpcount < numgrps; grpcount++){                                             // 73 grps of 7 in a 512 byte packet
-        memcpy(group_buffer, packet_buffer + 15 + (grpcount * 8), 8);
+        memcpy(group_buffer, packet_buffer + 10 + (grpcount * 8), 8);
         for (grpbyte = 0; grpbyte < 7; grpbyte++) {
             bit7 = (group_buffer[0] << (grpbyte + 1)) & 0x80;
             bit0to6 = (group_buffer[grpbyte + 1]) & 0x7f;
@@ -1019,6 +1011,9 @@ int decode_data_packet (void){
     for (count = 0; count < 512; count++)                                                           // Verify checksum
         checksum = checksum ^ packet_buffer[count];                                                 // XOR all the data bytes
 
+    log_info("write checksum %02X<>%02X",checksum,(oddbits | evenbits));
+    //print_packet ((unsigned char*) packet_buffer,packet_length());
+    
     if (checksum == (oddbits | evenbits))
         return 0;                                                                                   // NO error
     else
@@ -1502,7 +1497,7 @@ C3              PBEGIN    MARKS BEGINNING OF PACKET             32 micro Sec.   
 80              GRP7MSB   MSB's FOR 1ST GROUP OF 7              32 micro Sec.      17  11
 80              G7BYTE1   BYTE 1 FOR 1ST GROUP OF 7             32 micro Sec.      18  12
 
-C3 81 80 80 80 80 82 81 80 81 83 82 80 88 80 80 - ..80808080..80...80.8080
+0000: C3 81 80 80 80 80 82 81 80 81 83 82 80 88 80 80 - ..80808080..80...80.8080
 0010: 80 FF 80 FF BB C8
 
 */
@@ -1515,6 +1510,7 @@ C3 81 80 80 80 80 82 81 80 81 83 82 80 88 80 80 - ..80808080..80...80.8080
     calc_checksum ^= ((packet_buffer[SP_ODDMSB] << 2) & 0x80) | (packet_buffer[SP_PARMCNT] & 0x7f);
 
     // 1 group of 7 in a cmd packet
+    
     for (grpbyte = 0; grpbyte < 7; grpbyte++) {
         bit7 = (packet_buffer[SP_GRP7MSB] << (grpbyte + 1)) & 0x80;
         bit0to6 = (packet_buffer[SP_G7BYTE1 + grpbyte]) & 0x7f;
@@ -1522,12 +1518,16 @@ C3 81 80 80 80 80 82 81 80 81 83 82 80 88 80 80 - ..80808080..80...80.8080
     }
 
     // calculate checksum for overhead bytes
-    for (count = 0; count < 7; count++) // start from first id byte
+    for (count = 1; count < 8; count++) // start from first id byte
         calc_checksum ^= packet_buffer[count];
 
-    oddbits = (packet_buffer[length - 2] << 1) | 0x01;
-    evenbits = packet_buffer[length - 3];
+    oddbits = (packet_buffer[length - 2] & 0x55 )<< 1 ;
+    evenbits = packet_buffer[length - 3] & 0x55;
+    
     pkt_checksum = oddbits | evenbits;
+
+    // calculate checksum for overhead bytes
+    
 
     if ( pkt_checksum == calc_checksum )
         return RET_OK;
@@ -1591,6 +1591,7 @@ int packet_length (void){
     int x = 0;
 
     while (packet_buffer[x++]);
+
     return x - 1; // point to last packet byte = C8
 }
 
