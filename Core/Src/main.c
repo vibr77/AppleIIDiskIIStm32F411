@@ -1,8 +1,8 @@
 /* USER CODE BEGIN Header */
 /*
 __   _____ ___ ___        Author: Vincent BESSON
- \ \ / /_ _| _ ) _ \      Release: 0.79.2
-  \ V / | || _ \   /      Date: 2025.01.20
+ \ \ / /_ _| _ ) _ \      Release: 0.80.1
+  \ V / | || _ \   /      Date: 2025.02.07
    \_/ |___|___/_|_\      Description: Apple Disk II Emulator on STM32F4x
                 2025      Licence: Creative Commons
 ______________________
@@ -233,6 +233,7 @@ UART
 
 #include "emul_smartport.h"
 #include "emul_diskii.h"
+#include "emul_disk35.h"
 #include "configFile.h"
 #include "favorites.h"
 #include "log.h"

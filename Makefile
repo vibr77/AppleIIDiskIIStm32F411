@@ -44,6 +44,7 @@ Core/Src/driver_dsk.c \
 Core/Src/driver_2mg.c \
 Core/Src/emul_diskii.c \
 Core/Src/emul_smartport.c \
+Core/Src/emul_disk35.c \
 Core/Src/log.c \
 Core/Src/display.c \
 Core/Src/configFile.c \

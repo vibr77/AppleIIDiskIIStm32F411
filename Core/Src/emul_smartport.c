@@ -533,8 +533,8 @@ void SmartPortMainLoop(){
                     print_packet ((unsigned char*) packet_buffer, packet_length());
                 }
 
-                if (packet_buffer[SP_COMMAND]!=0x81)
-                    log_info("cmd:0x%02X dest:0x%02X",packet_buffer[SP_COMMAND], packet_buffer[SP_DEST]);
+                //if (packet_buffer[SP_COMMAND]!=0x81)
+                //    log_info("cmd:0x%02X dest:0x%02X",packet_buffer[SP_COMMAND], packet_buffer[SP_DEST]);
 
                 switch (packet_buffer[SP_COMMAND]) {
 
