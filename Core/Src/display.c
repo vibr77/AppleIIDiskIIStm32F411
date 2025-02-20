@@ -17,7 +17,9 @@
 #include "favorites.h"
 #include "configFile.h"
 
-
+#ifdef A2F_MODE
+#include "a2f.h"
+#endif
 
 
 
@@ -463,14 +465,36 @@ void toggleMountOption(int i){
 
   makeScreenShot(scrI);
   scrI++;
-
 }
 
+#ifdef A2F_MODE
 void initSplashScreen(){
   ssd1306_Init();
-  
+//  ssd1306_FlipScreenVertically(); 
+  ssd1306_Clear();
+  ssd1306_SetColor(White);
+  ssd1306_UpdateScreen();
+  ssd1306_DrawBitmap(1,1,128,64,a2fSplash);
+  for (int i=65; i>1; i-=4){
+    ssd1306_Clear();
+    ssd1306_DrawBitmap(1,i,128,65-i,a2fSplash);
+    ssd1306_UpdateScreen();
+    HAL_Delay(50);
+  }  
+  displayStringAtPosition(1,1*SCREEN_LINE_HEIGHT,"VIBR SmartDisk");
+  displayStringAtPosition(1,6*SCREEN_LINE_HEIGHT,_VERSION);
+  ssd1306_UpdateScreen();
+
+  makeScreenShot(scrI);
+  scrI++;
+  HAL_Delay(1000);
+  ssd1306_Clear();
+}
+
+#elif
+void initSplashScreen(){
+  ssd1306_Init(); 
   ssd1306_FlipScreenVertically();
-  
   ssd1306_Clear();
   ssd1306_SetColor(White);
   dispIcon32x32(1,15,0);
@@ -480,8 +504,8 @@ void initSplashScreen(){
 
   makeScreenShot(scrI);
   scrI++;
-
 }
+#endif
 
 /*
  * 
@@ -498,6 +522,11 @@ enum STATUS initIMAGEScreen(char * imageName,int type){
   
   char CL,WP,SYN;
   displayStringAtPosition(5,1*SCREEN_LINE_HEIGHT,mountImageInfo.title);
+
+#ifdef A2F_MODE
+  inverseStringAtPosition(1,0);
+#endif
+
   if (mountImageInfo.type==0)
     displayStringAtPosition(5,2*SCREEN_LINE_HEIGHT,"type: NIC");
   else if (mountImageInfo.type==1)

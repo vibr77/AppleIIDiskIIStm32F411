@@ -148,6 +148,11 @@ ifdef USE_BOOTLOADER
 C_DEFS += -DUSE_BOOTLOADER
 endif
 
+# Apple ][ Forever mode
+ifdef A2F_MODE
+C_DEFS += -DA2F_MODE
+endif
+
 # AS includes
 AS_INCLUDES = 
 
@@ -199,6 +204,9 @@ OPENOCD ?= openocd
 # default action: build all
 all: $(BUILD_DIR)/$(TARGET).elf $(BUILD_DIR)/$(TARGET).hex $(BUILD_DIR)/$(TARGET).bin
 
+ifdef USE_BOOTLOADER
+	python uf2conv/uf2conv.py -b 0x08010000 -f STM32F4 -o $(BUILD_DIR)/$(TARGET).uf2 $(BUILD_DIR)/$(TARGET).bin
+endif
 
 #######################################
 # build the application
