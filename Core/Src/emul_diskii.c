@@ -60,6 +60,11 @@ extern volatile enum FS_STATUS fsState;
 extern list_t * dirChainedList;
 extern uint8_t flgSoundEffect;
 
+#ifdef A2F_MODE
+extern uint8_t rLastState;
+extern uint8_t rEncoder;
+#endif
+
 // --------------------------------------------------------------------
 // Hook function for file type driver Woz,Dsk, Po, ...
 // --------------------------------------------------------------------

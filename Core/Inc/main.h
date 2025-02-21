@@ -41,12 +41,6 @@ extern "C" {
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
 
-#ifdef A2F_MODE
-// rotary encoder state
-extern uint8_t rLastState;
-extern uint8_t rEncoder;
-#endif
-
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/

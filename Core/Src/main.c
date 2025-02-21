@@ -332,6 +332,11 @@ uint8_t emulationType=0;
 uint8_t bootImageIndex=0;
 list_t * dirChainedList;
 
+#ifdef A2F_MODE
+// rotary encoder state
+uint8_t rLastState;
+uint8_t rEncoder;
+#endif
 
 // DEBUG BLOCK
 
@@ -1815,9 +1820,14 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
             GPIO_Pin == BTN_UP_Pin    ||       // BTN_UP
             GPIO_Pin == BTN_DOWN_Pin           // BTN_DOWN
             ) && buttonDebounceState==true){
-    
-    debounceBtn(GPIO_Pin);
-
+            if(HAL_GPIO_ReadPin(BTN_RET_GPIO_Port, BTN_RET_Pin) && // Reset on RE push
+               HAL_GPIO_ReadPin(BTN_ENTR_GPIO_Port, BTN_ENTR_Pin) &&
+               HAL_GPIO_ReadPin(BTN_UP_GPIO_Port, BTN_UP_Pin) &&
+               HAL_GPIO_ReadPin(BTN_DOWN_GPIO_Port, BTN_DOWN_Pin)){
+              NVIC_SystemReset();
+            }else{
+              debounceBtn(GPIO_Pin);
+            }
   }else if (GPIO_Pin == WR_REQ_Pin){
     
     ptrWrReqIRQ();
