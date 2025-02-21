@@ -404,6 +404,16 @@ void TIM4_IRQHandler(void){
     else{
       TIM4->ARR=400;                                      // No repeat back to normal timer value
     }
+
+#ifdef A2F_MODE
+    if(HAL_GPIO_ReadPin(BTN_RET_GPIO_Port, BTN_RET_Pin) && // Reset on RE push
+       HAL_GPIO_ReadPin(BTN_ENTR_GPIO_Port, BTN_ENTR_Pin) &&
+       HAL_GPIO_ReadPin(BTN_UP_GPIO_Port, BTN_UP_Pin) &&
+       HAL_GPIO_ReadPin(BTN_DOWN_GPIO_Port, BTN_DOWN_Pin)){
+          NVIC_SystemReset();
+    }
+#endif
+
   }
   TIM4->SR = 0;
 }
@@ -1821,18 +1831,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
             GPIO_Pin == BTN_DOWN_Pin           // BTN_DOWN
             ) && buttonDebounceState==true){
 
-#ifdef A2F_MODE
-            if(HAL_GPIO_ReadPin(BTN_RET_GPIO_Port, BTN_RET_Pin) && // Reset on RE push
-               HAL_GPIO_ReadPin(BTN_ENTR_GPIO_Port, BTN_ENTR_Pin) &&
-               HAL_GPIO_ReadPin(BTN_UP_GPIO_Port, BTN_UP_Pin) &&
-               HAL_GPIO_ReadPin(BTN_DOWN_GPIO_Port, BTN_DOWN_Pin)){
-              NVIC_SystemReset();
-            }else{
               debounceBtn(GPIO_Pin);
-            }
-#elif
-              debounceBtn(GPIO_Pin);
-#endif
 
   }else if (GPIO_Pin == WR_REQ_Pin){
     

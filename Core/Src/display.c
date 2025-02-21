@@ -1635,7 +1635,13 @@ void dispIcon(int x,int y,int indx){
 
 void clearScreen(){
   ssd1306_SetColor(Black);
-  ssd1306_FillRect(0,0,127,63);
+
+#ifdef A2F_MODE
+  ssd1306_FillRect(0,0,128,64);
+#elif
+  ssd1306_FillRect(,0,127,63);
+#endif
+
 }
 
 void displayStringAtPosition(int x,int y,char * str){
