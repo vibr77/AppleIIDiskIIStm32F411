@@ -481,7 +481,7 @@ void initSplashScreen(){
     ssd1306_UpdateScreen();
     HAL_Delay(50);
   }  
-  displayStringAtPosition(1,1*SCREEN_LINE_HEIGHT,"VIBR SmartDisk");
+  displayStringAtPosition(1,1*SCREEN_LINE_HEIGHT,"VIBR SmartDisk][");
   displayStringAtPosition(1,6*SCREEN_LINE_HEIGHT,_VERSION);
   ssd1306_UpdateScreen();
 
@@ -754,7 +754,7 @@ void processClearFavorites(){
 
 void processMakeFs(){
   displayStringAtPosition(1,6*SCREEN_LINE_HEIGHT+1,"CONFIRM ?");
-  mnuItem[6].triggerfunction=processMakeFsConfirmed;
+  mnuItem[9].triggerfunction=processMakeFsConfirmed;
   ptrbtnRet=processMakeFsBtnRet;
   ssd1306_UpdateScreen();
 
@@ -781,7 +781,7 @@ void processMakeFsConfirmed(){
 }
 
 void processMakeFsBtnRet(){
-  mnuItem[6].triggerfunction=processMakeFs;
+  mnuItem[9].triggerfunction=processMakeFs;
   ptrbtnRet=processBtnRet;
   displayStringAtPosition(1,6*SCREEN_LINE_HEIGHT+1,"         ");
   ssd1306_UpdateScreen();

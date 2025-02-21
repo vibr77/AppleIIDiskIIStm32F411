@@ -1,7 +1,7 @@
 (footprint "ALPS XDCR_RKJXT1F42001"
-	(version 20240108)
+	(version 20241229)
 	(generator "pcbnew")
-	(generator_version "8.0")
+	(generator_version "9.0")
 	(layer "F.Cu")
 	(property "Reference" "REF**"
 		(at -5.725 -10.535 0)
@@ -21,18 +21,6 @@
 		(effects
 			(font
 				(size 1 1)
-				(thickness 0.15)
-			)
-		)
-	)
-	(property "Footprint" ""
-		(at 0 0 0)
-		(layer "F.Fab")
-		(hide yes)
-		(uuid "ef7c104a-851f-4d2c-af9e-a99d14058894")
-		(effects
-			(font
-				(size 1.27 1.27)
 				(thickness 0.15)
 			)
 		)
@@ -69,7 +57,7 @@
 			(width 0.127)
 			(type solid)
 		)
-		(fill none)
+		(fill no)
 		(layer "F.SilkS")
 		(uuid "ace1985b-f4aa-4121-9176-ac741e65ca03")
 	)
@@ -80,7 +68,7 @@
 			(width 0.05)
 			(type solid)
 		)
-		(fill none)
+		(fill no)
 		(layer "F.CrtYd")
 		(uuid "9ce15efb-bdd3-4a36-83f4-04c938793734")
 	)
@@ -91,7 +79,7 @@
 			(width 0.127)
 			(type solid)
 		)
-		(fill none)
+		(fill no)
 		(layer "F.Fab")
 		(uuid "75c062d9-73f2-495b-8baf-f42b9fb6807d")
 	)
@@ -192,6 +180,7 @@
 		(solder_mask_margin 0.102)
 		(uuid "63537c91-2926-43f8-9366-d73da6981d4a")
 	)
+	(embedded_fonts no)
 	(model "${KIPRJMOD}/cad/RKJXT1F42001.step"
 		(offset
 			(xyz 0 0 0)
