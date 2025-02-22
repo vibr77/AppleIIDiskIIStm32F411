@@ -525,8 +525,13 @@ enum STATUS initIMAGEScreen(char * imageName,int type){
 
 #ifdef A2F_MODE
   inverseStringAtPosition(1,0);
+  if (mountImageInfo.type > 3)
+    displayStringAtPosition(5,2*SCREEN_LINE_HEIGHT,"type: ERR ");
+  ssd1306_SetColor(White);
+  dispIcon32x32(96,37,1);
 #endif
 
+#ifndef A2F_MODE
   if (mountImageInfo.type==0)
     displayStringAtPosition(5,2*SCREEN_LINE_HEIGHT,"type: NIC");
   else if (mountImageInfo.type==1)
@@ -537,7 +542,8 @@ enum STATUS initIMAGEScreen(char * imageName,int type){
     displayStringAtPosition(5,2*SCREEN_LINE_HEIGHT,"type: PO ");
   else
     displayStringAtPosition(5,2*SCREEN_LINE_HEIGHT,"type: ERR ");
-  
+#endif
+
   displayStringAtPosition(5,3*SCREEN_LINE_HEIGHT,"Track: 0");
 
   if (mountImageInfo.cleaned==1)
@@ -602,10 +608,10 @@ void updateIMAGEScreen(uint8_t status,uint8_t trk){
     
     if (harvey_ball==0){
       harvey_ball=1;
-      dispIcon(118,30,12);
+      dispIcon(117,30,12);
     }else{
       harvey_ball=0;
-      dispIcon(118,30,13);
+      dispIcon(117,30,13);
     }
 
     ssd1306_UpdateScreen();
