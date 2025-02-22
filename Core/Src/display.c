@@ -285,6 +285,12 @@ void updateChainedListDisplay(int init, list_t * lst ){
   }
 
   // Render Part
+
+#ifdef A2F_MODE
+  ssd1306_SetColor(Black);
+  ssd1306_DrawLine(0,13,127,13);
+#endif
+
   for (int i=0;i<SCREEN_MAX_LINE_ITEM;i++){
 
     clearLineStringAtPosition(1+i,offset);
@@ -525,6 +531,7 @@ enum STATUS initIMAGEScreen(char * imageName,int type){
 
 #ifdef A2F_MODE
   inverseStringAtPosition(1,0);
+  displayStringAtPosition(5,3*SCREEN_LINE_HEIGHT,"Track:");
   if (mountImageInfo.type > 3)
     displayStringAtPosition(5,2*SCREEN_LINE_HEIGHT,"type: ERR ");
   ssd1306_SetColor(White);
@@ -542,9 +549,9 @@ enum STATUS initIMAGEScreen(char * imageName,int type){
     displayStringAtPosition(5,2*SCREEN_LINE_HEIGHT,"type: PO ");
   else
     displayStringAtPosition(5,2*SCREEN_LINE_HEIGHT,"type: ERR ");
-#endif
 
   displayStringAtPosition(5,3*SCREEN_LINE_HEIGHT,"Track: 0");
+#endif
 
   if (mountImageInfo.cleaned==1)
     CL='Y';
@@ -589,8 +596,16 @@ void updateIMAGEScreen(uint8_t status,uint8_t trk){
     char tmp[32];
 
     if (currentTrk!=trk){
+
+#ifdef A2F_MODE
+      sprintf(tmp,"%02d",trk);
+      ssd1306_SetCursor(44,22);
+      ssd1306_WriteString(tmp,Font_11x18);
+#elif
       sprintf(tmp,"TRACK: %02d",trk);
       displayStringAtPosition(5,3*SCREEN_LINE_HEIGHT,tmp);
+#endif
+
       currentTrk=trk;
     }
     

@@ -61,8 +61,11 @@ extern list_t * dirChainedList;
 extern uint8_t flgSoundEffect;
 
 #ifdef A2F_MODE
-extern uint8_t rLastState;
 extern uint8_t rEncoder;
+extern uint8_t re_aState;
+extern uint8_t re_bState;
+extern bool re_aChanged;
+extern bool re_bChanged;
 #endif
 
 // --------------------------------------------------------------------
@@ -919,18 +922,29 @@ void DiskIIMainLoop(){
             }
 
 #ifdef A2F_MODE
-            int sdEject=HAL_GPIO_ReadPin(SD_EJECT_GPIO_Port, SD_EJECT_Pin); // SD-Card removed!
-            if (sdEject == 1) {
+            if (HAL_GPIO_ReadPin(SD_EJECT_GPIO_Port, SD_EJECT_Pin)){// SD-Card removed!
+                unlinkImageFile(currentFullPathImageFilename);
                 NVIC_SystemReset();
             }
-            rEncoder = HAL_GPIO_ReadPin(RE_A_GPIO_Port, RE_A_Pin);  // handle rotary encoder
-            if (rEncoder != rLastState){
-                rLastState = rEncoder;
-                rEncoder = HAL_GPIO_ReadPin(RE_B_GPIO_Port, RE_B_Pin);
-                if (rEncoder == 1) {
-                    debounceBtn(BTN_UP_Pin);
-                } else {
+
+            rEncoder = HAL_GPIO_ReadPin(RE_A_GPIO_Port, RE_A_Pin);// handle rotary encoder
+            if (rEncoder != re_aState){
+                re_aState = rEncoder;
+                re_aChanged = true;
+                if (re_bChanged){
+                    re_aChanged = false;
+                    re_bChanged = false;
                     debounceBtn(BTN_DOWN_Pin);
+                }
+            }
+            rEncoder = HAL_GPIO_ReadPin(RE_B_GPIO_Port, RE_B_Pin);
+            if (rEncoder != re_bState){
+                re_bState = rEncoder;
+                re_bChanged = true;
+                if (re_aChanged){
+                    re_aChanged = false;
+                    re_bChanged = false;
+                    debounceBtn(BTN_UP_Pin);
                 }
             }
 #endif

@@ -334,8 +334,11 @@ list_t * dirChainedList;
 
 #ifdef A2F_MODE
 // rotary encoder state
-uint8_t rLastState;
 uint8_t rEncoder;
+uint8_t re_aState;
+uint8_t re_bState;
+bool re_aChanged;
+bool re_bChanged;
 #endif
 
 // DEBUG BLOCK
@@ -1050,7 +1053,10 @@ int main(void){
 
 #ifdef A2F_MODE
   // store rotary encoder state
-  rLastState = HAL_GPIO_ReadPin(RE_A_GPIO_Port, RE_A_Pin);
+  re_aState = HAL_GPIO_ReadPin(RE_A_GPIO_Port, RE_A_Pin);
+  re_bState = HAL_GPIO_ReadPin(RE_B_GPIO_Port, RE_B_Pin);
+  re_aChanged = false;
+  re_bChanged = false;
 #endif
 
   currentFullPathImageFilename[0]=0x0;
