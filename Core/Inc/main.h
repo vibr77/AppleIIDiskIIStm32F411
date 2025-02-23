@@ -168,6 +168,17 @@ typedef struct image_info_s {
 #define WR_REQ_GPIO_Port GPIOB
 #define WR_REQ_EXTI_IRQn EXTI9_5_IRQn
 
+#ifdef A2F_MODE
+#define AB_GPIO_Port GPIOB
+#define AB_Pin GPIO_PIN_8
+#define RE_A_Pin GPIO_PIN_13
+#define RE_A_GPIO_Port GPIOA
+#define RE_A_EXTI_IRQn EXTI15_10_IRQn
+#define RE_B_Pin GPIO_PIN_14
+#define RE_B_GPIO_Port GPIOA
+#define RE_B_EXTI_IRQn EXTI15_10_IRQn
+#endif
+
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */

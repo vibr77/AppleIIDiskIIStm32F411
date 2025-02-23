@@ -75,6 +75,40 @@ uint8_t ssd1306_Init(void)
   log_info("ssd1306_Init I2C device ready");
   // Wait for the screen to boot
   HAL_Delay(100);
+  
+  #ifdef SSD1306_EA_MODE
+/* Init LCD EA-OLEDM128-6 */
+  ssd1306_WriteCommand(SETSTARTLINE);
+  ssd1306_WriteCommand(SEGREMAP);
+  ssd1306_WriteCommand(COMSCANINC);
+  ssd1306_WriteCommand(NORMALDISPLAY);
+  ssd1306_WriteCommand(SETCONTRAST);
+  ssd1306_WriteCommand(0xFF);
+  ssd1306_WriteCommand(SETDISPLAYCLOCKDIV);
+  ssd1306_WriteCommand(0x40);
+  ssd1306_WriteCommand(SETPRECHARGE);
+  ssd1306_WriteCommand(0x44);
+  ssd1306_WriteCommand(DISPLAYON);
+#endif
+ 
+#ifdef SSD1309_EA_MODE
+/* Init LCD EA-W128064-XALG */
+  ssd1306_WriteCommand(SETSTARTLINE);
+  ssd1306_WriteCommand(SEGREMAP);
+  ssd1306_WriteCommand(COMSCANINC);
+  ssd1306_WriteCommand(NORMALDISPLAY);
+  ssd1306_WriteCommand(SETCONTRAST);
+  ssd1306_WriteCommand(0x7F);
+  ssd1306_WriteCommand(SETDISPLAYCLOCKDIV);
+  ssd1306_WriteCommand(0x40);
+  ssd1306_WriteCommand(SETPRECHARGE);
+  ssd1306_WriteCommand(0x44);
+  //ssd1306_WriteCommand(SETSEGMENTREMAP);
+  //ssd1306_WriteCommand(COMSCANDEC);
+  ssd1306_WriteCommand(DISPLAYON);
+#endif
+
+#ifndef DISABLE_STD_LCD  
   /* Init LCD */
   ssd1306_WriteCommand(DISPLAYOFF);
   ssd1306_WriteCommand(SETDISPLAYCLOCKDIV);
@@ -120,6 +154,7 @@ uint8_t ssd1306_Init(void)
   ssd1306_WriteCommand(NORMALDISPLAY);
   ssd1306_WriteCommand(0x2e);            // stop scroll
   ssd1306_WriteCommand(DISPLAYON);
+#endif
 
   // Set default values for screen object
   SSD1306.CurrentX = 0;

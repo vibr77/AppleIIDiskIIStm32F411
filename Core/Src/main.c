@@ -261,7 +261,9 @@ UART
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-
+#ifdef A2F_MODE
+#pragma message("...building with A2F mode!")
+#endif
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -344,6 +346,14 @@ uint8_t emulationType=0;
 uint8_t bootImageIndex=0;
 list_t * dirChainedList;
 
+#ifdef A2F_MODE
+// rotary encoder state
+uint8_t rEncoder;
+uint8_t re_aState;
+uint8_t re_bState;
+bool re_aChanged;
+bool re_bChanged;
+#endif
 
 // DEBUG BLOCK
 
@@ -411,6 +421,16 @@ void TIM4_IRQHandler(void){
     else{
       TIM4->ARR=400;                                      // No repeat back to normal timer value
     }
+
+#ifdef A2F_MODE
+    if(HAL_GPIO_ReadPin(BTN_RET_GPIO_Port, BTN_RET_Pin) && // Reset on RE push
+       HAL_GPIO_ReadPin(BTN_ENTR_GPIO_Port, BTN_ENTR_Pin) &&
+       HAL_GPIO_ReadPin(BTN_UP_GPIO_Port, BTN_UP_Pin) &&
+       HAL_GPIO_ReadPin(BTN_DOWN_GPIO_Port, BTN_DOWN_Pin)){
+          NVIC_SystemReset();
+    }
+#endif
+
   }
   TIM4->SR = 0;
 }
@@ -1045,6 +1065,14 @@ int main(void){
   
   //HAL_GPIO_WritePin(GPIOB,GPIO_PIN_8,GPIO_PIN_RESET);                                    // we need to set it High
   //HAL_GPIO_WritePin(GPIOA,GPIO_PIN_11,GPIO_PIN_RESET);
+
+#ifdef A2F_MODE
+  // store rotary encoder state
+  re_aState = HAL_GPIO_ReadPin(RE_A_GPIO_Port, RE_A_Pin);
+  re_bState = HAL_GPIO_ReadPin(RE_B_GPIO_Port, RE_B_Pin);
+  re_aChanged = false;
+  re_bChanged = false;
+#endif
 
   currentFullPathImageFilename[0]=0x0;
   currentFullPath[0]=0x0;
@@ -1773,6 +1801,26 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(WR_REQ_GPIO_Port, &GPIO_InitStruct);
 
+#ifdef A2F_MODE
+/*Configure GPIO pin : AB_Pin */
+  GPIO_InitStruct.Pin = AB_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(AB_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : ENCODER_A_Pin */
+  GPIO_InitStruct.Pin = RE_A_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  HAL_GPIO_Init(RE_A_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : ENCODER_B_Pin */
+  GPIO_InitStruct.Pin = RE_B_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  HAL_GPIO_Init(RE_B_GPIO_Port, &GPIO_InitStruct);
+#endif
+
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
 }
@@ -1803,8 +1851,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
             GPIO_Pin == BTN_UP_Pin    ||       // BTN_UP
             GPIO_Pin == BTN_DOWN_Pin           // BTN_DOWN
             ) && buttonDebounceState==true){
-    
-    debounceBtn(GPIO_Pin);
+
+              debounceBtn(GPIO_Pin);
 
   }else if (GPIO_Pin == WR_REQ_Pin){
     

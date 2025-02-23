@@ -5,9 +5,13 @@
 		}
 	],
 	"settings": {
-		"cortex-debug.armToolchainPath": "/usr/bin",
-		"cortex-debug.openocdPath": "/usr/local/bin/openocd",
-		"makefile.configureOnOpen": false
+		"cortex-debug.armToolchainPath": "/Applications/ArmGNUToolchain/14.2.rel1/arm-none-eabi/bin",
+		"cortex-debug.openocdPath": "/opt/homebrew/bin/openocd",
+		"makefile.configureOnOpen": false,
+		"files.associations": {
+			"fatfs.h": "c",
+			"log.h": "c"
+		}
 	},
 	"tasks": {
 		"version": "2.0.0",
