@@ -506,7 +506,7 @@ void initSplashScreen(){
   ssd1306_Clear();
 }
 
-#elif
+#else
 void initSplashScreen(){
   ssd1306_Init(); 
   ssd1306_FlipScreenVertically();
@@ -610,7 +610,7 @@ void updateIMAGEScreen(uint8_t status,uint8_t trk){
       sprintf(tmp,"%02d",trk);
       ssd1306_SetCursor(44,22);
       ssd1306_WriteString(tmp,Font_11x18);
-#elif
+#else
       sprintf(tmp,"TRACK: %02d",trk);
       displayStringAtPosition(5,3*SCREEN_LINE_HEIGHT,tmp);
 #endif
@@ -783,7 +783,6 @@ void processClearFavorites(){
   ssd1306_UpdateScreen();
 }
 
-<<<<<<< HEAD
 
 /*
 *     MAKE FS SCREEN
@@ -806,12 +805,6 @@ void makeFsScreen(){
   
   ssd1306_SetColor(Inverse);
   ssd1306_FillRect(30-5,5*SCREEN_LINE_HEIGHT-1,50,9);
-=======
-void processMakeFs(){
-  displayStringAtPosition(1,6*SCREEN_LINE_HEIGHT+1,"CONFIRM ?");
-  mnuItem[9].triggerfunction=processMakeFsConfirmed;
-  ptrbtnRet=processMakeFsBtnRet;
->>>>>>> dbf135d2288124ae02ba51e69d92baa8ae50f620
   ssd1306_UpdateScreen();
 
   makeScreenShot(scrI);
@@ -1761,8 +1754,8 @@ void clearScreen(){
 
 #ifdef A2F_MODE
   ssd1306_FillRect(0,0,128,64);
-#elif
-  ssd1306_FillRect(,0,127,63);
+#else
+  ssd1306_FillRect(0,0,127,63);
 #endif
 
 }
