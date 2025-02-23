@@ -17,7 +17,9 @@
 #include "favorites.h"
 #include "configFile.h"
 
-
+#ifdef A2F_MODE
+#include "a2f.h"
+#endif
 
 
 
@@ -283,6 +285,12 @@ void updateChainedListDisplay(int init, list_t * lst ){
   }
 
   // Render Part
+
+#ifdef A2F_MODE
+  ssd1306_SetColor(Black);
+  ssd1306_DrawLine(0,13,127,13);
+#endif
+
   for (int i=0;i<SCREEN_MAX_LINE_ITEM;i++){
 
     clearLineStringAtPosition(1+i,offset);
@@ -463,14 +471,36 @@ void toggleMountOption(int i){
 
   makeScreenShot(scrI);
   scrI++;
-
 }
 
+#ifdef A2F_MODE
 void initSplashScreen(){
   ssd1306_Init();
-  
+//  ssd1306_FlipScreenVertically(); 
+  ssd1306_Clear();
+  ssd1306_SetColor(White);
+  ssd1306_UpdateScreen();
+  ssd1306_DrawBitmap(1,1,128,64,a2fSplash);
+  for (int i=65; i>1; i-=4){
+    ssd1306_Clear();
+    ssd1306_DrawBitmap(1,i,128,65-i,a2fSplash);
+    ssd1306_UpdateScreen();
+    HAL_Delay(50);
+  }  
+  displayStringAtPosition(1,1*SCREEN_LINE_HEIGHT,"VIBR SmartDisk][");
+  displayStringAtPosition(1,6*SCREEN_LINE_HEIGHT,_VERSION);
+  ssd1306_UpdateScreen();
+
+  makeScreenShot(scrI);
+  scrI++;
+  HAL_Delay(1000);
+  ssd1306_Clear();
+}
+
+#elif
+void initSplashScreen(){
+  ssd1306_Init(); 
   ssd1306_FlipScreenVertically();
-  
   ssd1306_Clear();
   ssd1306_SetColor(White);
   dispIcon32x32(1,15,0);
@@ -480,8 +510,8 @@ void initSplashScreen(){
 
   makeScreenShot(scrI);
   scrI++;
-
 }
+#endif
 
 /*
  * 
@@ -498,6 +528,17 @@ enum STATUS initIMAGEScreen(char * imageName,int type){
   
   char CL,WP,SYN;
   displayStringAtPosition(5,1*SCREEN_LINE_HEIGHT,mountImageInfo.title);
+
+#ifdef A2F_MODE
+  inverseStringAtPosition(1,0);
+  displayStringAtPosition(5,3*SCREEN_LINE_HEIGHT,"Track:");
+  if (mountImageInfo.type > 3)
+    displayStringAtPosition(5,2*SCREEN_LINE_HEIGHT,"type: ERR ");
+  ssd1306_SetColor(White);
+  dispIcon32x32(96,37,1);
+#endif
+
+#ifndef A2F_MODE
   if (mountImageInfo.type==0)
     displayStringAtPosition(5,2*SCREEN_LINE_HEIGHT,"type: NIC");
   else if (mountImageInfo.type==1)
@@ -508,8 +549,9 @@ enum STATUS initIMAGEScreen(char * imageName,int type){
     displayStringAtPosition(5,2*SCREEN_LINE_HEIGHT,"type: PO ");
   else
     displayStringAtPosition(5,2*SCREEN_LINE_HEIGHT,"type: ERR ");
-  
+
   displayStringAtPosition(5,3*SCREEN_LINE_HEIGHT,"Track: 0");
+#endif
 
   if (mountImageInfo.cleaned==1)
     CL='Y';
@@ -554,8 +596,16 @@ void updateIMAGEScreen(uint8_t status,uint8_t trk){
     char tmp[32];
 
     if (currentTrk!=trk){
+
+#ifdef A2F_MODE
+      sprintf(tmp,"%02d",trk);
+      ssd1306_SetCursor(44,22);
+      ssd1306_WriteString(tmp,Font_11x18);
+#elif
       sprintf(tmp,"TRACK: %02d",trk);
       displayStringAtPosition(5,3*SCREEN_LINE_HEIGHT,tmp);
+#endif
+
       currentTrk=trk;
     }
     
@@ -573,10 +623,10 @@ void updateIMAGEScreen(uint8_t status,uint8_t trk){
     
     if (harvey_ball==0){
       harvey_ball=1;
-      dispIcon(118,30,12);
+      dispIcon(117,30,12);
     }else{
       harvey_ball=0;
-      dispIcon(118,30,13);
+      dispIcon(117,30,13);
     }
 
     ssd1306_UpdateScreen();
@@ -725,7 +775,7 @@ void processClearFavorites(){
 
 void processMakeFs(){
   displayStringAtPosition(1,6*SCREEN_LINE_HEIGHT+1,"CONFIRM ?");
-  mnuItem[6].triggerfunction=processMakeFsConfirmed;
+  mnuItem[9].triggerfunction=processMakeFsConfirmed;
   ptrbtnRet=processMakeFsBtnRet;
   ssd1306_UpdateScreen();
 
@@ -752,7 +802,7 @@ void processMakeFsConfirmed(){
 }
 
 void processMakeFsBtnRet(){
-  mnuItem[6].triggerfunction=processMakeFs;
+  mnuItem[9].triggerfunction=processMakeFs;
   ptrbtnRet=processBtnRet;
   displayStringAtPosition(1,6*SCREEN_LINE_HEIGHT+1,"         ");
   ssd1306_UpdateScreen();
@@ -1606,7 +1656,13 @@ void dispIcon(int x,int y,int indx){
 
 void clearScreen(){
   ssd1306_SetColor(Black);
-  ssd1306_FillRect(0,0,127,63);
+
+#ifdef A2F_MODE
+  ssd1306_FillRect(0,0,128,64);
+#elif
+  ssd1306_FillRect(,0,127,63);
+#endif
+
 }
 
 void displayStringAtPosition(int x,int y,char * str){

@@ -19,4 +19,10 @@
 #define SSD1306_USE_DMA       1   // 0: not used I2C DMA mode, 1: used I2C DMA mode
 #define SSD1306_CONTUPDATE    0   // 0: continue update mode disable, 1: continue update mode enable (only DMA MODE)
 
+#ifdef A2F_MODE
+#define DISABLE_STD_LCD
+#define SSD1306_EA_MODE   // DISPLAY VISIONS EA-OLEDM128-6
+//#define SSD1309_EA_MODE   // DISPLAY VISIONS EA-W128064-XALG - SSD1309Z
+#endif
+
 #endif /* SSD1306_DEFINES_H_ */

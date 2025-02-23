@@ -38,6 +38,24 @@
             ]
         },
         {
+            "label": "Build Bootloader and A2F mode DiskII",
+            "type": "shell",
+            "command": "make -f Makefile USE_BOOTLOADER=1 A2F_MODE=1",
+            "presentation": {
+                "reveal": "never"
+            },
+            "options": {
+                "cwd": "${workspaceRoot}"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
             "label": "Clean",
             "type": "shell",
             "command": "make -f Makefile clean",

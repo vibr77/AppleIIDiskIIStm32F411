@@ -60,6 +60,14 @@ extern volatile enum FS_STATUS fsState;
 extern list_t * dirChainedList;
 extern uint8_t flgSoundEffect;
 
+#ifdef A2F_MODE
+extern uint8_t rEncoder;
+extern uint8_t re_aState;
+extern uint8_t re_bState;
+extern bool re_aChanged;
+extern bool re_bChanged;
+#endif
+
 // --------------------------------------------------------------------
 // Hook function for file type driver Woz,Dsk, Po, ...
 // --------------------------------------------------------------------
@@ -391,7 +399,11 @@ int DiskIIDeviceEnableIRQ(uint16_t GPIO_Pin){
 
     if (a==0 && flgBeaming==1){                                                                 // <!> TO BE TESTED 24/10
         flgDeviceEnable=1;
-
+#ifdef A2F_MODE
+    if (flgImageMounted==1){  
+      HAL_GPIO_WritePin(AB_GPIO_Port,AB_Pin,GPIO_PIN_SET);
+    }
+#endif
         GPIO_InitStruct.Pin   = RD_DATA_Pin;
         GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP;
         GPIO_InitStruct.Pull  = GPIO_PULLDOWN;
@@ -412,7 +424,9 @@ int DiskIIDeviceEnableIRQ(uint16_t GPIO_Pin){
     }else if (flgDeviceEnable==1 && a==1 ){
 
         flgDeviceEnable=0;
-
+#ifdef A2F_MODE        
+        HAL_GPIO_WritePin(AB_GPIO_Port,AB_Pin,GPIO_PIN_RESET);
+#endif
         GPIO_InitStruct.Pin   = RD_DATA_Pin;
         GPIO_InitStruct.Mode  = GPIO_MODE_INPUT;
         GPIO_InitStruct.Pull  = GPIO_NOPULL;
@@ -906,6 +920,35 @@ void DiskIIMainLoop(){
                    
                 }*/
             }
+
+#ifdef A2F_MODE
+            if (HAL_GPIO_ReadPin(SD_EJECT_GPIO_Port, SD_EJECT_Pin)){// SD-Card removed!
+                unlinkImageFile(currentFullPathImageFilename);
+                NVIC_SystemReset();
+            }
+
+            rEncoder = HAL_GPIO_ReadPin(RE_A_GPIO_Port, RE_A_Pin);// handle rotary encoder
+            if (rEncoder != re_aState){
+                re_aState = rEncoder;
+                re_aChanged = true;
+                if (re_bChanged){
+                    re_aChanged = false;
+                    re_bChanged = false;
+                    debounceBtn(BTN_DOWN_Pin);
+                }
+            }
+            rEncoder = HAL_GPIO_ReadPin(RE_B_GPIO_Port, RE_B_Pin);
+            if (rEncoder != re_bState){
+                re_bState = rEncoder;
+                re_bChanged = true;
+                if (re_aChanged){
+                    re_aChanged = false;
+                    re_bChanged = false;
+                    debounceBtn(BTN_UP_Pin);
+                }
+            }
+#endif
+
         }
     }
 }
