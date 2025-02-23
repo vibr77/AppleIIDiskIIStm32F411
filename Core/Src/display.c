@@ -103,6 +103,15 @@ enum STATUS switchPage(enum page newPage,void * arg){
   
   switch(newPage){
     
+    case MAKEFS:
+      makeFsScreen();
+      ptrbtnEntr=processMakeFsOption;
+      ptrbtnUp=processMakeFsToggleOption;
+      ptrbtnDown=processMakeFsToggleOption;
+      ptrbtnRet=processBtnRet;
+      currentPage=MAKEFS;
+      break;
+
     case SMARTPORT:
       initSmartPortHD();
       ptrbtnUp=nothing;
@@ -631,7 +640,8 @@ void processMountOption(){
 }
 
 void nothing(){
-  __NOP();
+  return;
+  //__NOP();
 }
 
 void processBtnRet(){
@@ -723,33 +733,112 @@ void processClearFavorites(){
   ssd1306_UpdateScreen();
 }
 
-void processMakeFs(){
-  displayStringAtPosition(1,6*SCREEN_LINE_HEIGHT+1,"CONFIRM ?");
-  mnuItem[6].triggerfunction=processMakeFsConfirmed;
-  ptrbtnRet=processMakeFsBtnRet;
+
+/*
+*     MAKE FS SCREEN
+*/
+
+uint8_t toggleMakeFs=1;
+
+void makeFsScreen(){
+    
+  clearScreen();
+  ssd1306_SetColor(White);
+
+  displayStringAtPosition(0,0,"Make FileSystem");
+  ssd1306_DrawLine(0,8,127,8);
+  
+  displayStringAtPosition(5,2*SCREEN_LINE_HEIGHT,"This will format");
+  displayStringAtPosition(5,3*SCREEN_LINE_HEIGHT,"the SDCARD:");
+  displayStringAtPosition(30,5*SCREEN_LINE_HEIGHT,"YES");
+  displayStringAtPosition(30,6*SCREEN_LINE_HEIGHT,"NO");
+  
+  ssd1306_SetColor(Inverse);
+  ssd1306_FillRect(30-5,5*SCREEN_LINE_HEIGHT-1,50,9);
   ssd1306_UpdateScreen();
 
+  makeScreenShot(scrI);
+  scrI++;
+
 }
+
+void processMakeFsToggleOption(){
+  
+  if (toggleMakeFs==1){
+    toggleMakeFs=0;
+    toggleMakeFsOption(0);
+  }else{
+    toggleMakeFs=1;
+    toggleMakeFsOption(1);
+  }
+}
+
+void toggleMakeFsOption(int i){
+  
+  ssd1306_SetColor(Inverse);
+  ssd1306_FillRect(30-5,5*SCREEN_LINE_HEIGHT-1,50,9);
+  ssd1306_FillRect(30-5,6*SCREEN_LINE_HEIGHT-1,50,9);
+  ssd1306_UpdateScreen();
+
+  makeScreenShot(scrI);
+  scrI++;
+
+}
+
+void processMakeFsOption(){
+  if (toggleMakeFs==0){
+    switchPage(MENU,NULL);
+    toggleMakeFs=1;                               // rearm toggle switch
+  }else{
+    nextAction=MAKEFS;                            // Very important this has to be managed by the main thread and not by interrupt TODO PUT ALL ACTION IN MAIN with trigger from emulator
+
+    //processMakeFsConfirmed();
+  }
+}
+
 
 void processMakeFsConfirmed(){
-  /*
-  displayStringAtPosition(1,6*9+1,"REBOOTING in 3");
+ 
+  clearScreen();
 
+  ssd1306_SetColor(White);
+  displayStringAtPosition(0,0,"Make Filesystem");
+  ssd1306_DrawLine(0,8,127,8);
+
+  ptrbtnUp=nothing;
+  ptrbtnDown=nothing;
+  ptrbtnEntr=processMakeFsSysReset;
+  ptrbtnRet=nothing;
+ 
+  displayStringAtPosition(0,3*SCREEN_LINE_HEIGHT,"Please wait...");
+  displayStringAtPosition(0,4*SCREEN_LINE_HEIGHT,"Formatting SDCARD");
   ssd1306_UpdateScreen();
-  for (int i=0;i<1000;i++){
-    HAL_Delay(3);
-  }
-  */
+
   if (makeSDFS()==RET_OK){
+    displayStringAtPosition(0,3*SCREEN_LINE_HEIGHT,"Result: OK      ");
     log_info("makeSDFS success");
   }else{
-    log_error("makeSDFS error");
+    displayStringAtPosition(0,3*SCREEN_LINE_HEIGHT,"Result: ERROR   ");
+   log_error("makeSDFS error");
   }
-
-
-  nextAction=SYSRESET;
-
+  displayStringAtPosition(0,4*SCREEN_LINE_HEIGHT,"                   ");
+  displayStringAtPosition(0,5*SCREEN_LINE_HEIGHT,"Press [ENTER] to ");
+  displayStringAtPosition(0,6*SCREEN_LINE_HEIGHT,"reboot");
+  ssd1306_UpdateScreen();
+  makeScreenShot(scrI);
+  scrI++;
+  while(1){};
 }
+
+ 
+
+void processMakeFsSysReset(){
+
+  HAL_Delay(200);                     // Important need a delay otherwise Reset does not work.
+  NVIC_SystemReset();
+  return;
+}
+
 
 void processMakeFsBtnRet(){
   mnuItem[6].triggerfunction=processMakeFs;
@@ -890,6 +979,12 @@ void updateConfigMenuDisplay(int init){
   scrI++;
 
 }
+
+void processDispMakeFsScreen(){
+   switchPage(MAKEFS,NULL);
+   return;
+}
+
 void processBootImageIndex(){
   bootImageIndex++;
 
@@ -989,7 +1084,7 @@ void initConfigMenuScreen(int i){
   sprintf(mnuItem[9].title,"Make filesystem");
   mnuItem[9].type=0;
   mnuItem[9].icon=11;
-  mnuItem[9].triggerfunction=processMakeFs;
+  mnuItem[9].triggerfunction=processDispMakeFsScreen;
   mnuItem[9].arg=0;
 
   clearScreen();

@@ -37,12 +37,40 @@
 #define IWM_DISK35_CTL_MOTOR_OFF        0x09
 #define IWM_DISK35_CTL_EJECT            0x0D
 
+
+/*  3.5" drives have variable spin speed to maximize space - and these speeds
+    are divided into regions, where outer regions have more sectors vs inner
+    regions.  See the declared globals below
+*/
+#define DISK_35_NUM_REGIONS 5
+
+#define DISK_TYPE_NONE 0
+#define DISK_TYPE_5_25 1
+#define DISK_TYPE_3_5  2
+
+#define DISK_35_BYTES_TRACK_GAP_1     500
+#define DISK_35_BYTES_TRACK_GAP_3     53
+#define DISK_NIB_SECTOR_DATA_TAG_35   12
+
+
 typedef struct disk35_s{
-    uint8_t is_spindle_on;                      /**< Drive spindle running */
-    uint8_t has_disk;                           /**< Has a disk in the drive */
+    uint8_t isSpindleOn;                      /**< Drive spindle running */
+    uint8_t hasDisk;                           /**< Has a disk in the drive */
     uint16_t status_mask_35;
+    uint8_t ctlSwitch;
+    uint8_t isReady;                            // To be use to report any ongoing action
+
 } disk35_t;
 
+typedef struct image35Info_s {
+  char title[32];
+
+    uint8_t type;
+    uint8_t version;
+    uint8_t isWriteprotect;
+    uint8_t isDoubleSided;
+
+} image35Info_t;
 
 void disk35StartEjecting();
 #endif 

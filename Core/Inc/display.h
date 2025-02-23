@@ -5,7 +5,7 @@
 #define disp
 
 enum EMUL_CMD{EMUL_READ,EMUL_WRITE,EMUL_STATUS};
-enum page{FS,MOUNT,MENU,IMAGE,FAVORITE,CONFIG,EMULATIONTYPE,IMAGEMENU,SMARTPORT};
+enum page{FS,MOUNT,MENU,IMAGE,FAVORITE,CONFIG,EMULATIONTYPE,IMAGEMENU,SMARTPORT,MAKEFS};
 
 char * getImageNameFromFullPath(char * fullPathImageName);
 enum STATUS switchPage(enum page newPage,void * arg);
@@ -62,9 +62,19 @@ void processSoundEffect();
 void processClearprefs();
 void processClearFavorites();
 
+
+/*       MAKE FILESYSTEM SCREEN     */
+
+void processDispMakeFsScreen();
 void processMakeFs();
+void makeFsScreen();
+void toggleMakeFsOption(int i);
+void processMakeFsOption();
+void processMakeFsToggleOption();
+
 void processMakeFsConfirmed();
 void processMakeFsBtnRet();
+void processMakeFsSysReset();
 
 // Emulation type Screen
 void initConfigEmulationScreen();

@@ -24,11 +24,11 @@ volatile int ph_track_b=0;                                              // SDISK
 volatile int intTrk=0;                                                  // InterruptTrk                            
 unsigned char prevTrk=35;                                               // prevTrk to keep track of the last head track
 
-unsigned char read_track_data_bloc[RAW_SD_TRACK_SIZE];                  // 
-volatile unsigned char DMA_BIT_TX_BUFFER[RAW_SD_TRACK_SIZE];            // DMA Buffer for READ Track
+extern unsigned char read_track_data_bloc[RAW_SD_TRACK_SIZE];                  // 
+extern volatile unsigned char DMA_BIT_TX_BUFFER[RAW_SD_TRACK_SIZE];            // DMA Buffer for READ Track
 
 volatile int flgWeakBit=0;                                       // Activate WeakBit only for Woz File
-uint8_t flgBitIndxCounter=0;                                // Keep track of Bit Index Counter when changing track (only for WOZ)
+uint8_t flgBitIndxCounter=0;                                    // Keep track of Bit Index Counter when changing track (only for WOZ)
 
 enum action nextAction=NONE;
 
@@ -336,7 +336,7 @@ volatile unsigned char rByte=0x0;
   * @retval None
   */
 void DiskIISendDataIRQ(){
-     RD_DATA_GPIO_Port->BSRR=nextBit;                      // start by outputing the nextBit and then due the internal cooking for the next one
+    RD_DATA_GPIO_Port->BSRR=nextBit;                          // start by outputing the nextBit and then due the internal cooking for the next one
 
     if (intTrk==255){
         weakBitTankPosition=bitCounter%256;
@@ -797,7 +797,11 @@ void DiskIIMainLoop(){
                 nextAction=NONE;
                 
                 break;
-
+                case MKFS:
+                    processMakeFsConfirmed();
+                    nextAction=NONE;
+                    break;
+                
                 case DUMP_TX:
                 
                 char filename[128];

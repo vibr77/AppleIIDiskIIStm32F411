@@ -108,10 +108,16 @@ UART
 
 // Changelog
 /*
+20.02.25 v0.80.2
+  + Add confirmation screen MakeFS
+  + Change display of MakeFS
+  + MKFS on the Main Thread and not by interrupt
+  + Deep work on 2MG & disk35
 06.02.25 v0.80.1
   + [SmartPort] Fixing Smartport write process, and it WORKS!!!
   + [SmartPort] Managing incomming checksum command
   + [SmartPort] Optimizing read time 
+
 02.02.25 v0.79.6
   + [Smartport] Fixing boot duration adjust to 500ms IIGS boot issue
 02.02.25 v0.79.5
@@ -121,7 +127,6 @@ UART
   + [SmartPort] Fixing SmartPort boot index
   + [SmartPort] Fixing display Image
   + [SmartPort] Adding display status
-
 30.01.25 v0.79.4
   + Fix Menu item (Emulation / Sound)
   + Fix Menu <4 item navigation 
@@ -138,7 +143,6 @@ UART
   + Move away ffrom HAL function and use baremetal GPIO 
   + Freeup unused buffer 6K
   + Init DOS3.3 working with delay write
-
 26.12.24 v0.79.1
   +Remove hardcoded emulation type
 13.12.24  v0.79
@@ -146,6 +150,7 @@ UART
   +Feat: Add Smartport HD emulation type
   +Feat: Add Config menu to manage emulation type
   +Feat: Manage physical head positioning for Disk A & B
+
 25.11.24: v0.78.4
   +Feat: Locksmith Certify works and Fast copy also
 25.11.24: v0.78.3
@@ -163,20 +168,24 @@ UART
   +Fix: Spiradisc fix, screenupdate was before memcopy was generation an extra delay and thus failing with cross track sync
 22.11.24: v0.78
   +fix: WOZ more than 40 trk disk such as lode runner, add Max TRK
+
 22.11.24: v0.77
   +fix: DSK reading, wrong NIBBLE_BLOCK_SIZE from 512 to 416
   +fix: NIC reading, wrong NIBBLE_BLOCK_SIZE from 512 to 416
+
 20.11.24: v0.76
   +fix: weakbit issue, changing the threshold to 4 (instead of 2), Bouncing Kamungast is working
   +fix: weakbit the Print shop is now working, wrong variable used
   +fix: buzzer sound change after button is pressed (prescaler was not reset)
   +fix: woz file info properties not correctly propagated to flg variable
   +fix: harvey ball to be fixed
+
 04.11.24: v0.72
   +fix: directory with name of 1 char not read by the emulator
   +fix: PO/po file extension add to the list of extension
   +feat: add menu image (toggle Favorite, unmount, unlink)
   +fix SDIO IRQ for unlink
+
 01.11.24: v0.71
   +feat: config Menu
   +feat: favorites
@@ -319,6 +328,10 @@ bool buttonDebounceState=true;
 FATFS fs;                                                   // fatfs global variable <!> do not remount witihn a function the fatfs otherwise it breaks the rest
 long database=0;                                            // start of the data segment in FAT
 int csize=0;                                                // Cluster size
+
+
+unsigned char read_track_data_bloc[RAW_SD_TRACK_SIZE];                  
+volatile unsigned char DMA_BIT_TX_BUFFER[RAW_SD_TRACK_SIZE];            // DMA Buffer for READ Track
 
 extern char currentFullPath[MAX_FULLPATH_LENGTH];                    // current path from root
 extern char currentPath[MAX_PATH_LENGTH];                            // current directory name max 64 char
@@ -939,6 +952,7 @@ enum STATUS makeSDFS(){
   FRESULT fr;
   MKFS_PARM fmt_opt = {FM_FAT32 | FM_ANY, 0, 0, 0, 32768};
   BYTE work[FF_MAX_SS];
+ 
   fr = f_mkfs("0:", &fmt_opt,  work, sizeof work);
 
   if (fr==FR_OK){
@@ -1051,7 +1065,7 @@ int main(void){
   HAL_Delay(SPLASHSCREEN_DURATION);
 
   EnableTiming();                                                           // Enable WatchDog to get precise CPU Cycle counting
-
+  //processMakeFsConfirmed();
   TIM1->PSC=1000;
 
   int T2_DIER=0x0;
