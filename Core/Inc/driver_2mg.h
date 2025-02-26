@@ -104,9 +104,9 @@ unsigned int get2mgTrackSize(int trk);
 long get2mgSDAddr(int trk,int block,int csize, long database);
 enum STATUS get2mgTrackBitStream(int trk,unsigned char * buffer);
 enum STATUS set2mgTrackBitStream(int trk,unsigned char * buffer);
-enum STATUS mount2mgFile(char * filename);
-enum STATUS diskTrack2Nib(unsigned char *buffer,unsigned char * nibBuffer,uint8_t trk);
-
+enum STATUS mount2mgFile(_2mg_t _2MG, char * filename);
+//enum STATUS diskTrack2Nib(unsigned char *buffer,unsigned char * nibBuffer,uint8_t trk);
+enum STATUS diskTrack2Nib(_2mg_t _2MG,unsigned char *buffer,unsigned char * nibBuffer,uint8_t trk);
 enum STATUS img22Nic(unsigned char *src,unsigned char *buffer,uint8_t trk);
 enum STATUS nic22mg(char *rawByte,unsigned char *buffer,uint8_t trk);
 

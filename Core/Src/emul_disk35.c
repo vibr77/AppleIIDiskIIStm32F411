@@ -6,7 +6,7 @@
 #include "fatfs.h"
 
 #include "emul_disk35.h"
-#include "utils.h"
+
 #include "main.h"
 #include "display.h"
 #include "log.h"
@@ -26,6 +26,7 @@ extern volatile enum FS_STATUS fsState;
 
 extern uint8_t flgSoundEffect; 
 extern uint8_t bootImageIndex;
+extern enum action nextAction;
 
 disk35_t dsk35;
 image35Info_t img35;
@@ -36,11 +37,13 @@ static volatile uint8_t prevPh_track=160;
 static unsigned long cAlive=0;
 
 static volatile unsigned char flgDeviceEnable=0;
-
+#pragma GCC diagnostic push                                              // TODO: To be removed when emul is finished
+#pragma GCC diagnostic ignored "-Wunused-variable"
 static enum STATUS (*disk35GetTrackBitStream)(int,unsigned char*);       // pointer to readBitStream function according to driver woz/nic
 static enum STATUS (*disk35SetTrackBitStream)(int,unsigned char*);       // pointer to writeBitStream function according to driver woz/nic
 static long (*disk35GetSDAddr)(int ,int ,int , long);                    // pointer to getSDAddr function
 static int  (*disk35GetTrackFromPh)(int);                                // pointer to track calculation function
+#pragma GCC diagnostic pop
 static unsigned int  (*disk35GetTrackSize)(int);    
 
 extern unsigned char read_track_data_bloc[RAW_SD_TRACK_SIZE];            // 
@@ -447,6 +450,10 @@ void  disk35MainLoop(){
             prevPh_track=ph_track;
         
         }else{
+
+            if (nextAction!=NONE){
+                execAction(nextAction);
+            }
             
             cAlive++;
             if (flgSoundEffect==1){

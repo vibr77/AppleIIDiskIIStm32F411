@@ -16,7 +16,7 @@
 #include "main.h"
 #include "log.h"
 
-static unsigned long t1,t2,diff1=0,maxdiff1=0;
+//static unsigned long t1,t2,diff1=0,maxdiff1=0;
 
 volatile int ph_track=0;                                                // SDISK Physical track 0 - 139
 volatile int ph_track_b=0;                                              // SDISK Physical track 0 - 139 for DISK B 
@@ -30,7 +30,7 @@ extern volatile unsigned char DMA_BIT_TX_BUFFER[RAW_SD_TRACK_SIZE];            /
 volatile int flgWeakBit=0;                                       // Activate WeakBit only for Woz File
 uint8_t flgBitIndxCounter=0;                                    // Keep track of Bit Index Counter when changing track (only for WOZ)
 
-enum action nextAction=NONE;
+extern enum action nextAction;
 
 volatile unsigned char flgDeviceEnable=0;
 unsigned char flgImageMounted=0;                            // Image file mount status flag
@@ -619,7 +619,7 @@ enum STATUS DiskIIiniteBeaming(){
     memset(read_track_data_bloc,0,sizeof(char)*RAW_SD_TRACK_SIZE);
 
     DWT->CYCCNT = 0;                              // Reset cpu cycle counter
-    t1 = DWT->CYCCNT; 
+    //t1 = DWT->CYCCNT; 
 
     if (flgWriteProtected==1)
     HAL_GPIO_WritePin(WR_PROTECT_GPIO_Port,WR_PROTECT_Pin,GPIO_PIN_SET);                              // WRITE_PROTECT is enable
@@ -753,11 +753,15 @@ void DiskIIMainLoop(){
 
             trk=intTrk;                                   // Track has changed, but avoid new change during the process
             DWT->CYCCNT = 0;                              // Reset cpu cycle counter
-            t1 = DWT->CYCCNT;                                       
+            //t1 = DWT->CYCCNT;                                       
             cAlive=0;
             if (pendingWriteTrk==1){
                 irqEnableSDIO();
+                #pragma GCC diagnostic push
+                #pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
                 setTrackBitStream(prevTrk,DMA_BIT_TX_BUFFER);
+                #pragma  GCC diagnostic pop
+
                 irqDisableSDIO();
                 pendingWriteTrk=0;
                 //printf("Wr");
@@ -801,16 +805,7 @@ void DiskIIMainLoop(){
                 nextAction=NONE;
                 break;
 
-                case WRITE_TRK:
-                
-                irqEnableSDIO();
-                setTrackBitStream(intTrk,DMA_BIT_TX_BUFFER);
-                irqDisableSDIO();
-
-                //log_info("writing phtrack:%d trk:%d",ph_track,intTrk);
-                nextAction=NONE;
-                
-                break;
+              
                 case MKFS:
                     processMakeFsConfirmed();
                     nextAction=NONE;
@@ -829,11 +824,11 @@ void DiskIIMainLoop(){
                 nextAction=NONE;
                 break;
 
-                case SYSRESET:
+                /*case SYSRESET:
                 NVIC_SystemReset();
                 nextAction=NONE;
                 break;
-
+                */
                 case FSMOUNT:
                 // FSMOUNT will not work if SDCard is remove & reinserted...
                 // system reset is preferred
@@ -887,6 +882,8 @@ void DiskIIMainLoop(){
                 break;
 
                 default:
+                    execAction(nextAction);
+                    nextAction=NONE;
                 break;
             }
         }else{
@@ -898,7 +895,10 @@ void DiskIIMainLoop(){
             if (cAlive==30000 && pendingWriteTrk==1){
                 
                 irqEnableSDIO();
+                #pragma GCC diagnostic push
+                #pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
                 setTrackBitStream(prevTrk,DMA_BIT_TX_BUFFER);
+                #pragma  GCC diagnostic pop
                 irqDisableSDIO();
                 pendingWriteTrk=0;
                 //printf("W");
@@ -906,7 +906,7 @@ void DiskIIMainLoop(){
             
             if (cAlive==5000000){
                 printf(".\n");
-                printf("%ld",maxdiff1);
+                //printf("%ld",maxdiff1);
                 cAlive=0;
                 
                 /*if (itmp!=0){

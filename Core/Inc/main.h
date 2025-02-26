@@ -64,6 +64,7 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
 enum action{NONE,IMG_MOUNT,FSDISP,FSMOUNT,SYSRESET,DUMP_TX,WRITE_TRK,UPDIMGDISP,PROCESS_FS_CHANGEDIR,MKFS};
+enum DISK_FORMAT{WOZ,DSK,PO,_2MG,NIB};
 
 enum FS_STATUS{READY,READING,WRITING,BUSY,DBG};
 enum EMULATION_TYPE{DISKII,  SMARTPORTHD,DISK35 };
@@ -86,7 +87,7 @@ enum STATUS unlinkImageFile(char* fullpathfilename);
 
 void processBtnInterrupt(uint16_t GPIO_Pin);
 
-
+enum STATUS execAction(enum action nextAction);
 
 void debounceBtn(int GPIO);
 

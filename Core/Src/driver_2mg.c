@@ -8,7 +8,6 @@
 #include "driver_2mg.h"
 #include "emul_disk35.h"
 
-#include "utils.h"
 #include "main.h"
 #include "log.h"
 
@@ -18,7 +17,7 @@ extern volatile enum FS_STATUS fsState;
 unsigned int fat2mgCluster[64];
 extern image_info_t mountImageInfo;
 
-_2mg_t _2MG;
+
 
 #define NIBBLE_BLOCK_SIZE  416 //402
 #define NIBBLE_SECTOR_SIZE 512
@@ -30,6 +29,15 @@ static const unsigned char scramble[] = {
 	0, 7, 14, 6, 13, 5, 12, 4, 11, 3, 10, 2, 9, 1, 8, 15
 	};
 */
+
+static uint32_t get_u32le(const uint8_t *p) {
+    uint32_t ret;
+    ret  = ((uint32_t)(const uint8_t)p[0]) << 0;
+    ret |= ((uint32_t)(const uint8_t)p[1]) << 8;
+    ret |= ((uint32_t)(const uint8_t)p[2]) << 16;
+    ret |= ((uint32_t)(const uint8_t)p[3]) << 24;
+    return ret;
+}
 
 static const unsigned physical_to_prodos_sector_map_35[DISK_35_NUM_REGIONS][16] = {
     {0, 6, 1, 7, 2, 8, 3, 9, 4, 10, 5, 11, -1, -1, -1, -1},
@@ -50,6 +58,8 @@ static const char gcr_6_2_byte[] = {
 	0xF7,0xF9,0xFA,0xFB,0xFC,0xFD,0xFE,0xFF
 };
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-const-variable"
 static const char decTable[] = {
 	0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
 	0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
@@ -68,7 +78,7 @@ static const char decTable[] = {
 	0x00,0x00,0x00,0x00,0x00,0x29,0x2a,0x2b,0x00,0x2c,0x2d,0x2e,0x2f,0x30,0x31,0x32,
 	0x00,0x00,0x33,0x34,0x35,0x36,0x37,0x38,0x00,0x39,0x3a,0x3b,0x3c,0x3d,0x3e,0x3f
 };
-
+#pragma  GCC diagnostic pop
 
 
 unsigned maxSectorsPerRegion35[DISK_35_NUM_REGIONS] = {12, 11, 10, 9, 8};
@@ -128,11 +138,11 @@ enum STATUS get2mgTrackBitStream(int trk,unsigned char * buffer){
     getDataBlocksBareMetal(addr,tmp,blockNumber);          // Needs to be improved and to remove the zeros
     while (fsState!=READY){}
     
-    if (diskTrack2Nib(tmp+_2MG_DATA_START_OFFSET,buffer,trk)==RET_ERR){
+    //if (diskTrack2Nib(tmp+_2MG_DATA_START_OFFSET,buffer,trk)==RET_ERR){                   // TO BE FIXED
         log_error("diskTrack2Nib return an error");
         free(tmp);
         return RET_ERR;
-    }
+    //}
 
     free(tmp);
     return RET_OK;
@@ -142,10 +152,11 @@ enum STATUS set2mgTrackBitStream(int trk,unsigned char * buffer){
     return RET_OK;
 }
 
-enum STATUS mount2mgFile(char * filename){
+enum STATUS mount2mgFile(_2mg_t _2MG, char * filename){
     FRESULT fres; 
     FIL fil;  
-
+    _2MG.blockCount=0;
+    _2MG.mounted=0;
     fres = f_open(&fil,filename , FA_READ);     // Step 2 Open the file long naming
 
     if(fres != FR_OK){
@@ -166,7 +177,7 @@ enum STATUS mount2mgFile(char * filename){
     }
 
     unsigned int pt;
-    char * img2_header=(char*)malloc(IMG2_HEADER_SIZE*sizeof(char));
+    unsigned char * img2_header=(unsigned char*)malloc(IMG2_HEADER_SIZE*sizeof(char));
     f_read(&fil,img2_header,IMG2_HEADER_SIZE,&pt);
 
     if (!memcmp(img2_header,"2IMG",4)){                    //57 4F 5A 31
@@ -199,10 +210,11 @@ enum STATUS mount2mgFile(char * filename){
 		
     free(img2_header);
     f_close(&fil);
-
+    _2MG.blockCount=IMG2_DataBlockCount;
     _2MG.isDoubleSided=1;
+    _2MG.mounted=1;
 
-    return 0;
+    return RET_OK;
 }
 
 
@@ -327,28 +339,28 @@ static void nibEncodeData35( const uint8_t *dataSrc,uint8_t * dataTarget, unsign
   * @param img struct of the 2MG, buffer pointing to the start of the track, trk number
   * @retval None
   */
-enum STATUS diskTrack2Nib(unsigned char *buffer,unsigned char * nibBuffer,uint8_t trk){
+enum STATUS diskTrack2Nib(_2mg_t _2MG,unsigned char *buffer,unsigned char * nibBuffer,uint8_t trk){
 
-    uint8_t qtr_tracks_per_track=0;
+    /*uint8_t qtr_tracks_per_track=0;
     
     if (_2MG.isDoubleSided) {   
         qtr_tracks_per_track = 1;
     } else {
         qtr_tracks_per_track = 2;
-    }
+    }*/
     uint8_t diskRegion=diskGetRegionFromTrack(DISK_TYPE_3_5,trk);
     unsigned track_sector_count = maxSectorsPerRegion35[diskRegion];
     
     //  TRK 0: (0,1) , TRK 1: (2,3), and so on. and track encoded
     unsigned logical_track_index = trk / 2;
     unsigned logical_side_index = trk % 2;
-    unsigned nib_track_index = trk / qtr_tracks_per_track;
+    //unsigned nib_track_index = trk / qtr_tracks_per_track;
     
     uint8_t side_index_and_track_64 = (logical_side_index << 5) | (logical_track_index >> 6);
     uint8_t sector_format = (_2MG.isDoubleSided ? 0x20 : 0x00) | 0x2;
     
     // Now start to Nibblize
-    int nibBufferSize=1+DISK_35_BYTES_TRACK_GAP_1+782*track_sector_count-55;
+    //int nibBufferSize=1+DISK_35_BYTES_TRACK_GAP_1+782*track_sector_count-55;
     //char nibBuffer[nibBufferSize];                  // 1+100*5+(8+5+4+1+703+2+5+52)*sector-55                                                                         // TO be computed too dirty
     uint16_t nibByteIndx=0;                         //501+sector*782-55
 

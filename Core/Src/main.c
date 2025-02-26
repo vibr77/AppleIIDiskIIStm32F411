@@ -1,8 +1,8 @@
 /* USER CODE BEGIN Header */
 /*
 __   _____ ___ ___        Author: Vincent BESSON
- \ \ / /_ _| _ ) _ \      Release: 0.80.1
-  \ V / | || _ \   /      Date: 2025.02.07
+ \ \ / /_ _| _ ) _ \      Release: 0.80.3
+  \ V / | || _ \   /      Date: 2025.02.23
    \_/ |___|___/_|_\      Description: Apple Disk II Emulator on STM32F4x
                 2025      Licence: Creative Commons
 ______________________
@@ -108,6 +108,18 @@ UART
 
 // Changelog
 /*
+23.02.25 v0.80.3
+  + [All] Code cleaning, compilation warning cleaning
+  + [Smartport] 2MG Extension checking fixed
+  + [2MG] Fixing 2MG mount blockCount function
+  + [Smartport] Fixing Missing Extended DIB Status
+  + [SmartPort] Managing errorCode on CMD
+  + [SmartPort] code refactoring
+  + [SmartPort] Working on 2MG file support with Smartport
+  + [SmartPort] Changed deviceType & subType according to the type of diskFormat (PO & 2MG)
+  + [SmartPort] Added Standard Extended Function Call
+  + [Merged] Merge code with A2F Contributor JoSch
+  + [Display] Fixing some code on display
 20.02.25 v0.80.2
   + Add confirmation screen MakeFS
   + Change display of MakeFS
@@ -345,6 +357,8 @@ uint8_t bootMode=0;
 uint8_t emulationType=0;
 uint8_t bootImageIndex=0;
 list_t * dirChainedList;
+
+enum action nextAction=NONE;
 
 #ifdef A2F_MODE
 // rotary encoder state
@@ -998,6 +1012,29 @@ enum STATUS unlinkImageFile(char* fullpathfilename){
     f_unlink(fullpathfilename);
 
     return RET_OK;
+}
+
+enum STATUS execAction(enum action nextAction){
+    switch(nextAction){
+      
+      case SYSRESET:
+        NVIC_SystemReset();
+        nextAction=NONE;
+        break;
+      
+      case MKFS:
+        processMakeFsConfirmed();
+        nextAction=NONE;
+        break;
+      
+      default:
+        log_error("execAction not handled");
+        nextAction=NONE;
+        return RET_ERR;
+        break;
+    }
+  
+  return RET_OK;
 }
 
 

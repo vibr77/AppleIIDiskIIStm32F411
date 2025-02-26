@@ -6,10 +6,12 @@
 #include "fatfs.h"
 
 #include "emul_smartport.h"
-#include "utils.h"
+
 #include "main.h"
 #include "display.h"
 #include "log.h"
+
+#include "driver_2mg.h"
 
 // --------------------------------------------------------------------
 // Extern Declaration
@@ -26,6 +28,7 @@ extern volatile enum FS_STATUS fsState;
 
 extern uint8_t flgSoundEffect; 
 extern uint8_t bootImageIndex;
+extern enum action nextAction;
 
 prodosPartition_t devices[MAX_PARTITIONS];
 
@@ -278,7 +281,9 @@ char * SmartPortFindImage(char * pattern){
                 len>3                   &&
                 
                 (!memcmp(fno.fname+(len-3),".PO",3)   ||          // .PO
-                !memcmp(fno.fname+(len-3),".po",3)) &&            // .po
+                !memcmp(fno.fname+(len-3),".po",3)    ||  
+                !memcmp(fno.fname+(len-3),".2mg",4)   ||
+                !memcmp(fno.fname+(len-3),".2MG",4)  ) &&         
                 !(fno.fattrib & AM_SYS) &&                        // Not System file
                 !(fno.fattrib & AM_HID) &&                        // Not Hidden file
     
@@ -286,7 +291,11 @@ char * SmartPortFindImage(char * pattern){
                 ){
                 
             fileName=malloc(MAX_FILENAME_LENGTH*sizeof(char));
+            #pragma GCC diagnostic push
+            #pragma GCC diagnostic ignored "-Wformat-truncation="
             snprintf(fileName,63,"%s",fno.fname);
+            #pragma GCC diagnostic pop
+
             log_info("found %s",fileName);
             f_closedir(&dir);
             return fileName;
@@ -396,13 +405,30 @@ void deAssertAck(){
 void SmartPortMainLoop(){
 
     log_info("SmartPortMainLoop entering loop");
-    unsigned long int block_num;
-    unsigned char LBH=0, LBL=0, LBN=0, LBT=0;
+    unsigned long blockNumber;
+    uint8_t statusCode=0;
+    uint8_t ctrlCode=0;
+
+    uint8_t BN_3B_LOW,BN_3B_MID,BN_3B_HIGH;             // Block Number on 3 Bytes Low Mid High
+    
+    /*
+    uint8_t D_LW_BUFFER_PTR_LOW;                        // Extended Call Data Pointer on 4 Bytes
+    uint8_t D_LW_BUFFER_PTR_HIGH;
+    uint8_t D_HW_BUFFER_PTR_LOW;
+    uint8_t D_HW_BUFFER_PTR_HIGH;
+    */
+
+    uint8_t BN_LW_L;                                   // Extended Call Block Number on 4 Bytes 2x WORD
+    uint8_t BN_LW_H;
+    uint8_t BN_HW_L;
+    uint8_t BN_HW_H;
+    
+    uint8_t MSB,MSB2,AUX;
 
     int number_partitions_initialised = 1;
-    int noid = 0;
+    uint8_t noid = 0;
 
-    unsigned char dest, status,  status_code;
+    unsigned char dest;
 
     HAL_GPIO_WritePin(RD_DATA_GPIO_Port, RD_DATA_Pin,GPIO_PIN_RESET);  // set RD_DATA LOW
     //HAL_TIM_PWM_Start_IT(&htim2,TIM_CHANNEL_3);
@@ -415,7 +441,7 @@ void SmartPortMainLoop(){
     
     while (1) {
 
-        //noid = 0;                                                                           // Reset noid flag
+        
         setWPProtectPort(0);                                                                // Set ack (wrprot) to input to avoid clashing with other devices when sp bus is not enabled 
                                                                                             // read phase lines to check for smartport reset or enable
 
@@ -449,7 +475,7 @@ void SmartPortMainLoop(){
                 
                 SmartportReceivePacket();                                                   // Receive Packet
                                                                                             // Verify Packet checksum
-                if ( verify_cmdpkt_checksum()==RET_ERR  ){
+                if ( verifyCmdpktChecksum()==RET_ERR  ){
                     log_error("Incomming command checksum error");
                 }
                 
@@ -521,101 +547,147 @@ void SmartPortMainLoop(){
                         break;  //not one of ours
                     }
                 }
-                
                                                                                             // Not safe to assume it's a normal command packet, GSOS may throw
                                                                                             // Us several extended packets here and then crash 
                                                                                             // Refuse an extended packet
-                dest = packet_buffer[SP_DEST];
-                                                                                            // Check if its one of ours and an extended packet
-
-                if(packet_buffer[SP_COMMAND]>=0xC0){
-                    log_info("Extended packet!");
-                    print_packet ((unsigned char*) packet_buffer, packet_length());
-                }
-
-                //if (packet_buffer[SP_COMMAND]!=0x81)
-                //    log_info("cmd:0x%02X dest:0x%02X",packet_buffer[SP_COMMAND], packet_buffer[SP_DEST]);
-
+                dest =  packet_buffer[SP_DEST];
+                MSB  =  packet_buffer[SP_GRP7MSB];
+                AUX  =  packet_buffer[SP_AUX] & 0x7f;                                                                          
+                
                 switch (packet_buffer[SP_COMMAND]) {
 
                     case 0x80:                                                                                          //is a status cmd
+                    
+                        /*
+                            The Status cal returns status information about a particular device or about the
+                            SmartPort itself. Only Status cals that return general information are listed here.
+                            Device-specific Status calls can also be implemented by a device for diagnostic or
+                            other information.
 
-                        dest = packet_buffer[SP_DEST];
+                                        Standard call                       Extended call
+                            CMDNUM      $00                                 $40
+                            CMDLIST     Parameter count                     Parameter count
+                                        Unit number                         Unit number
+                                        Status list pointer (low byte)      Status list pointer (low byte, low word)        SP_G7BYTE1
+                                        Status list pointer (high byte)     Status list pointer (high byte, low word)       SP_G7BYTE2
+                                        Status code                         Status list pointer (low byte, high word)       SP_G7BYTE3
+                                                                            Status list pointer (high byte, high word)      SP_G7BYTE4
+                                                                            Status code                                     SP_G7BYTE5
+                            
+                            Status Code returned
+                            ___________________________________________________________________________________
+                            $00 Return device status
+                            $01 Return device control block
+                            $02 Return newline status (character devices only)
+                            $03 Return device information block (DIB)
+                            
+                            A Status call with a unit number of $00 and a status code of $00 is a request to return the
+                            status o f the SmartPort driver. This function returns the number of devices as well as
+                            the current interrupt status. The format of the status list returned is as follows:
+                            
+                            STATLIST Byte 0. Number of devices
+                            Byte 1 Reserved
+                            Byte 2 Reserved
+                            Byte 3 Reserved
+                            Byte 4 Reserved
+                            Byte 5 Reserved
+                            Byte 6 Reserved
+                            Byte 7 Reserved
+                            
+                            The number of devices field is a 1-byte field indicating the total number of devices
+                            connected to the slot or port. This number wil always be in the range 0 to 127.
+                            
+                            Possible errors
+                            ________________________________________________________________________________
+                            $06 BUSERR Communications error
+                            $21 BADCTL Invalid status code
+                            $30-S3F / $50-$7F Device-specific error
+                        
+                        */
+                        
+                        statusCode= (packet_buffer[SP_G7BYTE3] & 0x7f) | (((unsigned short)MSB << 3) & 0x80);  ;
+
                         for (partition = 0; partition < MAX_PARTITIONS; partition++) {                                  // Check if its one of ours
                             uint8_t dev=(partition + initPartition) % MAX_PARTITIONS;
                             if (devices[dev].device_id == dest && devices[dev].mounted==1 ) {                           // yes it is, and it's online, then reply
                                 
                                 updateSmartportHD(devices[dev].dispIndex,EMUL_STATUS);
                                                                                                                         // Added (unsigned short) cast to ensure calculated block is not underflowing.
-                                status_code = (packet_buffer[14] & 0x7f);                                               // | (((unsigned short)packet_buffer[16] << 3) & 0x80);
-                                //log_info(" Status code: %2X",status_code);
-                                
-                                
-                                //print_packet((unsigned char*) packet_buffer, 9);                                        // Standard SmartPort command is 9 bytes
-                                
-                                if (status_code == 0x03) {                                                              // if statcode=3, then status with device info block
-                                    log_info("******** Sending DIB! ********");
-                                    encode_status_dib_reply_packet(devices[dev]);
-                                    //print_packet ((unsigned char*) packet_buffer,packet_length());
-                                    
+                                if (statusCode == 0x03) {                                                               // if statcode=3, then status with device info block
+                                    encodeStatusDibReplyPacket(devices[dev]);
                                 } else {                                                                                // else just return device status
-                                    /*log_info("Sending status:");
-                                    log_info("  dest: %2X",dest);
-                                    log_info("  Partition ID: %2X",devices[dev].device_id);
-                                    log_info("  Status code:%2X",status_code);*/
-                                    encode_status_reply_packet(devices[dev]);        
+                                    encodeStatusReplyPacket(devices[dev]);        
                                 }
 
-                                SmartPortSendPacket(packet_buffer);
-                                
+                                SmartPortSendPacket(packet_buffer);  
                             }
                         }
-                        packet_buffer[0]=0x0;
                         break;
 
-                    case 0xC1:
-                        log_info("Extended read! Not implemented!");
-                        break;
-                    case 0xC2:
-                        log_info("Extended write! Not implemented!");
-                        break;
-                    case 0xC3:
-                        log_info("Extended format! Not implemented!");
-                        break;
-                    case 0xC5:
-                        log_info("Extended init! Not implemented!");
-                        break;
-                    case 0xC0:                                                                                  // Extended status cmd
-                
-                        dest = packet_buffer[SP_DEST];
+                    case 0xC0:                                                                                          // Extended status cmd
+                        
+                        /*
+                                    Standard call                       Extended call
+                        CMDNUM      $00                                 $40
+                        CMDLIST     Parameter count                     Parameter count
+                                    Unit number                         Unit number
+                                    Status list pointer (low byte)      Status list pointer (low byte, low word)        SP_G7BYTE1
+                                    Status list pointer (high byte)     Status list pointer (high byte, low word)       SP_G7BYTE2
+                                    Status code                         Status list pointer (low byte, high word)       SP_G7BYTE3
+                                                                        Status list pointer (high byte, high word)      SP_G7BYTE4
+                                                                        Status code                                     SP_G7BYTE5
+                        */
 
-                        for (partition = 0; partition < MAX_PARTITIONS; partition++) {                          // Check if its one of ours
+                        for (partition = 0; partition < MAX_PARTITIONS; partition++) {                                  // Check if its one of ours
                             uint8_t dev=(partition + initPartition) % MAX_PARTITIONS;
-                            if (devices[dev].device_id == dest) {                                               // yes it is, then reply
-                                                                                                                // Added (unsigned short) cast to ensure calculated block is not underflowing.
-                                status_code = (packet_buffer[16] & 0x7f);
-                                log_info("Extended Status CMD: %2X",status_code);
-                                //print_packet ((unsigned char*) packet_buffer,packet_length());
-                                if (status_code == 0x03) {                                                      // if statcode=3, then status with device info block
-                                    log_info("Extended status DIB!");
-                                } else {                                                                        // else just return device status
-                                    log_info("Extended status non-DIB:");
-                                    log_info("  dest: %2X",dest);
-                                    log_info("  Partition ID: %2X",devices[dev].device_id);
-                                    log_info("  Status code:%2X",status_code);
-                                    encode_extended_status_reply_packet(devices[dev]);        
+                            if (devices[dev].device_id == dest) {                                                       // yes it is, then reply
+                                                                                                                        // Added (unsigned short) cast to ensure calculated block is not underflowing.
+                                updateSmartportHD(devices[dev].dispIndex,EMUL_STATUS);
+                                statusCode = (packet_buffer[SP_G7BYTE5] & 0x7f);
+                                
+                                if (statusCode == 0x03) {                                                               // if statcode=3, then status with device info block
+                                    encodeExtendedStatusDibReplyPacket(devices[dev]);
+                                } else {                                                                                // else just return device status
+                                    encodeExtendedStatusReplyPacket(devices[dev]);        
                                 }
 
                                 SmartPortSendPacket(packet_buffer);
-
                             }
                         }
 
-                        packet_buffer[0]=0x0;
                         break;
 
                     case 0x81:                                                                                  // is a readblock cmd
                         
+                        /*
+
+                        This call reads one 512-byte block from the block device specified by the unit number
+                        passed in the parameter list. The block is read into memory starting at the address
+                        specified by the data buffer pointer passed in the parameter list.
+
+                        
+                                            Standard call                                   Extended call
+                        __________________________________________________________________________________________________________________________________
+                        CMDNUM              $01                                             $41                                                 
+                        CMDLIST             Parameter count                                 Parameter count
+                                            Unit number                                     Unit number
+                                            Data buffer pointer (low byte)                  Data buffer pointer (low byte, low word)            SP_G7BYTE1
+                                            Data buffer pointer (high byte)                 Data buffer pointer (high byte, low word)           SP_G7BYTE2
+                                            Block number (low byte)                         Data buffer pointer (low byte, high word)           SP_G7BYTE3
+                                            Block number (middle byte)                      Data buffer pointer (high byte, high word)          SP_G7BYTE4
+                                            Block number (high byte)                        Block number (low byte, low word)                   SP_G7BYTE5
+                                                                                            Block number (high byte, low word)                  SP_G7BYTE6
+                                                                                            Block number (low byte, high word)                  SP_G7BYTE7
+                                                                                            Block number (high byte, high word)                 SP_G7BYTE7+2
+                        The following error return values are possible.
+                        _______________________________________________
+                        $06 BUSERR Communications error
+                        $27 IOERROR I/O error
+                        $28 NODRIVE No device connected
+                        $2D BADBLOCK Invalid block number
+                        $2F OFFLINE Device off line or no disk in drive
+                        
+                        */
 
                         if (flgSoundEffect==1){
                             TIM1->PSC=1000;
@@ -623,63 +695,180 @@ void SmartPortMainLoop(){
                             HAL_Delay(15);
                             HAL_TIMEx_PWMN_Stop(&htim1,TIM_CHANNEL_2);
                         }
-                        //updateSmartportHD();                                                                          // Move Below to have the imageIndex
 
-                        dest = packet_buffer[SP_DEST];
-                        // CMD 9
-                        // PARMCNT 10
-                        // LBH  11
-                        // Data Buf PTR    12
-                        // Data Buf PTR    13
-                        // BL 1            14
-                        // BL 2            15
-                        // BL 3            16
-                        LBH = packet_buffer[SP_GRP7MSB];                                                                // high order bits
-                        LBT = packet_buffer[16];                                                                        // block number high
-                        LBL = packet_buffer[15];                                                                        // block number middle
-                        LBN = packet_buffer[14];                                                                        // block number low
+                        BN_3B_LOW = packet_buffer[SP_G7BYTE3];                                                              // block number low
+                        BN_3B_MID = packet_buffer[SP_G7BYTE4];                                                              // block number middle
+                        BN_3B_HIGH = packet_buffer[SP_G7BYTE5];                                                             // block number high
                         
-                        //log_info("LBH:%02X, LBT:%02X, LBL:%02X, LBN:%02X",LBH,LBT,LBL,LBN);
+                        blockNumber = (BN_3B_LOW & 0x7f) | (((unsigned short)MSB << 3) & 0x80);                             // Added (unsigned short) cast to ensure calculated block is not underflowing.
+                        blockNumber = blockNumber + (((BN_3B_MID & 0x7f) | (((unsigned short)MSB << 4) & 0x80)) << 8);      // block num second byte, Added (unsigned short) cast to ensure calculated block is not underflowing.
+                        blockNumber = blockNumber + (((BN_3B_HIGH & 0x7f) | (((unsigned short)MSB << 5) & 0x80)) << 16);    // block num third byte, Added (unsigned short) cast to ensure calculated block is not underflowing.
+                                    
+                        statusCode=0x28;
+                        for (partition = 0; partition < MAX_PARTITIONS; partition++) {                                      // Check if its one of ours
+                            uint8_t dev=(partition + initPartition) % MAX_PARTITIONS;
+
+                            if (devices[dev].device_id == dest) {                                                           // yes it is, then do the read
+                                
+                                if (devices[dev].mounted==0){
+                                    statusCode=0x27;
+                                }else{
+
+                                    updateSmartportHD(devices[dev].dispIndex,EMUL_READ);                                    // Pass the rightImageIndex    
+                                                                                                                            // block num 1st byte
+                                    while(fsState!=READY){};
+                                    fsState=BUSY;
+                                    FRESULT fres=f_lseek(&devices[dev].fil,devices[dev].dataOffset+blockNumber*512);
+                                    if (fres!=FR_OK){
+                                        log_error("Read seek err!, partition:%d, block:%d",dev,blockNumber);
+                                        statusCode=0x2D;                                                                    // Invalid Block Number
+                                    }else{
+                                        statusCode=0x0;
+                                        fsState=BUSY;
+                                        unsigned int pt;
+                                        fres=f_read(&devices[dev].fil,(unsigned char*) packet_buffer,512,&pt);              // Reading block from SD Card
+                                        
+                                        if(fres != FR_OK){
+                                            log_error("Read err!");
+                                            statusCode=0x27;
+                                        }
+                                        while(fsState!=READY){};
+                                    }
+                                    if (statusCode==0x0){
+                                        encodeDataPacket(dest);
+                                        SmartPortSendPacket(packet_buffer);
+                                    }else{
+                                        log_error("read Error");
+                                    }
+                                }   
+                            }
+                        }
+                        if (statusCode!=0x0){
+                            encodeReplyPacket(dest,0x1 | AUX ,AUX,statusCode);
+                            SmartPortSendPacket(packet_buffer);
+                        }
+                        break;
+
+                    case 0xC1:                                                                                      // Extended Call Read
+                        
+                        /*
+                        This call reads one 512-byte block from the block device specified by the unit number
+                        passed in the parameter list. The block is read into memory starting at the address
+                        specified by the data buffer pointer passed in the parameter list.
+
+                        
+                                            Standard call                                   Extended call
+                        CMDNUM              $01                                             $41                                                 
+                        CMDLIST             Parameter count                                 Parameter count
+                                            Unit number                                     Unit number
+                                            Data buffer pointer (low byte)                  Data buffer pointer (low byte, low word)            SP_G7BYTE1
+                                            Data buffer pointer (high byte)                 Data buffer pointer (high byte, low word)           SP_G7BYTE2
+                                            Block number (low byte)                         Data buffer pointer (low byte, high word)           SP_G7BYTE3
+                                            Block number (middle byte)                      Data buffer pointer (high byte, high word)          SP_G7BYTE4
+                                            Block number (high byte)                        Block number (low byte, low word)                   SP_G7BYTE5
+                                                                                            Block number (high byte, low word)                  SP_G7BYTE6
+                                                                                            Block number (low byte, high word)                  SP_G7BYTE7
+                                                                                            Block number (high byte, high word)                 SP_G7BYTE7+2
+                        */
+
+                        if (flgSoundEffect==1){
+                            TIM1->PSC=1000;
+                            HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_2);
+                            HAL_Delay(15);
+                            HAL_TIMEx_PWMN_Stop(&htim1,TIM_CHANNEL_2);
+                        }
+ 
+                        MSB2    =  packet_buffer[SP_GRP7MSB+8];
+
+                        BN_LW_L =   packet_buffer[SP_G7BYTE5];
+                        BN_LW_H =   packet_buffer[SP_G7BYTE6];
+                        BN_HW_L =   packet_buffer[SP_G7BYTE7];
+                        BN_HW_H =   packet_buffer[SP_G7BYTE7+2];
+                        
+                        blockNumber = (BN_LW_L & 0x7f) | (((unsigned short)MSB << 5) & 0x80);                             // This should be the BlockNumber                        
+                        blockNumber = blockNumber + (((BN_LW_H & 0x7f) | (((unsigned short)MSB << 6) & 0x80)) << 8);    
+                        blockNumber = blockNumber + (((BN_HW_L & 0x7f) | (((unsigned short)MSB << 7) & 0x80)) << 16);
+                        blockNumber = blockNumber + (((BN_HW_H & 0x7f) | (((unsigned short)MSB2 << 7) & 0x80)) << 24);
+        
+                        statusCode=0x28;
                         for (partition = 0; partition < MAX_PARTITIONS; partition++) {                                  // Check if its one of ours
                             uint8_t dev=(partition + initPartition) % MAX_PARTITIONS;
 
                             if (devices[dev].device_id == dest) {                                                       // yes it is, then do the read
                                 
-                                updateSmartportHD(devices[dev].dispIndex,EMUL_READ);                                    // Pass the rightImageIndex    
-                                                                                                                        // block num 1st byte
-                                block_num = (LBN & 0x7f) | (((unsigned short)LBH << 3) & 0x80);                         // Added (unsigned short) cast to ensure calculated block is not underflowing.
-                                block_num = block_num + (((LBL & 0x7f) | (((unsigned short)LBH << 4) & 0x80)) << 8);    // block num second byte, Added (unsigned short) cast to ensure calculated block is not underflowing.
-                                block_num = block_num + (((LBT & 0x7f) | (((unsigned short)LBH << 5) & 0x80)) << 16);   // block num third byte, Added (unsigned short) cast to ensure calculated block is not underflowing.
-                                
-                                //log_info("0x81,ID:%02X Read block %d",dest,block_num);
-                                
-                                while(fsState!=READY){};
-                                fsState=BUSY;
-                                FRESULT fres=f_lseek(&devices[dev].fil,block_num*512);
-                                if (fres!=FR_OK){
-                                    log_error("Read seek err!, partition:%d, block:%d",dev,block_num);
-                                }
+                                if (devices[dev].mounted==0){
+                                    statusCode=0x27;
+                                }else{
 
-                                fsState=BUSY;
-                                unsigned int pt;
-                                fres=f_read(&devices[dev].fil,(unsigned char*) packet_buffer,512,&pt); // Reading block from SD Card
-                                
-                                if(fres != FR_OK){
-                                    log_error("Read err!");
-                                }
-                                while(fsState!=READY){};
-                                
-                                encode_data_packet(dest);
-                                SmartPortSendPacket(packet_buffer);
-                                //print_packet ((unsigned char*) packet_buffer,packet_length());
-                                
+                                    updateSmartportHD(devices[dev].dispIndex,EMUL_READ);                               // Pass the rightImageIndex    
+                                    
+                                    while(fsState!=READY){};
+                                    fsState=BUSY;
+                                    FRESULT fres=f_lseek(&devices[dev].fil,devices[dev].dataOffset+blockNumber*512);
+                                    if (fres!=FR_OK){
+                                        log_error("Read seek err!, partition:%d, block:%d",dev,blockNumber);
+                                        statusCode=0x2D;                // Invalid Block Number
+                                    }else{
+                                        statusCode=0x0;
+                                        fsState=BUSY;
+                                        unsigned int pt;
+                                        fres=f_read(&devices[dev].fil,(unsigned char*) packet_buffer,512,&pt); // Reading block from SD Card
+                                        
+                                        if(fres != FR_OK){
+                                            log_error("Read err!");
+                                            statusCode=0x27;
+                                        }
+                                        while(fsState!=READY){};
+                                    }
+                                    if (statusCode==0x0){
+                                        encodeDataPacket(dest);
+                                        SmartPortSendPacket(packet_buffer);
+                                    }else{
+                                        log_error("read Error");
+                                    }
+                                }   
                             }
                         }
-                        packet_buffer[0]=0x0;
+
+                        if (statusCode!=0x0){
+                            log_error("Smartport READBLOCK cmd:%02X,  dest:%002X, statusCode:%02X",packet_buffer[SP_COMMAND],dest,statusCode);
+                            encodeReplyPacket(dest,0x1,AUX,statusCode);
+                            SmartPortSendPacket(packet_buffer);
+                        }
+
                         break;
 
-                    case 0x82:                                                                                      // is a writeblock cmd
-                        dest = packet_buffer[SP_DEST];
+                    case 0x82:                                                                                           // is a writeblock cmd
+                        
+                        /*
+                        The Write call writes one 512-byte block to the block device specified by the unit 
+                        number passed in the parameter list. The block is written from memory starting at the 
+                        address specified by the data buffer pointer passed in the parameter list.
+                        
+                                            Standard call                                   Extended call
+                        __________________________________________________________________________________________________________________________________
+                        CMDNUM              $02                                             $42                                                 
+                        CMDLIST             Parameter count                                 Parameter count
+                                            Unit number                                     Unit number
+                                            Data buffer pointer (low byte)                  Data buffer pointer (low byte, low word)            SP_G7BYTE1
+                                            Data buffer pointer (high byte)                 Data buffer pointer (high byte, low word)           SP_G7BYTE2
+                                            Block number (low byte)                         Data buffer pointer (low byte, high word)           SP_G7BYTE3
+                                            Block number (middle byte)                      Data buffer pointer (high byte, high word)          SP_G7BYTE4
+                                            Block number (high byte)                        Block number (low byte, low word)                   SP_G7BYTE5
+                                                                                            Block number (high byte, low word)                  SP_G7BYTE6
+                                                                                            Block number (low byte, high word)                  SP_G7BYTE7
+                                                                                            Block number (high byte, high word)                 SP_G7BYTE7+2
+                        
+                        The following error return values are possible.
+                        _______________________________________________
+                        $06 BUSERR Communications error
+                        $27 IOERROR I/O error
+                        $28 NODRIVE No device connected
+                        $2B NOWRITE Disk write protected
+                        $2D BADBLOCK Invalid block number
+                        S2F OFFLINE Device off line or no disk in drive
+                        
+                        */
 
                         if (flgSoundEffect==1){
                             TIM1->PSC=1000;
@@ -688,85 +877,210 @@ void SmartPortMainLoop(){
                             HAL_TIMEx_PWMN_Stop(&htim1,TIM_CHANNEL_2);
                         }
 
-                        // CMD 9
-                        // PARMCNT 10
-                        // LBH  11
-                        // Data Buf PTR    12
-                        // Data Buf PTR    13
-                        // BL 1            14
-                        // BL 2            15
-                        // BL 3            16
-
-                        LBH = packet_buffer[SP_GRP7MSB];                                                                // high order bits
-                        LBT = packet_buffer[16];                                                                        // block number high
-                        LBL = packet_buffer[15];                                                                        // block number middle
-                        LBN = packet_buffer[14];                                                                        // block number low
-
-                        for (partition = 0; partition < MAX_PARTITIONS; partition++) {                              // Check if its one of ours
+                        BN_3B_LOW = packet_buffer[SP_G7BYTE3];                                                          // block number low
+                        BN_3B_MID = packet_buffer[SP_G7BYTE4];                                                          // block number middle
+                        BN_3B_HIGH = packet_buffer[SP_G7BYTE5];                                                         // block number high
+                        
+                        statusCode=0x28;
+                        for (partition = 0; partition < MAX_PARTITIONS; partition++) {                                              // Find the right Partition
                             uint8_t dev=(partition + initPartition) % MAX_PARTITIONS;
-                            if (devices[dev].device_id == dest) {          // yes it is, then do the write
+                            if (devices[dev].device_id == dest) {                                                                   
                                 
-
                                 //updateSmartportHD(devices[dev].dispIndex,EMUL_WRITE);
 
-                                block_num = (LBN & 0x7f) | (((unsigned short)LBH << 3) & 0x80);                         // Added (unsigned short) cast to ensure calculated block is not underflowing.
-                                block_num = block_num + (((LBL & 0x7f) | (((unsigned short)LBH << 4) & 0x80)) << 8);    // block num second byte, Added (unsigned short) cast to ensure calculated block is not underflowing.
-                                block_num = block_num + (((LBT & 0x7f) | (((unsigned short)LBH << 5) & 0x80)) << 16);   // block num third byte, Added (unsigned short) cast to ensure calculated block is not underflowing.
-                                                                                                                        // get write data packet, keep trying until no timeout
+                                blockNumber = (BN_3B_LOW & 0x7f) | (((unsigned short)MSB << 3) & 0x80);                             // Added (unsigned short) cast to ensure calculated block is not underflowing.
+                                blockNumber = blockNumber + (((BN_3B_MID & 0x7f) | (((unsigned short)MSB << 4) & 0x80)) << 8);      // block num second byte, Added (unsigned short) cast to ensure calculated block is not underflowing.
+                                blockNumber = blockNumber + (((BN_3B_HIGH & 0x7f) | (((unsigned short)MSB << 5) & 0x80)) << 16);    // block num third byte, Added (unsigned short) cast to ensure calculated block is not underflowing.
+                                                                                                                                    // get write data packet, keep trying until no timeout
                                 SmartportReceivePacket();
-                                
-                                status = decode_data_packet();
-                                if (status == 0) {                                                                  // ok
-                                    log_info("Write Bl. n.r: %d",block_num);
-                                    
-                                    while(fsState!=READY){};
-                                    fsState=BUSY;
-                                    
-                                    FRESULT fres=f_lseek(&devices[dev].fil,block_num*512);
-                                    if (fres!=FR_OK){
-                                        log_error("Write seek err!");
-                                    }
-                                    fsState=BUSY;
+                                if (devices[dev].mounted==0){
+                                    statusCode=0x2F;                                                                                // OffLine Device off line or no disk in drive
+                                }else if (devices[dev].writeable==0)
+                                    statusCode=0x2B;
+                                else{
+                                    statusCode = decodeDataPacket();
+                                    if (statusCode == 0) {                                                                  // ok
+                                        log_info("Write Bl. n.r: %d",blockNumber);
+                                        
+                                        while(fsState!=READY){};
+                                        fsState=BUSY;
+                                        
+                                        FRESULT fres=f_lseek(&devices[dev].fil,devices[dev].dataOffset+blockNumber*512);
+                                        if (fres!=FR_OK){
+                                            log_error("Write seek err!");
+                                            statusCode = 0x27;
+                                        }else{
+                                            fsState=BUSY;
 
-                                    unsigned int pt;
-                                    fres=f_write(&devices[dev].fil,(unsigned char*) packet_buffer,512,&pt); // Reading block from SD Card
-                                    if(fres != FR_OK){
-                                        log_error("Write err! Block:%d",block_num);
-                                        status = 6;
+                                            unsigned int pt;
+                                            fres=f_write(&devices[dev].fil,(unsigned char*) packet_buffer,512,&pt); // Reading block from SD Card
+                                            if(fres != FR_OK){
+                                                log_error("Write err! Block:%d",blockNumber);
+                                                statusCode = 0x27;
+                                            }
+                                            while(fsState!=READY){};
+                                        }   
+                                    }else{
+                                        // return of statusCode 6
+                                        log_error("Bad Checksum on write");
                                     }
-                                    
-                                    while(fsState!=READY){};
-                                }
-                                //now return status code to host
-                                
-                                encode_write_status_packet(dest, status);
-                                SmartPortSendPacket(packet_buffer);
-                            
+                                }                                
                             }
                         }
-                        packet_buffer[0]=0x0;
-                        break;
-
-                    case 0x83:                                                                                 // FORMAT CMD
                         
-                        dest = packet_buffer[SP_DEST];
-                        for (partition = 0; partition < MAX_PARTITIONS; partition++) { 
-                            uint8_t dev=(partition + initPartition) % MAX_PARTITIONS;                                     // Check if its one of ours
-                            if (devices[dev].device_id == dest) {                                                          // yes it is, then reply to the format cmd
-                                encode_init_reply_packet(dest, 0x80);                                       // just send back a successful response
-                                SmartPortSendPacket(packet_buffer);
-                                
-                                //print_packet ((unsigned char*) packet_buffer,packet_length());
+                        if (statusCode!=0x0){
+                            log_error("Smartport WRITEBLOCK cmd:%02X, dest:%002X, statusCode:%02X",packet_buffer[SP_COMMAND],dest,statusCode);
+                        }
 
+                        encodeReplyPacket(dest,0x1,AUX,statusCode);
+                        SmartPortSendPacket(packet_buffer);
+                        break;
+                    
+                    case 0xC2:
+
+                        /*
+                        The Write call writes one 512-byte block to the block device specified by the unit 
+                        number passed in the parameter list. The block is written from memory starting at the 
+                        address specified by the data buffer pointer passed in the parameter list.
+                        
+                                            Standard call                                   Extended call
+                        __________________________________________________________________________________________________________________________________
+                        CMDNUM              $02                                             $42                                                 
+                        CMDLIST             Parameter count                                 Parameter count
+                                            Unit number                                     Unit number
+                                            Data buffer pointer (low byte)                  Data buffer pointer (low byte, low word)            SP_G7BYTE1
+                                            Data buffer pointer (high byte)                 Data buffer pointer (high byte, low word)           SP_G7BYTE2
+                                            Block number (low byte)                         Data buffer pointer (low byte, high word)           SP_G7BYTE3
+                                            Block number (middle byte)                      Data buffer pointer (high byte, high word)          SP_G7BYTE4
+                                            Block number (high byte)                        Block number (low byte, low word)                   SP_G7BYTE5
+                                                                                            Block number (high byte, low word)                  SP_G7BYTE6
+                                                                                            Block number (low byte, high word)                  SP_G7BYTE7
+                                                                                            Block number (high byte, high word)                 SP_G7BYTE7+2
+                        
+                        The following Error return values are possible <!> Remember to add 0x80 for Bit 7
+                        __________________________________________________________________________________
+                        
+                        $06 BUSERR Communications error
+                        $27 IOERROR I/O error
+                        $28 NODRIVE No device connected
+                        $2B NOWRITE Disk write protected
+                        $2D BADBLOCK Invalid block number
+                        $2F OFFLINE Device off line or no disk in drive
+                        
+                        */
+
+                        MSB2    =  packet_buffer[SP_GRP7MSB+8];
+
+                        BN_LW_L =   packet_buffer[SP_G7BYTE5];
+                        BN_LW_H =   packet_buffer[SP_G7BYTE6];
+                        BN_HW_L =   packet_buffer[SP_G7BYTE7];
+                        BN_HW_H =   packet_buffer[SP_G7BYTE7+2];
+                        
+                        blockNumber = (BN_LW_L & 0x7f) | (((unsigned short)MSB << 5) & 0x80);                             // This should be the BlockNumber                        
+                        blockNumber = blockNumber + (((BN_LW_H & 0x7f) | (((unsigned short)MSB << 6) & 0x80)) << 8);    
+                        blockNumber = blockNumber + (((BN_HW_L & 0x7f) | (((unsigned short)MSB << 7) & 0x80)) << 16);
+                        blockNumber = blockNumber + (((BN_HW_H & 0x7f) | (((unsigned short)MSB2 << 7) & 0x80)) << 24);
+                        
+                        statusCode=0x28;                                                                                            // Start with NODRIVE No device connected
+                        for (partition = 0; partition < MAX_PARTITIONS; partition++) {                                              // Check if its one of ours
+                            uint8_t dev=(partition + initPartition) % MAX_PARTITIONS;
+                            if (devices[dev].device_id == dest) {                                                                   // Yes it is, then do the write
+                                                                                                                                    // get write data packet, keep trying until no timeout
+                                SmartportReceivePacket();
+                                if (devices[dev].mounted==0){
+                                    statusCode=0x2F;                                                                                // OffLine Device off line or no disk in drive
+                                }else if (devices[dev].writeable==0)
+                                    statusCode=0x2B;
+                                else{
+                                    statusCode = decodeDataPacket();
+                                    if (statusCode == 0) {                                                                  // ok
+                                        log_info("Write Bl. n.r: %d",blockNumber);
+                                        
+                                        while(fsState!=READY){};
+                                        fsState=BUSY;
+                                        
+                                        FRESULT fres=f_lseek(&devices[dev].fil,devices[dev].dataOffset+blockNumber*512);
+                                        if (fres!=FR_OK){
+                                            log_error("Write seek err!");
+                                            statusCode = 0x27;
+                                        }else{
+                                            fsState=BUSY;
+
+                                            unsigned int pt;
+                                            fres=f_write(&devices[dev].fil,(unsigned char*) packet_buffer,512,&pt); // Reading block from SD Card
+                                            if(fres != FR_OK){
+                                                log_error("Write err! Block:%d",blockNumber);
+                                                statusCode = 0x27;
+                                            }
+                                            while(fsState!=READY){};
+                                        }
+                                        
+                                        
+                                    
+                                    }else{
+                                        // return of statusCode 6
+                                        log_error("Bad Checksum on write");
+                                    }
+                                }       
                             }
                         }
-                        packet_buffer[0]=0x0;
+                        
+                        if (statusCode!=0x0){
+                            log_error("Smartport WRITEBLOCK cmd:%02X, dest:%002X, statusCode:%02X",packet_buffer[SP_COMMAND],dest,statusCode);
+                        }
+
+                        encodeReplyPacket(dest,0x1,AUX,statusCode);
+                        SmartPortSendPacket(packet_buffer);
                         break;
+                    
+                    case 0xC3:
+                    case 0x83:                                                                                              // STANDARD FORMAT CMD
+                        /*    
+                        
+                        The Format call formats a block device. Note that the formatting performed by this
+                        cal is not linked to any operating system; it simply prepares al blocks on the medium
+                        for reading and writing. Operating-system-specific catalog information, such as bit
+                        maps and catalogs, are not prepared by this call.
+                                                            Standard call                   Extended call
+                        __________________________________________________________________________________
+                        CMDNUM                              $03                             $43
+                        CMDLIST                             Parameter count                 Parameter count
+                                                            Unit number                     Unit number
+                        Possible errors
+                        _______________________________
+                        $06 BUSERR Communications error
+                        $27 IOERROR IO error
+                        $28 NODRIVE No device connected
+                        $2B NOWRITE Disk write protected
+                        $2F OFFLINE Device of line or no disk in drive
+                    
+                        */
 
-                    case 0x85:                                                                                              // INIT CMD
+                        statusCode=0x28;
+                        
+                        for (partition = 0; partition < MAX_PARTITIONS; partition++) { 
+                            uint8_t dev=(partition + initPartition) % MAX_PARTITIONS;                                       // Check if its one of ours
+                            if (devices[dev].device_id == dest) { 
+                                if (devices[dev].mounted==0){
+                                    statusCode=0x2F;
+                                }else if (devices[dev].writeable==0){
+                                    statusCode=0x2B;
+                                }else{
+                                    statusCode=0x0;
+                                }                                                                                                 
+                            }
+                        }
 
-                        dest = packet_buffer[SP_DEST];
-                        //log_info("dbg %d %d",number_partitions_initialised,dest );
+                        if (statusCode!=0x0){
+                            log_error("Smartport FORMAT cmd:%02X, dest:%02X, statusCode:%02X",packet_buffer[SP_COMMAND],dest,statusCode);
+                        }
+                        
+                        encodeReplyPacket(dest,0x0,AUX,statusCode);                                                        // send back a sucessful response
+                        SmartPortSendPacket(packet_buffer);
+                        break;
+                    
+                    case 0xC5:                                                                                              // EXTENDED INIT
+                    case 0x85:                                                                                              // INIT CMD                        
                         
                         uint numMountedPartition=0;
                         for (partition = 0; partition < MAX_PARTITIONS; partition++) { 
@@ -776,54 +1090,262 @@ void SmartPortMainLoop(){
                         }
 
                         if (number_partitions_initialised <numMountedPartition)
-                            status = 0x80;                          // Not the last one
+                            statusCode = 0x00;                          // Not the last one
                         else
-                            status = 0xFF;                          // the Last one
+                            statusCode = 0x7F;                          // the Last one
 
                         for (partition = 0; partition < MAX_PARTITIONS; partition++) { 
                             uint8_t dev=(partition + initPartition) % MAX_PARTITIONS;  
                             if (devices[dev].mounted==1 && devices[dev].device_id == dest){
-                                //log_info("A %d %d",dev,dest);
                                 number_partitions_initialised++;
                                 break;
                             }
                             else if (devices[dev].mounted==1 && devices[dev].device_id == 0){
                                 devices[dev].device_id=dest;
-                                //log_info("B %d %d",dev,dest);
                                 number_partitions_initialised++;
                                 break;
                             }
                         
                         }
-                        /*
-                        if (number_partitions_initialised < MAX_PARTITIONS) {                                                // are all init'd yet
-                            devices[(number_partitions_initialised - 1 + initPartition) % MAX_PARTITIONS].device_id = dest; //remember dest id for partition
-                            number_partitions_initialised++;
-                            status = 0x80;
+                        
+                        if (statusCode!=0x0){
+                            log_error("Smartport INIT cmd:%02X, dest:%02X, statusCode:%02X",packet_buffer[SP_COMMAND],dest,statusCode);
                         }
-                        else{
-                            devices[(number_partitions_initialised - 1 + initPartition) % MAX_PARTITIONS].device_id = dest; //remember dest id for partition
-                            number_partitions_initialised++;
-                            status = 0xff;
-                        }*/
-
-                        /*for (partition = 0; partition < MAX_PARTITIONS; partition++) { 
-                            uint8_t dev=(partition + initPartition) % MAX_PARTITIONS;
-                            log_info("dest %d deviceid:%d",dev,devices[dev].device_id);
-                        }*/
-                        log_info("status dest %d:%02X",dest,status);
-                        encode_init_reply_packet(dest, status);
+                        
+                        encodeReplyPacket(dest,0x0,AUX,statusCode);
                         SmartPortSendPacket(packet_buffer);
+                        break;
+                    
+                    case 0x84:                                                                 // Normal Control
 
-                        packet_buffer[0]=0x0; 
+                        /* The Control call sends control information to the device. The information may be
+                           either general or device specific.
 
+                           
+                                    Standard call                       Extended call
+                        CMDNUM      $04                                 $44
+                        GMDLIST     Parameter count                     Parameter count
+                                    Unit number                         Unit number
+                                    Control list pointer (low byte)     Control list pointer (low byte, low word)       SP_G7BYTE1
+                                    Control list pointer (high byte)    Control list pointer (high byte, low word)      SP_G7BYTE2
+                                    Control code                        Control list pointer (low byte, high word)      SP_G7BYTE3
+                                                                        Control list pointer (high byte, high word)     SP_G7BYTE4
+                                                                        Control code                                    SP_G7BYTE5
+
+                            $00 Resets the device
+                            $01 Sets device control block
+                            $02 Sets newline status (character devices only)
+                            $03 Services device interrupt
+
+                            SmartPort calls specific to UniDisk 3.5
+
+                            $04 Eject ejects the media from a 3.5-inch drive.
+                            $05 Execute dispatches the intelligent controller in the UniDisk 3.5 device
+                            $06 SetAddress
+                            $07 Download
+
+                            The folowing error return values are possible.
+                            ____________________________________________________________
+                            $06 BUSERR Communications error
+                            $21 BADCTL Invalid control code
+                            $22 BADCTLPARM Invalid parameter list
+                            $30-$3F UNDEFINED Device-specific error
+
+                            Note:   As per the firmware documentation control code should be below 0x80 and thus Bit 7 (from the MSB shoulg never be set)
+                                    Thus it should not be needed to check the Bit7 from the MSB GRP 1, but to make it clean let's do it.
+                        */
+                        
+                        //unsigned char PTR_LOW,PTR_HIGH;                        
+                        //PTR_LOW=    packet_buffer[SP_G7BYTE1];
+                        //PTR_HIGH=   packet_buffer[SP_G7BYTE2];
+                        
+                        //int ctrlPtr = (PTR_LOW & 0x7f) | (((unsigned short)MSB << 1) & 0x80);                         
+                        //    ctrlPtr = ctrlPtr + (((PTR_HIGH & 0x7f) | (((unsigned short)MSB << 2) & 0x80)) << 8);      
+                        
+                        ctrlCode= (packet_buffer[SP_G7BYTE3] & 0x7f) | (((unsigned short)MSB << 3) & 0x80);  ;
+                        
+                        statusCode=0x21;                                                                                            // Bad Control Code 
+                        switch(ctrlCode){
+                            case 0x00:                                                                                               // RESET
+                                log_info("Smartport cmd:%02X, dest:%02X, control command code:%02X RESET",packet_buffer[SP_COMMAND],dest,ctrlCode);
+                                statusCode=0x0;
+                                break;
+                            case 0x04:                                                                                              // EJECT
+                                                              
+                                for (partition = 0; partition < MAX_PARTITIONS; partition++) { 
+                                    uint8_t dev=(partition + initPartition) % MAX_PARTITIONS;                                       // Check if its one of ours
+                                    if (devices[dev].device_id == dest) {
+                                        devices[dev].mounted=0;
+                                        statusCode=0x0;
+                                    }
+                                }  
+
+                                log_info("Smartport cmd:%02X, dest:%02X, control command code:%02X EJECT",packet_buffer[SP_COMMAND],dest,ctrlCode);  
+                                break;
+
+                            default:
+                                log_info("Smartport cmd:%02X, dest:%02X, control command code:%02X OTHER",packet_buffer[SP_COMMAND],dest,ctrlCode);
+                                
+                        }
+
+                        print_packet ((unsigned char*) packet_buffer,packet_length());
+                        encodeReplyPacket(dest,0x0,AUX,statusCode);
+                        SmartPortSendPacket(packet_buffer);
+                        
+                        print_packet ((unsigned char*) packet_buffer,packet_length());
+                        break;
+
+                    case 0xC4:                                                                                      // EXTENDED CONTROL CMD
+                        
+                        /* The Control call sends control information to the device. The information may be
+                           either general or device specific.
+
+                           
+                                    Standard call                       Extended call
+                        CMDNUM      $04                                 $44
+                        GMDLIST     Parameter count                     Parameter count
+                                    Unit number                         Unit number
+                                    Control list pointer (low byte)     Control list pointer (low byte, low word)       SP_G7BYTE1
+                                    Control list pointer (high byte)    Control list pointer (high byte, low word)      SP_G7BYTE2
+                                    Control code                        Control list pointer (low byte, high word)      SP_G7BYTE3
+                                                                        Control list pointer (high byte, high word)     SP_G7BYTE4
+                                                                        Control code                                    SP_G7BYTE5
+
+                            $00 Resets the device
+                            $01 Sets device control block
+                            $02 Sets newline status (character devices only)
+                            $03 Services device interrupt
+
+                            SmartPort calls specific to UniDisk 3.5
+
+                            $04 Eject ejects the media from a 3.5-inch drive.
+                            $05 Execute dispatches the intelligent controller in the UniDisk 3.5 device
+                            $06 SetAddress
+                            $07 Download
+
+                            The folowing error return values are possible.
+                            ____________________________________________________________
+                            $06 BUSERR Communications error
+                            $21 BADCTL Invalid control code
+                            $22 BADCTLPARM Invalid parameter list
+                            $30-$3F UNDEFINED Device-specific error
+
+                            Note:   As per the firmware documentation control code should be below 0x80 and thus Bit 7 (from the MSB shoulg never be set)
+                                    Thus it should not be needed to check the Bit7 from the MSB GRP 1, but to make it clean let's do it.
+                        */
+                         
+                        ctrlCode= (packet_buffer[SP_G7BYTE5] & 0x7f) | (((unsigned short)MSB << 5) & 0x80);  ;
+                        
+                        statusCode=0x21;                                // Bad Control Code 
+                        switch(ctrlCode){
+                            case 0x00:                                  // RESET
+                                log_info("Smartport CONTROL cmd:%02X, dest:%02X, control command code:%02X RESET",packet_buffer[SP_COMMAND],dest,ctrlCode);
+                                statusCode=0x0;
+                                break;
+                            case 0x04:                                  // EJECT
+
+                                for (partition = 0; partition < MAX_PARTITIONS; partition++) { 
+                                    uint8_t dev=(partition + initPartition) % MAX_PARTITIONS;                                       // Check if its one of ours
+                                    if (devices[dev].device_id == dest) {
+                                        devices[dev].mounted=0;
+                                        statusCode=0x0;
+                                    }
+                                }  
+
+                                log_info("Smartport CONTROL cmd:%02X, dest:%02X, control command code:%02X EJECT",packet_buffer[SP_COMMAND],dest,ctrlCode);  
+
+                                break;
+                            default:
+                                log_error("Smartport CONTROL cmd:%02X, dest:%02X, control command code:%02X OTHER",packet_buffer[SP_COMMAND],dest,ctrlCode);
+                        }
+
+                        print_packet ((unsigned char*) packet_buffer,packet_length());
+
+                        encodeReplyPacket(dest,0x0,AUX,statusCode);                                                     // just send back a successful response
+                        SmartPortSendPacket(packet_buffer);
+                        
+                        print_packet ((unsigned char*) packet_buffer,packet_length());
+                        
+                        break;
+                
+                    case 0x88:                                                                                      // 0x08 Standard Read
+                    /*
+                        The Read cal reads the number of bytes specified by the byte count into memory. The
+                        starting address of memory that the data is read into is specified by the data buffer
+                        pointer. The address pointer references an address within the device that the bytes are
+                        to be read from. The meaning of the address parameter depends on the device
+                        involved. Although this call is generally intended for use by character devices, a block
+                        device might use this call to read a block of nonstandard size (a block larger than 512
+                        bytes). In this latter case, the address pointer is interpreted as a block address.
+
+                        DEST                                    01
+                        ...
+                        CMD                                     09
+                        PARMCNT                                 10          Should Be 3
+                        MSB GRP1 BIT                            11
+                    
+                        Data buffer pointer (low byte)          12          SP_G7BYTE1 
+                        Data buffer pointer (high byte)         13          SP_G7BYTE2
+                        Byte count (low byte)                   14          SP_G7BYTE3
+                        Byte count (high byte)                  15          SP_G7BYTE4
+                        Address pointer (low byte)              16          SP_G7BYTE5
+                        Address pointer (mid byte)              17          SP_G7BYTE6
+                        Address pointer (high byte)             18          SP_G7BYTE7
+                    */
+                        unsigned char D_PTR_LOW,D_PTR_HIGH,BC_LOW,BC_HIGH,A_PTR_L,A_PTR_M,A_PTR_H;
+
+                        D_PTR_LOW=    packet_buffer[SP_G7BYTE1];
+                        D_PTR_HIGH=   packet_buffer[SP_G7BYTE2];
+                        BC_LOW=       packet_buffer[SP_G7BYTE3];
+                        BC_HIGH=      packet_buffer[SP_G7BYTE4];
+                        A_PTR_L=      packet_buffer[SP_G7BYTE5];
+                        A_PTR_M=      packet_buffer[SP_G7BYTE6];
+                        A_PTR_H=      packet_buffer[SP_G7BYTE7];
+
+                        int dataPtr = (D_PTR_LOW & 0x7f) | (((unsigned short)MSB << 1) & 0x80);                         
+                            dataPtr = dataPtr + (((D_PTR_HIGH & 0x7f) | (((unsigned short)MSB << 2) & 0x80)) << 8);
+
+                        int ByteCount = (BC_LOW & 0x7f) | (((unsigned short)MSB << 3) & 0x80);
+                            ByteCount = ByteCount + (((BC_HIGH & 0x7f) | (((unsigned short)MSB << 4) & 0x80)) << 8);
+                    
+                        unsigned long  addressPtr = (A_PTR_L & 0x7f) | (((unsigned short)MSB << 5) & 0x80);                             // This should be the BlockNumber                        
+                                       addressPtr = addressPtr + (((A_PTR_M & 0x7f) | (((unsigned short)MSB << 6) & 0x80)) << 8);    
+                                       addressPtr = addressPtr + (((A_PTR_H & 0x7f) | (((unsigned short)MSB << 7) & 0x80)) << 16);
+                            
+                        log_info("Smartport READ cmd:%02X, dst:%02X, dataPtr:%04x, ByteCount:%d, addrPtr:%lu",packet_buffer[SP_COMMAND],dest,dataPtr,ByteCount,addressPtr);
+                        
+                        print_packet ((unsigned char*) packet_buffer,packet_length());
+                        
+                        encodeReplyPacket(dest,0x0,AUX,0x0);                                                                          // For the moment send a OK reply
+                        
+                        SmartPortSendPacket(packet_buffer);                                                                             // We should send the data...
+                        
+                        break;
+                    case 0x89:                                                                 // Normal Write
+                        log_info("Smartport cmd:%02X",packet_buffer[SP_COMMAND]);
+                        print_packet ((unsigned char*) packet_buffer,packet_length());
+                        break;
+                    
+                    
+                    case 0xC8:                                                                 // Extended Read
+                        log_info("Smartport cmd:%02X",packet_buffer[SP_COMMAND]);
+                        print_packet ((unsigned char*) packet_buffer,packet_length());
+                        break;
+                    case 0xc9:                                                                  // Extended Write
+                        log_info("Smartport cmd:%02X",packet_buffer[SP_COMMAND]);
+                        print_packet ((unsigned char*) packet_buffer,packet_length());         
                         break;
                 } 
                
             }
             HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);  // set RD_DATA LOW
-              
+            packet_buffer[0]=0x0;
+
             assertAck();
+
+            if (nextAction!=NONE){
+                execAction(nextAction);
+            }
     
         }            
 
@@ -844,7 +1366,7 @@ enum STATUS mountProdosPartition(char * filename,int partition){
 // requires the data to be in the packet buffer, and builds the smartport
 // packet IN PLACE in the packet buffer
 //*****************************************************************************
-void encode_data_packet (unsigned char source){
+void encodeDataPacket (unsigned char source){
 
     int grpbyte, grpcount;
     unsigned char checksum = 0, grpmsb;
@@ -894,6 +1416,7 @@ void encode_data_packet (unsigned char source){
 
     for (count = 7; count < 14; count++)                                                            // now xor the packet header bytes
         checksum = checksum ^ packet_buffer[count];
+    
     packet_buffer[600] = checksum | 0xaa;                                                           // 1 c6 1 c4 1 c2 1 c0
     packet_buffer[601] = checksum >> 1 | 0xaa;                                                      // 1 c7 1 c5 1 c3 1 c1
 
@@ -904,7 +1427,7 @@ void encode_data_packet (unsigned char source){
 }
 
 //*****************************************************************************
-// Function: encode_data_packet
+// Function: encodeExtendedDataPacket
 // Parameters: source id
 // Returns: none
 //
@@ -912,7 +1435,7 @@ void encode_data_packet (unsigned char source){
 // requires the data to be in the packet buffer, and builds the smartport
 // packet IN PLACE in the packet buffer
 //*****************************************************************************
-void encode_extended_data_packet (unsigned char source){
+void encodeExtendedDataPacket (unsigned char source){
     
     int grpbyte, grpcount;
     unsigned char checksum = 0, grpmsb;
@@ -972,14 +1495,14 @@ void encode_extended_data_packet (unsigned char source){
 
 
 //*****************************************************************************
-// Function: decode_data_packet
+// Function: decodeDataPacket
 // Parameters: none
 // Returns: error code, >0 = error encountered
 //
 // Description: decode 512 byte data packet for write block command from host
 // decodes the data from the packet_buffer IN-PLACE!
 //*****************************************************************************
-int decode_data_packet (void){
+int decodeDataPacket (void){
 
     int grpbyte, grpcount;
     unsigned char numgrps, numodd;
@@ -1021,89 +1544,12 @@ int decode_data_packet (void){
 
 }
 
-//*****************************************************************************
-// Function: encode_write_status_packet
-// Parameters: source,status
-// Returns: none
-//
-// Description: this is the reply to the write block data packet. The reply
-// indicates the status of the write block cmd.
-//*****************************************************************************
-void encode_write_status_packet(unsigned char source, unsigned char status){
 
-    unsigned char checksum = 0;
 
-    packet_buffer[0] = 0xff;                                                                        //sync bytes
-    packet_buffer[1] = 0x3f;
-    packet_buffer[2] = 0xcf;
-    packet_buffer[3] = 0xf3;
-    packet_buffer[4] = 0xfc;
-    //int i;
-    packet_buffer[5] = 0xff;
 
-    packet_buffer[6] = 0xc3;                                                                        // PBEGIN - start byte
-    packet_buffer[7] = 0x80;                                                                        // DEST - dest id - host
-    packet_buffer[8] = source;                                                                      // SRC - source id - us
-    packet_buffer[9] = 0x81;                                                                        // TYPE
-    packet_buffer[10] = 0x80;                                                                       // AUX
-    packet_buffer[11] = status | 0x80;                                                              // STAT
-    packet_buffer[12] = 0x80;                                                                       // ODDCNT
-    packet_buffer[13] = 0x80;                                                                       // GRP7CNT
-
-    for (count = 7; count < 14; count++)                                                            // xor the packet header bytes
-        checksum = checksum ^ packet_buffer[count];
-    packet_buffer[14] = checksum | 0xaa;                                                            // 1 c6 1 c4 1 c2 1 c0
-    packet_buffer[15] = checksum >> 1 | 0xaa;                                                       // 1 c7 1 c5 1 c3 1 c1
-
-    packet_buffer[16] = 0xc8;                                                                       // pkt end
-    packet_buffer[17] = 0x00;                                                                       // mark the end of the packet_buffer
-
-}
 
 //*****************************************************************************
-// Function: encode_init_reply_packet
-// Parameters: source
-// Returns: none
-//
-// Description: this is the reply to the init command packet. A reply indicates
-// the original dest id has a device on the bus. If the STAT byte is 0, (0x80)
-// then this is not the last device in the chain. This is written to support up
-// to 4 partions, i.e. devices, so we need to specify when we are doing the last
-// init reply.
-//*****************************************************************************
-void encode_init_reply_packet (unsigned char source, unsigned char status){
-
-    unsigned char checksum = 0;
-
-    packet_buffer[0] = 0xff;                                                                        // sync bytes
-    packet_buffer[1] = 0x3f;
-    packet_buffer[2] = 0xcf;
-    packet_buffer[3] = 0xf3;
-    packet_buffer[4] = 0xfc;
-    packet_buffer[5] = 0xff;
-
-    packet_buffer[6] = 0xc3;                                                                        // PBEGIN - start byte
-    packet_buffer[7] = 0x80;                                                                        // DEST - dest id - host
-    packet_buffer[8] = source;                                                                      // SRC - source id - us
-    packet_buffer[9] = 0x80;                                                                        // TYPE
-    packet_buffer[10] = 0x80;                                                                       // AUX
-    packet_buffer[11] = status;                                                                     // STAT - data status
-
-    packet_buffer[12] = 0x80;                                                                       // ODDCNT
-    packet_buffer[13] = 0x80;                                                                       // GRP7CNT
-
-    for (count = 7; count < 14; count++)                                                            // XOR the packet header bytes
-        checksum = checksum ^ packet_buffer[count];
-    packet_buffer[14] = checksum | 0xaa;                                                            // 1 c6 1 c4 1 c2 1 c0
-    packet_buffer[15] = checksum >> 1 | 0xaa;                                                       // 1 c7 1 c5 1 c3 1 c1
-
-    packet_buffer[16] = 0xc8;                                                                       // PEND
-    packet_buffer[17] = 0x00;                                                                       // end of packet in buffer
-
-}
-
-//*****************************************************************************
-// Function: encode_status_reply_packet
+// Function: encodeStatusReplyPacket
 // Parameters: source
 // Returns: none
 //
@@ -1113,28 +1559,40 @@ void encode_init_reply_packet (unsigned char source, unsigned char status){
 // data byte 2-4 number of blocks. 2 is the LSB and 4 the MSB. 
 // Size determined from image file.
 //*****************************************************************************
-void encode_status_reply_packet (prodosPartition_t d){
+void encodeStatusReplyPacket (prodosPartition_t d){
 
     unsigned char checksum = 0;
     unsigned char data[4];
 
-    //Build the contents of the packet
-    //Info byte
-    //Bit 7: Block  device
-    //Bit 6: Write allowed
-    //Bit 5: Read allowed
-    //Bit 4: Device online or disk in drive
-    //Bit 3: Format allowed
-    //Bit 2: Media write protected
-    //Bit 1: Currently interrupting (//c only)
-    //Bit 0: Currently open (char devices only) 
+    /* Statcode = $00: 
+     The device status consists o f 4 bytes. 
+     
+     The first is the general status byte
+
+     General Status Byte
+     _________________________________________________________________________
+     Bit 7: Block  device              1 = Block device; 0 - Character device
+     Bit 6: Write allowed
+     Bit 5: Read allowed
+     Bit 4: Device online or disk in drive
+     Bit 3: Format allowed
+     Bit 2: Media write protected      (block devices only)
+     Bit 1: Currently interrupting     (//c only)
+     Bit 0: Currently open             (char devices only) 
+
+     If the device is a block device, the next field indicates the number of blocks in the
+     device. This is a 3-byte field for standard cals or a 4-byte field for extended cals. The
+     least significant byte is first. If the device is a character device, these bytes are set to zero.
+    
+     */
+
     data[0] = 0b11111000;
-    //Disk size
+    
+    //Disk size Bytes [1-3]:
     data[1] = d.blocks & 0xff;
     data[2] = (d.blocks >> 8 ) & 0xff;
     data[3] = (d.blocks >> 16 ) & 0xff;
 
-    
     packet_buffer[0] = 0xff;                                                                        //sync bytes
     packet_buffer[1] = 0x3f;
     packet_buffer[2] = 0xcf;
@@ -1142,13 +1600,13 @@ void encode_status_reply_packet (prodosPartition_t d){
     packet_buffer[4] = 0xfc;
     packet_buffer[5] = 0xff;
 
-    packet_buffer[6] = 0xc3;                                                                        // PBEGIN - start byte
-    packet_buffer[7] = 0x80;                                                                        // DEST - dest id - host
-    packet_buffer[8] = d.device_id;                                                                 // SRC - source id - us
-    packet_buffer[9] = 0x81;                                                                        // TYPE -status
+    packet_buffer[6] = 0xc3;                                                                        // PBEGIN   - start byte
+    packet_buffer[7] = 0x80;                                                                        // DEST     - dest id - host
+    packet_buffer[8] = d.device_id;                                                                 // SRC      - source id - us
+    packet_buffer[9] = 0x81;                                                                        // TYPE     - status
     packet_buffer[10] = 0x80;                                                                       // AUX
-    packet_buffer[11] = 0x80;                                                                       // STAT - data status
-    packet_buffer[12] = 0x84;                                                                       // ODDCNT - 4 data bytes
+    packet_buffer[11] = 0x80;                                                                       // STAT     - data status
+    packet_buffer[12] = 0x84;                                                                       // ODDCNT   - 4 data bytes
     packet_buffer[13] = 0x80;                                                                       // GRP7CNT
     //4 odd bytes
     packet_buffer[14] = 0x80 | 
@@ -1179,8 +1637,8 @@ void encode_status_reply_packet (prodosPartition_t d){
 
 
 //*****************************************************************************
-// Function: encode_long_status_reply_packet
-// Parameters: source
+// Function: encodeExtendedStatusReplyPacket
+// Parameters: proDosPartitiion
 // Returns: none
 //
 // Description: this is the reply to the extended status command packet. The reply
@@ -1189,21 +1647,33 @@ void encode_status_reply_packet (prodosPartition_t d){
 // data byte 2-5 number of blocks. 2 is the LSB and 5 the MSB. 
 // Size determined from image file.
 //*****************************************************************************
-void encode_extended_status_reply_packet (prodosPartition_t d){
+void encodeExtendedStatusReplyPacket (prodosPartition_t d){
     unsigned char checksum = 0;
 
     unsigned char data[5];
 
-    //Build the contents of the packet
-    //Info byte
-    //Bit 7: Block  device
-    //Bit 6: Write allowed
-    //Bit 5: Read allowed
-    //Bit 4: Device online or disk in drive
-    //Bit 3: Format allowed
-    //Bit 2: Media write protected
-    //Bit 1: Currently interrupting (//c only)
-    //Bit 0: Currently open (char devices only) 
+    /* Statcode = $00: 
+     The device status consists o f 5 bytes. 
+     
+     The first is the general status byte
+
+     General Status Byte
+     _________________________________________________________________________
+     Bit 7: Block  device              1 = Block device; 0 - Character device
+     Bit 6: Write allowed
+     Bit 5: Read allowed
+     Bit 4: Device online or disk in drive
+     Bit 3: Format allowed
+     Bit 2: Media write protected      (block devices only)
+     Bit 1: Currently interrupting     (//c only)
+     Bit 0: Currently open             (char devices only) 
+
+     If the device is a block device, the next field indicates the number of blocks in the
+     device. This is a 3-byte field for standard cals or a 4-byte field for extended cals. The
+     least significant byte is first. If the device is a character device, these bytes are set to zero.
+    
+     */
+
     data[0] = 0b11111000;
     //Disk size
     data[1] = d.blocks & 0xff;
@@ -1252,7 +1722,20 @@ void encode_extended_status_reply_packet (prodosPartition_t d){
     packet_buffer[23] = 0x00;                                                                       //end of packet in buffer
 
 }
-void encode_error_reply_packet (unsigned char source){
+
+void encodeReplyPacket(unsigned char source,unsigned char type,unsigned char aux, unsigned char respCode){
+
+    /*
+
+    The contents type consists of a type and aux type byte. Three contents types are
+    currently defined: Type = $80 is a command packet, type = $81 is a status packet, and
+    type = $82 is a data packet. Bit-6 is the command byte, and the aux type byte defines
+    the packet as either extended or standard. Aux type = $80 indicates a standard packet,
+    and $CO indicates an extended packet. Command = $8X indicates a standard packet,
+    and SCX indicates a n extended packet.
+
+    */
+
     unsigned char checksum = 0;
 
     packet_buffer[0] = 0xff;                                                                        // sync bytes
@@ -1262,27 +1745,27 @@ void encode_error_reply_packet (unsigned char source){
     packet_buffer[4] = 0xfc;
     packet_buffer[5] = 0xff;
 
-    packet_buffer[6] = 0xc3;                                                                        // PBEGIN - start byte
+    packet_buffer[6] = 0xC3;                                                                        // PBEGIN - start byte
     packet_buffer[7] = 0x80;                                                                        // DEST - dest id - host
     packet_buffer[8] = source;                                                                      // SRC - source id - us
-    packet_buffer[9] = 0x80;                                                                        // TYPE -status
-    packet_buffer[10] = 0x80;                                                                       // AUX
-    packet_buffer[11] = 0xA1;                                                                       // STAT - data status - error
+    packet_buffer[9] = type | 0x80;                                                                 // TYPE -status
+    packet_buffer[10] = aux | 0x80;                                                                 // AUX
+    packet_buffer[11] = respCode | 0x80;                                                             // STAT - data status - error
     packet_buffer[12] = 0x80;                                                                       // ODDCNT - 0 data bytes
     packet_buffer[13] = 0x80;                                                                       // GRP7CNT
 
     for (count = 7; count < 14; count++)                                                            // xor the packet header bytes
         checksum = checksum ^ packet_buffer[count];
-    packet_buffer[14] = checksum | 0xaa;                                                            // 1 c6 1 c4 1 c2 1 c0
-    packet_buffer[15] = checksum >> 1 | 0xaa;                                                       // 1 c7 1 c5 1 c3 1 c1
+    packet_buffer[14] = checksum | 0xAA;                                                            // 1 c6 1 c4 1 c2 1 c0
+    packet_buffer[15] = checksum >> 1 | 0xAA;                                                       // 1 c7 1 c5 1 c3 1 c1
 
-    packet_buffer[16] = 0xc8;                                                                       //PEND
+    packet_buffer[16] = 0xC8;                                                                       //PEND
     packet_buffer[17] = 0x00;                                                                       //end of packet in buffer
 
 }
 
 //*****************************************************************************
-// Function: encode_status_dib_reply_packet
+// Function: encodeStatusDibReplyPacket
 // Parameters: source
 // Returns: none
 //
@@ -1292,23 +1775,75 @@ void encode_error_reply_packet (unsigned char source){
 // data byte 2-4 number of blocks. 2 is the LSB and 4 the MSB.
 // Calculated from actual image file size.
 //*****************************************************************************
-void encode_status_dib_reply_packet (prodosPartition_t d){
+void encodeStatusDibReplyPacket (prodosPartition_t d){
     
+    /*
+    Standard call                                   Extended call
+    __________________________________________________________________________________
+    Device status byte                              Device status byte
+    Block size (low byte)                           Block size (low byte, low word)
+    Block size (mid byte)                           Block size (high byte, low word)
+    Block size (high byte)                          Block size (low byte, high word)
+    ID string length                                Block size (high byte, high word)
+    ID string (16 bytes)                            ID string length
+    Device type byte                                ID string (16 bytes)
+    Device subtype byte                             Device type byte
+    Version word                                    Device subtype byte
+    Version word
+    
+    Type            Subtype             Device
+    __________________________________________________________________________________
+    $00             $00                 Apple Il memory expansion card
+    $00             $CO                 Apple IGS Memory Expansion Card configured as a RAM disk
+    $01             $OO                 UniDisk 3.5
+    $01             $CO                 Apple 3.5 drive
+    $03             $EO                 Apple I SCSI with nonremovable media
+
+    Undefined SmartPort devices may implement the following types and subtypes:
+
+    Type            Subtype             Device
+    __________________________________________________________________________________
+    $02             $20                 Hard disk
+    $02             $00                 Removable hard disk
+    $02             $40                 Removable hard disk supporting disk-switched errors
+    $02             $AO                 Hard disk supporting extended calls
+    $02             $CO                 Removable hard disk supporting extended calls and disk-switched errors
+    $02             SAO                 Hard disk supporting extended calls
+    $03             $CO                 SCSI with removable media
+
+    The firmware version field is a 2-byte field consisting of a number indicating the
+    */
+
     int grpbyte, grpcount, i;
     int grpnum, oddnum; 
-    unsigned char checksum = 0, grpmsb;
-    unsigned char group_buffer[7];
-    unsigned char data[25];
+   
+    uint8_t checksum = 0, grpmsb;
+    uint8_t group_buffer[7];
+    uint8_t data[25];
+   
+    uint8_t devicetype=0;
+    uint8_t deviceSubType=0;
+
+    if (d.diskFormat==_2MG){
+        devicetype=0x01;
+        deviceSubType=0x00;
+    }else if (d.diskFormat==PO){
+        devicetype=0x02;
+        deviceSubType=0x00;
+    }
 
     grpnum=3;
     oddnum=4;
-    
+
+    // TODO MANAGE WRITE PROTECTED MEDIA
+
     //* write data buffer first (25 bytes) 3 grp7 + 4 odds
-    data[0] = 0xf8;                                                                                 // general status - f8 
+    data[0] = 0xF8;                                                                                 // 0b11111000; general status - f8 
                                                                                                     // number of blocks =0x00ffff = 65525 or 32mb
     data[1] = d.blocks & 0xff;                                                                      // block size 1 
     data[2] = (d.blocks >> 8 ) & 0xff;                                                              // block size 2 
     data[3] = (d.blocks >> 16 ) & 0xff ;                                                            // block size 3 
+    
     data[4] = 0x0b;                                                                                 // ID string length - 11 chars
     data[5] = 'S';
     data[6] = 'M';
@@ -1326,8 +1861,8 @@ void encode_status_dib_reply_packet (prodosPartition_t d){
     data[18] = ' ';
     data[19] = ' ';
     data[20] = ' ';                                                                                 // ID string (16 chars total)
-    data[21] = 0x02;                                                                                // Device type    - 0x02  harddisk
-    data[22] = 0x0a;                                                                                // Device Subtype - 0x0a
+    data[21] = devicetype;                                                                          // Device type    - 0x02  harddisk
+    data[22] = deviceSubType;                                                                       // Change by VIBR 24.02.25 0x0A -> 0x20   Or 0x00 Removable Harddisk
     data[23] = 0x01;                                                                                // Firmware version 2 bytes
     data[24] = 0x0f;                                                                                
     
@@ -1337,7 +1872,7 @@ void encode_status_dib_reply_packet (prodosPartition_t d){
     // Start assembling the packet at the rear and work 
     // your way to the front so we don't overwrite data
     // we haven't encoded yet
-    for (grpcount = grpnum-1; grpcount >= 0; grpcount--){                                            //grps of 7// 3
+    for (grpcount = grpnum-1; grpcount >= 0; grpcount--){                                            //grps of 7 // 3
     
         for (i=0;i<8;i++) {
             group_buffer[i]=data[i + oddnum + (grpcount * 7)];
@@ -1391,7 +1926,7 @@ void encode_status_dib_reply_packet (prodosPartition_t d){
 
 
 //*****************************************************************************
-// Function: encode_long_status_dib_reply_packet
+// Function: encodeExtendedStatusDibReplyPacket
 // Parameters: source
 // Returns: none
 //
@@ -1401,11 +1936,59 @@ void encode_status_dib_reply_packet (prodosPartition_t d){
 // data byte 2-5 number of blocks. 2 is the LSB and 5 the MSB.
 // Calculated from actual image file size.
 //*****************************************************************************
-void encode_extended_status_dib_reply_packet (prodosPartition_t d){
+void encodeExtendedStatusDibReplyPacket (prodosPartition_t d){
+    
+    /*
+    Standard call                                   Extended call
+    __________________________________________________________________________________
+    Device status byte                              Device status byte
+    Block size (low byte)                           Block size (low byte, low word)
+    Block size (mid byte)                           Block size (high byte, low word)
+    Block size (high byte)                          Block size (low byte, high word)
+    ID string length                                Block size (high byte, high word)
+    ID string (16 bytes)                            ID string length
+    Device type byte                                ID string (16 bytes)
+    Device subtype byte                             Device type byte
+    Version word                                    Device subtype byte
+    Version word
+    
+    Type            Subtype             Device
+    __________________________________________________________________________________
+    $00             $00                 Apple Il memory expansion card
+    $00             $CO                 Apple IGS Memory Expansion Card configured as a RAM disk
+    $01             $OO                 UniDisk 3.5
+    $01             $CO                 Apple 3.5 drive
+    $03             $EO                 Apple I SCSI with nonremovable media
+
+    Undefined SmartPort devices may implement the following types and subtypes:
+
+    Type            Subtype             Device
+    __________________________________________________________________________________
+    $02             $20                 Hard disk
+    $02             $00                 Removable hard disk
+    $02             $40                 Removable hard disk supporting disk-switched errors
+    $02             $AO                 Hard disk supporting extended calls                                             TO BE TESTED
+    $02             $CO                 Removable hard disk supporting extended calls and disk-switched errors
+    $02             SAO                 Hard disk supporting extended calls
+    $03             $CO                 SCSI with removable media
+
+    The firmware version field is a 2-byte field consisting of a number indicating the
+    */
+
+    uint8_t devicetype=0;
+    uint8_t deviceSubType=0;
+
+    if (d.diskFormat==_2MG){
+        devicetype=0x01;
+        deviceSubType=0x00;
+    }else if (d.diskFormat==PO){
+        devicetype=0x02;
+        deviceSubType=0x00;
+    }
 
     unsigned char checksum = 0;
 
-    packet_buffer[0] = 0xff;                                                                        // sync bytes
+    packet_buffer[0] = 0xff;                                                                        // SYNC BYTES
     packet_buffer[1] = 0x3f;
     packet_buffer[2] = 0xcf;
     packet_buffer[3] = 0xf3;
@@ -1426,38 +2009,39 @@ void encode_extended_status_dib_reply_packet (prodosPartition_t d){
     //number of blocks =0x00ffff = 65525 or 32mb
     packet_buffer[16] = d.blocks & 0xff;                                                            // block size 1 
     packet_buffer[17] = (d.blocks >> 8 ) & 0xff;                                                    // block size 2 
-    packet_buffer[18] = ((d.blocks >> 16 ) & 0xff) | 0x80 ;                                           // block size 3 - why is the high bit set?
-    packet_buffer[19] = ((d.blocks >> 24 ) & 0xff) | 0x80 ;                                           // block size 4 - why is the high bit set?  
-    packet_buffer[20] = 0x8d;                                                                       // ID string length - 13 chars
+    packet_buffer[18] = ((d.blocks >> 16 ) & 0xff) | 0x80 ;                                         // block size 3 - why is the high bit set?
+    packet_buffer[19] = ((d.blocks >> 24 ) & 0xff) | 0x80 ;                                         // block size 4 - why is the high bit set?  
+    packet_buffer[20] = 0x8B;                                                                       // ID string length - 11 chars
     packet_buffer[21] = 'S';
-    packet_buffer[22]= 'm';                                                                       // ID string (16 chars total)
+    packet_buffer[22] = 'M';                                                                         // ID string (16 chars total)
     packet_buffer[23] = 0x80;                                                                       // grp2 msb
-    packet_buffer[24] = 'a';
-    packet_buffer[25]= 'r';  
-    packet_buffer[26]= 't';  
-    packet_buffer[27]= 'p';  
-    packet_buffer[28]= 'o';  
-    packet_buffer[29]= 'r';  
-    packet_buffer[30]= 't';  
+    packet_buffer[24] = 'A';
+    packet_buffer[25] = 'R';  
+    packet_buffer[26] = 'T';  
+    packet_buffer[27] = 'D';  
+    packet_buffer[28] = 'I';  
+    packet_buffer[29] = 'S';  
+    packet_buffer[30] = 'K';  
     
 
     packet_buffer[31] = 0x80;                                                                       // grp3 msb
-    packet_buffer[32] = ' ';
-    packet_buffer[33]= 'S';  
-    packet_buffer[34]= 'D';  
-    packet_buffer[35]= ' ';  
-    packet_buffer[36]= ' ';  
-    packet_buffer[37]= ' ';  
-    packet_buffer[38]= ' ';  
+    packet_buffer[32] = 'H';
+    packet_buffer[33] = 'D';  
+    packet_buffer[34] = ' ';  
+    packet_buffer[35] = ' ';  
+    packet_buffer[36] = ' ';  
+    packet_buffer[37] = ' ';  
+    packet_buffer[38] = ' ';  
     packet_buffer[39] = 0x80;                                                                       // odd msb
-    packet_buffer[40] = 0x02;                                                                       // Device type    - 0x02  harddisk
-    packet_buffer[41] = 0x00;                                                                       // Device Subtype - 0x20
+    packet_buffer[40] = devicetype;                                                                 // Device type    - 0x02  harddisk
+    packet_buffer[41] = deviceSubType;       // 0x00 -> 0x20 CORRECTED BY VIBR 24.02.25             // Device Subtype - 0x20
     packet_buffer[42] = 0x01;                                                                       // Firmware version 2 bytes
-    packet_buffer[43]=  0x0f;
-    packet_buffer[44] = 0x90;                                                                       //
+    packet_buffer[43] = 0x0f;
+    packet_buffer[44] = 0x90;                                                                       // ??? THIS SHOULD NOT EXIST !! NOT IN THE SPEC
 
     for (count = 7; count < 45; count++) 
         checksum = checksum ^ packet_buffer[count];                                                 // xor the packet bytes
+    
     packet_buffer[45] = checksum | 0xaa;                                                            // 1 c6 1 c4 1 c2 1 c0
     packet_buffer[46] = checksum >> 1 | 0xaa;                                                       // 1 c7 1 c5 1 c3 1 c1
 
@@ -1467,7 +2051,7 @@ void encode_extended_status_dib_reply_packet (prodosPartition_t d){
 }
 
 //*****************************************************************************
-// Function: verify_cmdpkt_checksum
+// Function: verifyCmdpktChecksum
 // Parameters: none
 // Returns: RET_OK, RET_ERR enum
 //
@@ -1475,7 +2059,7 @@ void encode_extended_status_dib_reply_packet (prodosPartition_t d){
 //
 // 
 //*****************************************************************************
-enum STATUS verify_cmdpkt_checksum(void){
+enum STATUS verifyCmdpktChecksum(void){
     int count = 0, length;
     unsigned char evenbits, oddbits, bit7, bit0to6, grpbyte;
     unsigned char calc_checksum = 0; //initial value is 0
@@ -1595,85 +2179,55 @@ int packet_length (void){
     return x - 1; // point to last packet byte = C8
 }
 
-//*****************************************************************************
-// Function: print_hd_info
-// Parameters: none
-// Returns: none
-//
-// Description: print informations about the ATA dispositive and the FAT File System
-//*****************************************************************************
-void print_hd_info(void){
-    //int i = 0;
-    /* if(!sdcard.begin(chipSelect, SPI_HALF_SPEED)){
-        log_info("Error init card");
-        
-    } else {
-    
-        digitalWrite(statusledPin, HIGH);
-        delay(100);
-        digitalWrite(statusledPin, LOW);
-        delay(100);
-    */
-    //}
-}
-
-//*****************************************************************************
-// Function: rotate_boot
-// Parameters: none
-// Returns: none
-//
-// Description: Cycle by the 4 partition for selecting boot ones, choosing next
-// and save it to EEPROM.  Needs REBOOT to get new partition
-//*****************************************************************************
-int rotate_boot (void){
-    int i;
-
-    for(i = 0; i < MAX_PARTITIONS; i++){
-        log_info("Init partition was: %d",initPartition);
-        
-        initPartition++;
-        initPartition = initPartition % 4;
-        //Find the next partition that's available 
-        //and set it to be the boot partition
-        if(devices[initPartition].mounted==1){
-            log_info("Selecting boot partition number %d",initPartition);
-            break;
-        }
-    }
-
-    if(i == MAX_PARTITIONS){
-        log_error("No online partitions found. Check that you have a file called PARTx.PO and try again, where x is from 1 to %d",MAX_PARTITIONS);
-        initPartition = 0;
-    }
-    // change with config lib
-    /*eeprom_write_byte(0, initPartition);
-    digitalWrite(statusledPin, HIGH);
-    log_info("Changing boot partition to: "));
-    Serial.print(initPartition, DEC);
-    while (1){
-    for (i=0;i<(initPartition+1);i++) {
-        digitalWrite(statusledPin,HIGH);
-        digitalWrite(partition_led_pins[initPartition], HIGH);
-        delay(200);   
-        digitalWrite(statusledPin,LOW);
-        digitalWrite(partition_led_pins[initPartition], LOW);
-        delay(100);   
-    }
-    delay(600);
-    }
-    */
-    // stop programs
-    return 0;
-}
 
 enum STATUS SmartPortMountImage( prodosPartition_t *d, char * filename ){
+                                                                                    // Note: Image can be PO or 2MG
+                                                                                    // If 2MG then we need to manage the OFFSET of the Data block
     FRESULT fres; 
+    d->mounted=0;
     if (filename==NULL){
         log_error("filename is null");
         return RET_ERR;
     }
+                                                                                    // Assuming Filename is not null and file exist
+                                                                                    // Check if it is a PO or 2MG Disk Format based on the extension
+    uint8_t len=(uint8_t)strlen(filename);
+    
+    if (len<4){
+        log_error("bad filename");
+        return RET_ERR;
+    }else if (!memcmp(filename+(len-4),".2mg",4) ||                                // Check if 2MG or 2mg
+              !memcmp(filename+(len-4),".2MG",4)){
         
+        d->diskFormat=_2MG;
+        _2mg_t st2mg;
+        st2mg.blockCount=0;
+        if(mount2mgFile(st2mg,filename)==RET_OK){
+            d->blocks=st2mg.blockCount;
+            d->dataOffset=64;
+        }else{
+            log_error("mount2mgFile error");
+            
+            return RET_ERR;
+        }
 
+    }else if (!memcmp(filename+(len-3),".po",3) ||                                // Check if PO or po
+              !memcmp(filename+(len-3),".PO",3)){                                 
+        d->diskFormat=PO;
+        d->dataOffset=0;
+
+        if (f_size(&d->fil) != (f_size(&d->fil)>>9)<<9 || (f_size(&d->fil)==0 )){
+            log_error("     File must be an unadorned ProDOS order image with no header!");
+            log_error("     This means its size must be an exact multiple of 512!");
+            
+            return RET_ERR;
+        }
+        d->blocks = f_size(&d->fil) >> 9;
+    }else{
+        log_error("unknown file format:%s",filename);
+        return RET_ERR;
+    }                                   
+     
     while(fsState!=READY){};
     fsState=BUSY;
     fres = f_open(&d->fil,filename , FA_READ | FA_WRITE | FA_OPEN_EXISTING);    
@@ -1682,34 +2236,17 @@ enum STATUS SmartPortMountImage( prodosPartition_t *d, char * filename ){
     fsState=READY;
 
     if(fres!=FR_OK){
-        log_error("f_open error:%s",filename);
-        d->mounted=0;
+        log_error("f_open error:%s",filename);    
         return RET_ERR;
     }
     
-    if (f_size(&d->fil) != (f_size(&d->fil)>>9)<<9 || (f_size(&d->fil)==0 )){
-        log_error("     File must be an unadorned ProDOS order image with no header!");
-        log_error("     This means its size must be an exact multiple of 512!");
-        d->mounted=0;
-        return RET_ERR;
-    }
     d->mounted=1;
     log_info("Mounted: %s",filename);
-    d->blocks = f_size(&d->fil) >> 9;
+    log_info("blockCount %d",d->blocks);
 
 #ifdef A2F_MODE    
     HAL_GPIO_WritePin(AB_GPIO_Port,AB_Pin,GPIO_PIN_SET);
 #endif
 
     return RET_OK;
-}
-
-
-bool is_ours(unsigned char source){
-    for (unsigned char partition = 0; partition < MAX_PARTITIONS; partition++) { //Check if its one of ours
-        if (devices[(partition + initPartition) % MAX_PARTITIONS].device_id == source) {  //yes it is
-        return true;
-        }
-    }
-    return false;
 }
