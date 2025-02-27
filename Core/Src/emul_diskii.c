@@ -657,6 +657,8 @@ void DiskIIInit(){
     mountImageInfo.version=0;
     mountImageInfo.cleaned=0;
     mountImageInfo.type=0;
+    
+    createBlankWozFile("test.woz",2,1,1);
 
     if (bootMode==0){
         if (DiskIIMountImagefile(tmpFullPathImageFilename)==RET_OK){

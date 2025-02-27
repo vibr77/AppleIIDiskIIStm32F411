@@ -81,8 +81,8 @@ static const char decTable[] = {
 #pragma  GCC diagnostic pop
 
 
-unsigned maxSectorsPerRegion35[DISK_35_NUM_REGIONS] = {12, 11, 10, 9, 8};
-unsigned trackStartperRegion35[DISK_35_NUM_REGIONS + 1] = {0, 32, 64, 96, 128, 160};            // TODO if Single sided it does not work 
+static unsigned maxSectorsPerRegion35[DISK_35_NUM_REGIONS] = {12, 11, 10, 9, 8};
+static unsigned trackStartperRegion35[DISK_35_NUM_REGIONS + 1] = {0, 32, 64, 96, 128, 160};            // TODO if Single sided it does not work 
 
 __uint32_t IMG2_DataBlockCount;
 __uint32_t IMG2_DataOffset;

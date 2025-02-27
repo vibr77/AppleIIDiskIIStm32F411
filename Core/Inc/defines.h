@@ -1,6 +1,6 @@
 
 
-#define _VERSION "v0.80.3"
+#define _VERSION "v0.80.4"
 
 #define SPLASHSCREEN_DURATION       500                         // Not more than 500 otherwise IIGS will not boot
 
@@ -26,6 +26,9 @@
 
 #define MAX_PARTITIONS              4                               // Number of 32MB Prodos partions supported
 #define SP_PKT_SIZE                 604
+
+#define DISK_35_NUM_REGIONS         5
+
 // SMARTPORT MESSAGE OFFSET
 /*
 

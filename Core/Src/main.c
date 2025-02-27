@@ -1,8 +1,8 @@
 /* USER CODE BEGIN Header */
 /*
 __   _____ ___ ___        Author: Vincent BESSON
- \ \ / /_ _| _ ) _ \      Release: 0.80.3
-  \ V / | || _ \   /      Date: 2025.02.23
+ \ \ / /_ _| _ ) _ \      Release: 0.80.4
+  \ V / | || _ \   /      Date: 2025.02.27
    \_/ |___|___/_|_\      Description: Apple Disk II Emulator on STM32F4x
                 2025      Licence: Creative Commons
 ______________________
@@ -108,6 +108,11 @@ UART
 
 // Changelog
 /*
+26.02.25 v0.80.4
+  + [WOZ] Passing the wozardry verify & dump test for both 3.5 & 5.25
+  + [WOZ] Manage CRC32
+  + [WOZ] Adding Blank woz file creation for 3.5
+  + [WOZ] Adding Blank woz file creation for 5.25
 23.02.25 v0.80.3
   + [All] Code cleaning, compilation warning cleaning
   + [Smartport] 2MG Extension checking fixed
