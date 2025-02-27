@@ -407,7 +407,10 @@ void processSelectFSItem(){
   sprintf(selItem,"%s",(char*)pItem->val);
   
   int len=strlen(currentFullPath);
-  if (selItem[2]=='.' && selItem[3]=='.'){                // selectedItem is [UpDir];
+  
+  if (selItem[2]=='.' && selItem[3]==0x0){                      // selectedItem is [CurrentDir] // DO NOTHING FUTURE USE
+    log_info("currentDir selItem");
+  }else if (selItem[2]=='.' && selItem[3]=='.'){                // selectedItem is [UpDir];
     for (int i=len-1;i!=-1;i--){
       if (currentFullPath[i]=='/'){
         snprintf(currentPath,MAX_PATH_LENGTH,"%s",currentFullPath+i);

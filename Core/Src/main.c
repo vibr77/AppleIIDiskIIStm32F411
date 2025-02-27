@@ -109,10 +109,16 @@ UART
 // Changelog
 /*
 26.02.25 v0.80.4
+  + [WOZ] Correcting head / sector / region calculation
+  + [FS]  Adding "." item on every location to add future access to option
+  + [FATFS] Change conf of FATFS to manage STRFUNC
   + [WOZ] Passing the wozardry verify & dump test for both 3.5 & 5.25
   + [WOZ] Manage CRC32
   + [WOZ] Adding Blank woz file creation for 3.5
   + [WOZ] Adding Blank woz file creation for 5.25
+  - [Smartport IIGS] TODO: Fix Splashscreen duration with Animation
+  - [WOZ] TODO: blank WOZ 3.5 1 Byte slip to fix
+
 23.02.25 v0.80.3
   + [All] Code cleaning, compilation warning cleaning
   + [Smartport] 2MG Extension checking fixed
@@ -655,6 +661,36 @@ enum STATUS writeTrkFile(char * filename,char * buffer,uint32_t offset){
   */
 void dumpBuf(unsigned char * buf,long memoryAddr,int len){
 
+    char * data=buf;
+    int bytes=len;
+    int count, row;
+    char xx;
+
+    
+    printf("\r\n");
+    for (count = 0; count < bytes; count = count + 16) {
+        
+        printf("%04X: ", count);
+        for (row = 0; row < 16; row++) {
+            if (count + row >= bytes)
+                printf("   ");
+            else {
+                printf("%02X ",data[count + row]);
+            }
+        }
+        printf("- ");
+        for (row = 0; row < 16; row++) {
+            if ((data[count + row] > 31) && (count + row < bytes) && (data[count + row] < 129)){
+                xx = data[count + row];
+                printf("%c",xx);
+            }
+            else
+                printf(".");
+        }
+        printf("\r\n");
+    }
+    
+/*
   log_info("dump Buffer addr:%ld len:%d",memoryAddr,len);
   for (int i=0;i<len;i++){
     if (i%16==0){
@@ -666,6 +702,7 @@ void dumpBuf(unsigned char * buf,long memoryAddr,int len){
     printf("%02X ",buf[i]);
   }
   printf("\n");
+  */
 }
 
 /**
@@ -852,6 +889,11 @@ enum STATUS walkDir(char * path){
   dirChainedList=list_new();
 
   if (fres == FR_OK){
+      
+      fileName=malloc(MAX_FILENAME_LENGTH*sizeof(char));
+      sprintf(fileName,"D|.");
+      list_rpush(dirChainedList, list_node_new(fileName));
+
       if (strcmp(path,"") && strcmp(path,"/")){
         fileName=malloc(MAX_FILENAME_LENGTH*sizeof(char));
         sprintf(fileName,"D|..");

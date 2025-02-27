@@ -658,7 +658,7 @@ void DiskIIInit(){
     mountImageInfo.cleaned=0;
     mountImageInfo.type=0;
     
-    createBlankWozFile("test.woz",2,1,1);
+    
 
     if (bootMode==0){
         if (DiskIIMountImagefile(tmpFullPathImageFilename)==RET_OK){
@@ -686,6 +686,7 @@ void DiskIIInit(){
     HAL_TIM_PWM_Start_IT(&htim2,TIM_CHANNEL_3); 
     
     irqReadTrack();
+    createBlankWozFile("/test.woz",2,2,1);
 
     //sprintf(filename,"/WOZ 2.0/Blazing Paddles (Baudville).woz");                                     // 21/08 WORKING
     //sprintf(filename,"/WOZ 2.0/Border Zone - Disk 1, Side A.woz");                                    // 22/08 NOT WORKING

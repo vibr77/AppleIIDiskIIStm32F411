@@ -15,6 +15,7 @@ __uint32_t TRK_BitCount[MAX_TRACK];
 
 __uint8_t TRK_maxIndx=0;
 
+extern FATFS fs;
 extern long database;                                            // start of the data segment in FAT
 extern int csize;  
 extern volatile enum FS_STATUS fsState;
@@ -22,13 +23,16 @@ unsigned int fatWozCluster[20];
 char * woz1_256B_prologue;                                       // needed to store the potential overwrite
 
 woz_info_t wozFile;
+//unsigned max_sectors_per_region_35[DISK_35_NUM_REGIONS] = {12, 11, 10, 9, 8};
+//unsigned track_start_per_region_35[DISK_35_NUM_REGIONS + 1] = {0, 32, 64, 96, 128, 160};
 
 static unsigned maxSectorsPerRegion35[DISK_35_NUM_REGIONS] = {19, 17, 16, 14, 13};
-static unsigned trackStartperRegion35[DISK_35_NUM_REGIONS + 1] = {0, 32, 64, 96, 128, 160};            // TODO if Single sided it does not work 
+//static unsigned trackStartperRegion35DoubleHead[DISK_35_NUM_REGIONS + 1] = {0, 32, 64, 96, 128, 160};            // TODO if Single sided it does not work 
+static unsigned trackStartperRegion35SingleHead[DISK_35_NUM_REGIONS + 1] = {0, 16, 32, 48, 64, 80};            // TODO if Single sided it does not work 
 
-static uint16_t diskGetLogicalSectorCountFromTrack( uint8_t trackIndex);
-static uint16_t diskGetLogicalSectorNumberFromTrack( uint8_t trackIndex);
-static uint8_t diskGetRegionFromTrack( u_int8_t track_index);
+static uint16_t diskGetLogicalSectorCountFromTrack( uint8_t trackIndex,uint8_t head);
+static uint16_t diskGetLogicalSectorNumberFromTrack( uint8_t trackIndex,uint8_t head);
+static uint8_t diskGetRegionFromTrack( u_int8_t track_index,uint8_t head);
 
 
 int getWozTrackFromPh(int phtrack){
@@ -340,12 +344,16 @@ enum STATUS mountWozFile(char * filename){
 }
 
 
-static uint8_t diskGetRegionFromTrack( u_int8_t track_index) {
+static uint8_t diskGetRegionFromTrack( u_int8_t track_index, uint8_t head) {
   uint8_t diskRegion = 0;
  
   diskRegion = 1;
+  uint8_t compTrackIndex=track_index;
+  if (head==2)
+    compTrackIndex>>=1;
+
   for (; diskRegion < DISK_35_NUM_REGIONS + 1; ++diskRegion) {
-      if (track_index < trackStartperRegion35[diskRegion]) {
+      if (    compTrackIndex< trackStartperRegion35SingleHead[diskRegion]) {
           diskRegion--;
           break;
       }
@@ -353,18 +361,22 @@ static uint8_t diskGetRegionFromTrack( u_int8_t track_index) {
 
   return diskRegion;
 }
-static uint16_t diskGetLogicalSectorNumberFromTrack( uint8_t trackIndex){
+static uint16_t diskGetLogicalSectorNumberFromTrack( uint8_t trackIndex, uint8_t head){
   uint16_t sector=0;
- 
-  uint8_t diskRegion=diskGetRegionFromTrack(trackIndex);
+  uint8_t diskRegion=0;
+  
+  diskRegion=diskGetRegionFromTrack(trackIndex,head);
+
   sector=maxSectorsPerRegion35[diskRegion];
       
   return sector;
 }
-static uint16_t diskGetLogicalSectorCountFromTrack( uint8_t trackIndex){
+static uint16_t diskGetLogicalSectorCountFromTrack( uint8_t trackIndex,uint8_t head){
   uint16_t sector=0;
+  uint8_t diskRegion=0;
   for (uint8_t i=0;i<trackIndex;i++){
-      uint8_t diskRegion=diskGetRegionFromTrack(i);
+     
+      diskRegion=diskGetRegionFromTrack(i,head);
       sector+=maxSectorsPerRegion35[diskRegion];
       //printf("trk:%d region:%d sectors:%d\n",i,diskRegion,sector);
   }
@@ -376,13 +388,15 @@ enum STATUS createBlankWozFile(char * filename, uint8_t version,uint8_t diskForm
   FRESULT fres; 
   FIL fil;
 
-  if (version!=1 || version!=2){
+  if (version!=1 && version!=2){
     log_error("Woz version should 1 or 2");
     return RET_ERR;
   }
 
+  //unlinkImageFile(filename);
+
   fsState=BUSY;
-  fres = f_open(&fil,filename , FA_READ | FA_WRITE | FA_OPEN_EXISTING);    
+  fres = f_open(&fil,filename ,  FA_WRITE | FA_CREATE_ALWAYS );    
   
   if(fres != FR_OK){
     log_error("File open Error: (%i)",fres);
@@ -502,7 +516,7 @@ enum STATUS createBlankWozFile(char * filename, uint8_t version,uint8_t diskForm
     chunkSize=13*35*512+1024+256;
      
   }else if (diskFormat==2){
-    chunkSize=(2528+2)*512;                 // TODO MANAGE SINGLE HEAD
+    chunkSize=(diskGetLogicalSectorCountFromTrack(80,1)+(12))*512;                 // 13 is last track -3 is  
   }
   
   f_write(&fil,&chunkSize,4,bw);
@@ -528,7 +542,7 @@ enum STATUS createBlankWozFile(char * filename, uint8_t version,uint8_t diskForm
     
     int sectorIndx=3;
     f_write(&fil,&sectorIndx,2,bw);
-    uint8_t sectorNum=diskGetLogicalSectorNumberFromTrack(0);
+    uint8_t sectorNum=diskGetLogicalSectorNumberFromTrack(0,head);
     
     f_putc(sectorNum,&fil);
     f_putc(0x0,&fil);
@@ -537,11 +551,15 @@ enum STATUS createBlankWozFile(char * filename, uint8_t version,uint8_t diskForm
     
     f_write(&fil,&bitNum,4,bw);
 
-    for (uint8_t trk=0;trk<numTrk;trk++){
-        sectorIndx=3+diskGetLogicalSectorCountFromTrack(trk-1);             // we want the indx of Sector -1 means end of previous track is the new Indx
+    for (uint8_t trk=1;trk<numTrk;trk++){
+
+        sectorIndx=3+diskGetLogicalSectorCountFromTrack(trk,head);
+
+        //printf("trk:%d sectorIndx:%d hex:%04X\n",trk,sectorIndx,sectorIndx);
+        
         f_write(&fil,&sectorIndx,2,bw);
         
-        sectorNum=diskGetLogicalSectorNumberFromTrack(trk);
+        sectorNum=diskGetLogicalSectorNumberFromTrack(trk,head);
         
         f_putc(sectorNum,&fil);
         f_putc(0x0,&fil);
@@ -560,7 +578,8 @@ enum STATUS createBlankWozFile(char * filename, uint8_t version,uint8_t diskForm
     u_int8_t numTrk=80;
     if (head==2)
       numTrk=160;
-    sectorIndex=diskGetLogicalSectorCountFromTrack(numTrk);
+    
+    sectorIndex=diskGetLogicalSectorCountFromTrack(numTrk,head)+12;     // Do not forget the last one track (13-1)
   }
 
   for (int i=0;i<sectorIndex;i++){
@@ -570,19 +589,33 @@ enum STATUS createBlankWozFile(char * filename, uint8_t version,uint8_t diskForm
   }
 
   f_close(&fil);
-
+  
   fres = f_open(&fil,filename , FA_READ | FA_WRITE | FA_OPEN_EXISTING);    
   
   if(fres != FR_OK){
     log_error("File open Error: (%i)",fres);
     return RET_ERR;
   }
-
+  
   f_lseek(&fil,12);
   uint32_t crc32=getWozCrc32(&fil);
+  f_lseek(&fil,8);
+  f_write(&fil,&crc32,4,bw);
   log_info("crc:%04X",crc32);
-  // Now compute the CRC
+  f_close(&fil);
 
+  /*
+    char tmp[1536];
+    fres = f_open(&fil,filename , FA_READ );    
+    int br=0;
+    if(fres != FR_OK){
+      log_error("File open Error: (%i)",fres);
+      return RET_ERR;
+    }
+    f_read(&fil,&tmp,1536,&br);
+
+    dumpBuf(tmp,0,1536);
+  */
   return RET_OK;
 }
 
@@ -638,12 +671,16 @@ uint32_t getWozCrc32(FIL * fil){
   Due to meory limitation this function from Applesauce needs to be adapted uisng the file pointer from fat_fs
   */
 
-	char ch=0;
+	char ch[64];                                  // Chunk of 64 instead of single char is obviously faster ;)
 	uint32_t crc =0;
   crc = crc ^ ~0U;
+  int br=0;
 	while (!f_eof(fil)){
-    f_gets(&ch,1,fil);
-	  crc = crc32_tab[(crc ^ ch) & 0xFF] ^ (crc >> 8);
+    f_read(fil,&ch,64,&br);
+    for (uint8_t i=0;i<br;i++){
+	    crc = crc32_tab[(crc ^ ch[i]) & 0xFF] ^ (crc >> 8);
+    }
+
   }
   return crc ^ ~0U;
 }
