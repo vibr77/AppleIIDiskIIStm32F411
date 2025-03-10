@@ -11,6 +11,7 @@
 #define MAX_PATH_LENGTH             64
 #define MAX_FULLPATHIMAGE_LENGTH    320 
 #define JSON_BUFFER_SIZE            2048
+#define MAX_EXTFILTER_ITEM          20
 
 #define CONFIGFILE_NAME             "/sdiskConfig.json"
 
@@ -73,13 +74,33 @@ C3              PBEGIN    MARKS BEGINNING OF PACKET             32 micro Sec.   
 82              G7BYTE3   BYTE 3 FOR 1ST GROUP OF 7             32 micro Sec.      20   14
 80              G7BYTE4   BYTE 4 FOR 1ST GROUP OF 7             32 micro Sec.      21   15
 80              G7BYTE5   BYTE 5 FOR 1ST GROUP OF 7             32 micro Sec.      22   16
-80              G7BYTE5   BYTE 6 FOR 1ST GROUP OF 7             32 micro Sec.      23   17
-80              G7BYTE6   BYTE 7 FOR 1ST GROUP OF 7             32 micro Sec.      24   18
+80              G7BYTE6   BYTE 6 FOR 1ST GROUP OF 7             32 micro Sec.      23   17
+80              G7BYTE7   BYTE 7 FOR 1ST GROUP OF 7             32 micro Sec.      24   18
 BB              CHKSUM1   1ST BYTE OF CHECKSUM                  32 micro Sec.      25   19
 EE              CHKSUM2   2ND BYTE OF CHECKSUM                  32 micro Sec.      26   20
 C8              PEND      PACKET END BYTE                       32 micro Sec.      27   21
 00              FALSE     FALSE IWM WRITE TO CLEAR REGISTER     32 micro Sec.      28   22
 _____________________________________________________________________________
+
+Ex of Data packet :ADC_CLOCKPRESCALER_PCLK_DIV1
+0000: C3 81 80 82 80 80 86 80 86 80 80 80 A4 D9 E7 BF - ..�.��.�.���....
+0010: EF C8 
+
+C3                  0   PBEGIN
+81                  1   DEST
+80                  2   SRC
+82                  3   TYPE 
+80                  4   AUX
+80                  5   STAT
+86                  6   ODDCNT
+80                  7   GRPCNT
+86                  8   ODD MSB
+80 80 80 A4 D9 E7 
+BF EF               CHKSUM
+C8                  PEND
+
+
+
 */
 #define SP_PBEGIN   0
 #define SP_DEST     1

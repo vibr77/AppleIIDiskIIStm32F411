@@ -1,107 +1,67 @@
 
 #include <stdint.h>
+#include "defines.h"
 #include "list.h"
+#include "log.h"
+#include "../src/dispScreen/screen_smartport.h"
+#include "../src/dispScreen/screen_mainmenu.h"
+#include "../src/dispScreen/screen_splash.h"
+#include "../src/dispScreen/screen_makefs.h"
+#include "../src/dispScreen/screen_favorites.h"
+#include "../src/dispScreen/screen_settings.h"
+#include "../src/dispScreen/screen_fs.h"
+#include "../src/dispScreen/screen_diroption.h"
+#include "../src/dispScreen/screen_diskii.h"
+#include "../src/dispScreen/screen_error.h"
 #ifndef disp
 #define disp
 
 enum EMUL_CMD{EMUL_READ,EMUL_WRITE,EMUL_STATUS};
-enum page{FS,MOUNT,MENU,IMAGE,FAVORITE,CONFIG,EMULATIONTYPE,IMAGEMENU,SMARTPORT,MAKEFS};
+enum page{FS,MOUNT,MENU,DISKIIIMAGE,FAVORITES,SETTINGS,EMULATIONTYPE,IMAGEMENU,SMARTPORT,SMARTPORT_IMAGEOPTION,SMARTPORT_MOUNT,MAKEFS,DIROPTION,NEWIMAGE};
+
+
+typedef struct lstItem_s{
+    uint8_t type;             // 0 -> simpleLabel; 1-> boolean; 2-> value
+    uint8_t icon;
+    char title[24];
+    void (* triggerfunction)();
+    uint8_t arg;
+    uint8_t ival;
+}listItem_t;
+
+typedef struct dispItem_s{
+    uint8_t displayPos;                     // Line on the screen of the item
+    uint8_t update;                         // updated 
+    uint8_t selected;                       // is this line selected
+    uint8_t lstItemIndx;                    // item index in the list                      
+    uint8_t status;                         // simple status
+    list_node_t *lstItem; 
+}dispItem_t;
+
+typedef struct listWidget_s{
+    uint8_t dispStartLine;                                           // Line number of the first item to be displayed
+    uint8_t hOffset;                        
+    uint8_t vOffset;                                        
+    uint8_t dispMaxNumLine;                                         // Number of line to be displayed on the screen
+    uint8_t dispLineSelected;
+    uint8_t currentClistPos;
+    uint8_t lstItemCount;
+    list_t * lst;
+    list_node_t * currentSelectedItem;
+
+    dispItem_t dispItem[SCREEN_MAX_LINE_ITEM];
+} listWidget_t;
 
 char * getImageNameFromFullPath(char * fullPathImageName);
 enum STATUS switchPage(enum page newPage,void * arg);
 void updateChainedListDisplay(int init, list_t * lst );
-
-
-
-/*      SPLASH SCREEN                    */
-void initSplashScreen();
-
-/*      FILESYSTEM SCREEN               */
-void processPrevFSItem();
-void processNextFSItem();
-void processUpdirFSItem();
-void processSelectFSItem();
-
-void processToogleOption();
-void processMountOption();
 void nothing();
-void processBtnRet();
-
-/*      MOUNT IMAGE SCREEN              */
-void mountImageScreen(char * filename);
-void toggleMountOption(int i); 
-
-/*      IMAGE SCREEN                    */
-enum STATUS initIMAGEScreen(char * imageName,int type);
-void updateIMAGEScreen(uint8_t status,uint8_t trk);
-void toggleAddToFavorite();
-
-/*     IMAGE MENU SCREEN                */
-void processPreviousImageMenuScreen();
-void processNextImageMenuScreen();
-void processActiveImageMenuScreen();
-void processImageMenuScreen();
-void initImageMenuScreen(int i);
-void processDisplayImageMenu();
-
-/*      MAIN MENU SCREEN                */
-void processPreviousMainMenuScreen();
-void processNextMainMenuScreen();
-void processActiveMainMenuScreen();
-void initMainMenuScreen(int i);
-
-/*      CONFIG MENU SCREEN              */
-
-void processPrevConfigItem();
-void processNextConfigItem();
-void processSelectConfigItem();
-void processReturnConfigItem();
-
-void processBootOption(int arg);
-void processSoundEffect();
-void processClearprefs();
-void processClearFavorites();
-
-
-/*       MAKE FILESYSTEM SCREEN     */
-
-void processDispMakeFsScreen();
-void processMakeFs();
-void makeFsScreen();
-void toggleMakeFsOption(int i);
-void processMakeFsOption();
-void processMakeFsToggleOption();
-
-void processMakeFsConfirmed();
-void processMakeFsBtnRet();
-void processMakeFsSysReset();
-
-// Emulation type Screen
-void initConfigEmulationScreen();
-void processEmulationTypeOption(int arg);
-void processReturnEmulationTypeItem();
-
-void initConfigMenuScreen(int i);
-void updateConfigMenuDisplay(int init);
-
-void initErrorScreen(char * msg);
-void initFSScreen(char * path);
-
-
-/*      FAVORITE SCREEN                 */
-void initFavoriteScreen();
-void processPrevFavoriteItem();
-void processNextFavoriteItem();
-void processReturnFavoriteItem();
-void processSelectFavoriteItem();
-
-void initSmartPortHD();
-void updateImageSmartPortHD(char * filename,uint8_t i);
-void processSmartPortHDRetScreen();
-void updateSmartportHD(uint8_t imageIndex,enum EMUL_CMD cmd);
-
 
 /*      DISPLAY PRIMITIVES              */
+void primUpdListWidget(listWidget_t *lw,int8_t init, int8_t direction);
+void primPrepNewScreen(char * szTitle);
+void primUpdScreen();
+
 void clearScreen();
 void dispIcon32x32(int x,int y,uint8_t indx);
 void dispIcon24x24(int x,int y,uint8_t indx);

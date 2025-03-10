@@ -199,10 +199,10 @@ enum STATUS mount2mgFile(_2mg_t _2MG, char * filename){
     IMG2_DataBlockCount=get_u32le(img2_header+0x14);
     IMG2_DataOffset=get_u32le(img2_header+0x18);
     IMG2_DataByteCount=get_u32le(img2_header+0x1c);
-
+    
     if(IMG2_DataBlockCount != 1600 && IMG2_DataBlockCount != 16390){
-        log_error("Wrong 512x data block count ");
-        return RET_ERR;
+        log_error("Wrong 512x data block count:%d",IMG2_DataBlockCount);
+        //return RET_ERR;
     }else{
         log_info("2MG 512 data blocks:%ld",IMG2_DataBlockCount);
         log_info("2MG Bytes size:%ld",IMG2_DataByteCount);

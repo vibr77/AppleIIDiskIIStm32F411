@@ -32,7 +32,7 @@ disk35_t dsk35;
 image35Info_t img35;
 
 static volatile unsigned char phase=0x0;
-static volatile uint8_t ph_track=0;                                            // Physical Track on 3.5 should not exceed 160;
+static volatile uint8_t ph_track=0;                                      // Physical Track on 3.5 should not exceed 160;
 static volatile uint8_t prevPh_track=160;
 static unsigned long cAlive=0;
 

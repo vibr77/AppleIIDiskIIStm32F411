@@ -6,6 +6,8 @@
 #include <string.h>
 #include <stdint.h>
 #include "main.h"
+#include "configFile.h"
+
 
 
 typedef struct prodosPartition_s{
