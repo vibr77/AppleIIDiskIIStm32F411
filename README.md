@@ -1,6 +1,8 @@
 # SmartDisk II for Apple II
 
 
+license attached to this project enables reusers to distribute, remix, adapt, and build upon the material in any medium or format for noncommercial purposes only, and only so long as attribution is given to the creator
+
 ## Apple II STM32 based Hardware DISKII EMULATOR
 
 This project is about an Apple II Disk II hardware emulator capable of reading / writing disk image from/to SDCARD.

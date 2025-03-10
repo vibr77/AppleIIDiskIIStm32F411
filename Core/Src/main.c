@@ -108,7 +108,17 @@ UART
 
 // Changelog
 /*
+06.03.25
+  + [ALL] code refactoring
+  + [FS] Adding directory option
+  + [SDEJECT] Removing HAL, bitbanging to GPIO
+  + [SDEJECT] Add function trigger to emul loop
+  + [SDEJECT] Add sysreset after sdcard reinserted
+03.03.25 v0.80.5
+  + Add extension filter to walkdir depending of the type of emulator 
 26.02.25 v0.80.4
+  + [Smartport] mount regression fix
+  + [Smartport] 2mg file ext disp fix
   + [WOZ] Correcting head / sector / region calculation
   + [FS]  Adding "." item on every location to add future access to option
   + [FATFS] Change conf of FATFS to manage STRFUNC
@@ -354,16 +364,18 @@ FATFS fs;                                                   // fatfs global vari
 long database=0;                                            // start of the data segment in FAT
 int csize=0;                                                // Cluster size
 
+//char * ptrFileFilter[];
+const char * ptrFileFilter[]={"PO","po","DSK","dsk","NIC","nic","WOZ","woz"};
 
 unsigned char read_track_data_bloc[RAW_SD_TRACK_SIZE];                  
-volatile unsigned char DMA_BIT_TX_BUFFER[RAW_SD_TRACK_SIZE];            // DMA Buffer for READ Track
+volatile unsigned char DMA_BIT_TX_BUFFER[RAW_SD_TRACK_SIZE];         // DMA Buffer for READ Track
 
 extern char currentFullPath[MAX_FULLPATH_LENGTH];                    // current path from root
 extern char currentPath[MAX_PATH_LENGTH];                            // current directory name max 64 char
 extern char currentFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];  // fullpath from root image filename
 extern char tmpFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];      // fullpath from root image filename
 
-uint8_t flgSoundEffect=0;                                   // Activate Buzze
+uint8_t flgSoundEffect=0;                                             // Activate Buzze
 uint8_t bootMode=0;
 uint8_t emulationType=0;
 uint8_t bootImageIndex=0;
@@ -860,10 +872,12 @@ enum STATUS processPath(char *path){
 
 /**
   * @brief Build & sort a new chainedlist of file/dir item based on the current path
-  * @param path
+  * @param path,
+  * @param extFilter: const char * of list of file extension to filter
   * @retval RET_OK/RET_ERR
   */
-enum STATUS walkDir(char * path){
+enum STATUS walkDir(char * path, const char * extFilter[]){
+  
   DIR dir;
   FRESULT fres;  
 
@@ -902,47 +916,56 @@ enum STATUS walkDir(char * path){
       
       while(1){
         FILINFO fno;
-
+        uint8_t fileExtMatch=0;                                           // flag is directory item match the file extension filter
         fres = f_readdir(&dir, &fno);
  
         if (fres != FR_OK){
           log_error("Error f_readdir:%d path:%s\n", fres,path);
           return RET_ERR;
         }
+
         if ((fres != FR_OK) || (fno.fname[0] == 0))
           break;
                                                                           // 256+2
         len=(int)strlen(fno.fname);                                       // Warning strlen
-        
+        uint8_t extLen=0;
+        if (!(fno.fattrib & AM_DIR)){
+          //log_info("file %s",fno.fname);
+          for (uint8_t i=0;i<MAX_EXTFILTER_ITEM;i++){
+            if (extFilter[i]==NULL || !strcmp(extFilter[i],""))                                              // End of the list
+              break;
+            extLen=strlen(extFilter[i]);
+            if (!memcmp(fno.fname+(len-extLen),extFilter[i],extLen)){
+              //log_info("file %s ext %s match %d %d",fno.fname,extFilter[i],extLen,i);
+              fileExtMatch=1;
+              break;
+            }
+            
+          }
+        }
+
         if (((fno.fattrib & AM_DIR) && 
-            !(fno.fattrib & AM_HID) && len>0 && fno.fname[0]!='.' ) ||     // Listing Directories & File with NIC extension
-            (len>3 &&
-            (!memcmp(fno.fname+(len-4),".NIC",4)  ||           // .NIC
-             !memcmp(fno.fname+(len-4),".nic",4)  ||           // .nic
-             !memcmp(fno.fname+(len-4),".WOZ",4)  ||           // .WOZ
-             !memcmp(fno.fname+(len-4),".woz",4)  ||           // .woz
-             !memcmp(fno.fname+(len-4),".DSK",4)  ||           // .DSK
-             !memcmp(fno.fname+(len-4),".dsk",4)  ||           // .dsk
-             !memcmp(fno.fname+(len-3),".PO",3)   ||           // .DSK
-             !memcmp(fno.fname+(len-3),".po",3)) &&            // .dsk
+            !(fno.fattrib & AM_HID) && len > 0 && fno.fname[0]!='.' ) ||     // Listing Directories & File with NIC extension
+            (len>3 && fileExtMatch==1  &&            // .dsk
              !(fno.fattrib & AM_SYS) &&                        // Not System file
              !(fno.fattrib & AM_HID)                           // Not Hidden file
             )
             ){
               
-          fileName=malloc(MAX_FILENAME_LENGTH*sizeof(char));
-          if (fno.fattrib & AM_DIR){
-            fileName[0]='D';
-            fileName[1]='|';
-            strcpy(fileName+2,fno.fname);
-          }else{
-            fileName[0]='F';
-            fileName[1]='|';
-            memcpy(fileName+2,fno.fname,len);
-            fileName[len+2]=0x0;
-          }
-            list_rpush(dirChainedList, list_node_new(fileName));
-          }
+              fileName=malloc(MAX_FILENAME_LENGTH*sizeof(char));
+          
+            if (fno.fattrib & AM_DIR){
+              fileName[0]='D';
+              fileName[1]='|';
+              strcpy(fileName+2,fno.fname);
+            }else{
+              fileName[0]='F';
+              fileName[1]='|';
+              memcpy(fileName+2,fno.fname,len);
+              fileName[len+2]=0x0;
+            }
+              list_rpush(dirChainedList, list_node_new(fileName));
+            }
 
         /*log_debug("%c%c%c%c %10d %s/%s",
           ((fno.fattrib & AM_DIR) ? 'D' : '-'),
@@ -965,19 +988,20 @@ enum STATUS walkDir(char * path){
   * @retval None
   */
 char processSdEject(uint16_t GPIO_PIN){
-  log_info("processSdeject");
-  
-  int sdEject=HAL_GPIO_ReadPin(SD_EJECT_GPIO_Port, GPIO_PIN);                 // Check if SDCard is ejected
-  if (sdEject==1){  
+
+  if ((SD_EJECT_GPIO_Port->IDR & GPIO_PIN)==1){ 
+
     ptrUnmountImage();
-    initErrorScreen("SD EJECTED");                                            // Display the message on screen
+    initErrorScr("SD EJECTED");                                               // Display the message on screen
     
-    do {  
-      sdEject=HAL_GPIO_ReadPin(SD_EJECT_GPIO_Port, GPIO_PIN);                 // wait til it has changed
-    }while(sdEject==1);
+    while((SD_EJECT_GPIO_Port->IDR & GPIO_PIN)==1){
+
+    };
+
+    NVIC_SystemReset();                                                     // Finally Reset 
   
   }
-  return sdEject;
+  return 0;
 }
 
 /**
@@ -1070,9 +1094,20 @@ enum STATUS execAction(enum action nextAction){
         break;
       
       case MKFS:
-        processMakeFsConfirmed();
+        initMakeFsConfirmedScr();
         nextAction=NONE;
         break;
+      
+      case FSDISP:
+        log_info("FSDISP fsState:%d",fsState);
+        list_destroy(dirChainedList);
+        log_info("FSDISP: currentFullPath:%s",currentFullPath);
+
+        walkDir(currentFullPath,ptrFileFilter);                
+        setConfigParamStr("currentPath",currentFullPath);
+        saveConfigFile();
+        initFsScr(currentPath);
+        nextAction=NONE;
       
       default:
         log_error("execAction not handled");
@@ -1172,12 +1207,12 @@ int main(void){
   csize=fs.csize;
   database=fs.database;
 
-  initSplashScreen();                                                       // I2C Screen init                  
+  initSplash();                                                       // I2C Screen init                  
                                             
   HAL_Delay(SPLASHSCREEN_DURATION);
 
   EnableTiming();                                                           // Enable WatchDog to get precise CPU Cycle counting
-  //processMakeFsConfirmed();
+ 
   TIM1->PSC=1000;
 
   int T2_DIER=0x0;
@@ -1199,7 +1234,6 @@ int main(void){
   
   ptrDeviceEnableIRQ(DEVICE_ENABLE_Pin);
 
-
   dirChainedList = list_new();                                              // ChainedList to manage File list in current path                                                     
 
   
@@ -1220,16 +1254,17 @@ int main(void){
         log_info("init default and save configFile");
       }
     }else{
+      
       getFavorites();
       buildLstFromFavorites();
       
       if (getConfigParamUInt8("bootMode",&bootMode)==RET_ERR)
-        log_error("error getting bootMode from Config");
+        log_warn("error getting bootMode from Config");
       else 
         log_info("bootMode=%d",bootMode);
 
       if (getConfigParamUInt8("emulationType",&emulationType)==RET_ERR)
-        log_error("error getting emulationType from Config");
+        log_warn("error getting emulationType from Config");
       else 
         log_info("emulationType=%d",emulationType);
       
@@ -1240,7 +1275,7 @@ int main(void){
 
       
       if (getConfigParamUInt8("soundEffect",&flgSoundEffect)==RET_ERR)
-        log_error("error getting soundEffect from Config");
+        log_warn("error getting soundEffect from Config");
       else 
         log_info("soundEffect=%d",flgSoundEffect);
 
@@ -1258,9 +1293,10 @@ int main(void){
       log_info("lastFile:%s",imgFile);
       sprintf(tmpFullPathImageFilename,"%s",imgFile);
     }
+    //const char * filtr[]={"woz","WOZ"};
+    walkDir(currentFullPath,(const char **)ptrFileFilter);
 
-    walkDir(currentFullPath);
-
+  
   }else{
     log_error("Error mounting sdcard %d",fres);
   }
@@ -1283,6 +1319,8 @@ int main(void){
       ptrUnmountImage=DiskIIUnmountImage;
       ptrMountImagefile=DiskIIMountImagefile;
       ptrInit=DiskIIInit;
+      //ptrFileFilter=diskIIImageExt;
+
       break;
 
     case DISK35:
@@ -1590,7 +1628,7 @@ static void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 0;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 32*12-1-2;                      // Needs to be investigate -5 otherwise does not work 
+  htim2.Init.Period = 32*12-1-2;//-2;                      // Needs to be investigate -5 otherwise does not work 
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)

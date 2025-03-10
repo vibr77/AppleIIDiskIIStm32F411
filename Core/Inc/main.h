@@ -63,7 +63,7 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-enum action{NONE,IMG_MOUNT,FSDISP,FSMOUNT,SYSRESET,DUMP_TX,WRITE_TRK,UPDIMGDISP,PROCESS_FS_CHANGEDIR,MKFS};
+enum action{NONE,IMG_MOUNT,SMARTPORT_IMGMOUNT,FSDISP,FSMOUNT,SYSRESET,DUMP_TX,WRITE_TRK,PROCESS_FS_CHANGEDIR,MKFS};
 enum DISK_FORMAT{WOZ,DSK,PO,_2MG,NIB};
 
 enum FS_STATUS{READY,READING,WRITING,BUSY,DBG};
@@ -79,7 +79,8 @@ enum STATUS writeTrkFile(char * filename,char * buffer,uint32_t offset);
 char *byte_to_binary(int x);
 
 list_t * sortLinkedList(list_t * plst);                             // Sort the chainedList
-enum STATUS walkDir(char * path);                                   // Build chainedList of Directories/Files Items
+//enum STATUS walkDir(char * path);                                   // Build chainedList of Directories/Files Items
+enum STATUS walkDir(char * path, const char * extFilter[]);
 
 enum STATUS mountImagefile(char * filename);
 enum STATUS unmountImage();

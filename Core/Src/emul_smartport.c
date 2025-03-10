@@ -32,6 +32,7 @@ extern enum action nextAction;
 
 prodosPartition_t devices[MAX_PARTITIONS];
 
+char* smartPortHookFilename=NULL;
 //bool is_valid_image(File imageFile);
 
 unsigned char packet_buffer[SP_PKT_SIZE];   //smartport packet buffer
@@ -42,6 +43,10 @@ int partition;
 int initPartition;
 
 static volatile unsigned char phase=0x0;
+
+const char * smartportImageExt[]={"PO","po","2MG","2mg"};
+
+uint16_t messageId=0x0;
 
 /**
   * @brief SmartPortReceiveDataIRQ function is used to manage SmartPort Emulation in TIMER 
@@ -62,7 +67,6 @@ static volatile int wrStartOffset=0;
 
 static volatile unsigned int wrBitCounter=0;
 static volatile unsigned int wrBytes=0;
-static volatile unsigned int wrBytesReceived=0;
 
 static volatile unsigned char byteWindow=0x0;
 static volatile uint16_t wrCycleWithNoBytes=0;
@@ -93,7 +97,8 @@ void SmartPortWrReqIRQ(){
         HAL_TIM_PWM_Start_IT(&htim2,TIM_CHANNEL_3);
     }else{
         HAL_TIM_PWM_Stop_IT(&htim2,TIM_CHANNEL_3);
-        packet_buffer[wrBytesReceived++]=0x0;
+        packet_buffer[wrBytes++]=0x0;
+        messageId++;
         flgPacket=1;
     }
         
@@ -156,7 +161,7 @@ void SmartPortReceiveDataIRQ(){
         byteWindow<<=1;
         byteWindow|=xorWrData;
         
-        wrBytes=wrBytes%603;
+        //wrBytes=wrBytes%603;
 
         if (byteWindow & 0x80){                                                 // Check if ByteWindow Bit 7 is 1 meaning we have a full bytes 0b1xxxxxxx 0x80
             
@@ -172,8 +177,6 @@ void SmartPortReceiveDataIRQ(){
 
         }
         wrBitCounter++;                                                           // Next bit please ;)
-        wrBytesReceived=wrBytes;
-        
 }
 
 static uint8_t nextBit=0;
@@ -282,8 +285,8 @@ char * SmartPortFindImage(char * pattern){
                 
                 (!memcmp(fno.fname+(len-3),".PO",3)   ||          // .PO
                 !memcmp(fno.fname+(len-3),".po",3)    ||  
-                !memcmp(fno.fname+(len-3),".2mg",4)   ||
-                !memcmp(fno.fname+(len-3),".2MG",4)  ) &&         
+                !memcmp(fno.fname+(len-4),".2mg",4)   ||
+                !memcmp(fno.fname+(len-4),".2MG",4)  ) &&         
                 !(fno.fattrib & AM_SYS) &&                        // Not System file
                 !(fno.fattrib & AM_HID) &&                        // Not Hidden file
     
@@ -317,30 +320,43 @@ void SmartPortInit(){
     HAL_TIMEx_PWMN_Stop(&htim1,TIM_CHANNEL_2);
 
     TIM3->ARR=(32*12)-1;
+    //TIM3->ARR=(16*12)-1;
+    //TIM3->CCR2=32*3;
 
-    char sztmp[128];
-    char * szfile;
+    //char sztmp[128];
+    char * szFile;
+    char key[16];
     for(uint8_t i=0; i< MAX_PARTITIONS; i++){
-        sprintf(sztmp,"vol%02d_",i+1);
-        szfile=SmartPortFindImage(sztmp);
-        devices[i].filename=szfile;
-        
-        
-        SmartPortMountImage(&devices[i],szfile);
-        
-        if (devices[i].mounted!=1){
-            log_error("Mount error: %s not mounted",sztmp);
+        sprintf(key,"smartport_vol%02d",i);
+        szFile=(char *)getConfigParamStr(key);
+        if (i==0){
+            szFile=(char *)malloc(128*sizeof(char));
+            sprintf(szFile,"vol01_Arkanoid.2mg");
+        }
+        if (szFile==NULL){
+            devices[i].filename=NULL;
+            devices[i].mounted=0;
+            log_warn("[config] smartport_vol%02d does not exist",i);
         }else{
-            log_info("%s mounted",sztmp);
+            devices[i].filename=szFile;
+            SmartPortMountImage(&devices[i],szFile);
+        
+            if (devices[i].mounted!=1){
+                log_error("Mount error: %s not mounted",szFile);
+            }else{
+                log_info("%s mounted",szFile);
+            }
         }
     }
+
     switchPage(SMARTPORT,NULL);                                                                     // Display the Frame of the screen
+    char * fileTab[4];
 
     for (uint8_t i=0;i<MAX_PARTITIONS;i++){
-        //uint8_t indx=(i+bootImageIndex)%MAX_PARTITIONS;
         devices[i].dispIndex=i;
-        updateImageSmartPortHD(devices[i].filename,i);                                        // Display the name of the PO according to the position
+        fileTab[i]=devices[i].filename;                                                                // Display the name of the PO according to the position
     }
+    setImageTabSmartPortHD(fileTab,bootImageIndex);
 
 }
 
@@ -475,7 +491,7 @@ void SmartPortMainLoop(){
                 
                 SmartportReceivePacket();                                                   // Receive Packet
                                                                                             // Verify Packet checksum
-                if ( verifyCmdpktChecksum()==RET_ERR  ){
+                if (verifyCmdpktChecksum()==RET_ERR  ){
                     log_error("Incomming command checksum error");
                 }
                 
@@ -553,7 +569,9 @@ void SmartPortMainLoop(){
                 dest =  packet_buffer[SP_DEST];
                 MSB  =  packet_buffer[SP_GRP7MSB];
                 AUX  =  packet_buffer[SP_AUX] & 0x7f;                                                                          
-                
+                if(packet_buffer[SP_COMMAND]!=0x81)
+                    print_packet ((unsigned char*) packet_buffer, packet_length());
+
                 switch (packet_buffer[SP_COMMAND]) {
 
                     case 0x80:                                                                                          //is a status cmd
@@ -611,7 +629,7 @@ void SmartPortMainLoop(){
                             uint8_t dev=(partition + initPartition) % MAX_PARTITIONS;
                             if (devices[dev].device_id == dest && devices[dev].mounted==1 ) {                           // yes it is, and it's online, then reply
                                 
-                                updateSmartportHD(devices[dev].dispIndex,EMUL_STATUS);
+                                updateCommandSmartPortHD(devices[dev].dispIndex,2);
                                                                                                                         // Added (unsigned short) cast to ensure calculated block is not underflowing.
                                 if (statusCode == 0x03) {                                                               // if statcode=3, then status with device info block
                                     encodeStatusDibReplyPacket(devices[dev]);
@@ -642,7 +660,7 @@ void SmartPortMainLoop(){
                             uint8_t dev=(partition + initPartition) % MAX_PARTITIONS;
                             if (devices[dev].device_id == dest) {                                                       // yes it is, then reply
                                                                                                                         // Added (unsigned short) cast to ensure calculated block is not underflowing.
-                                updateSmartportHD(devices[dev].dispIndex,EMUL_STATUS);
+                                updateCommandSmartPortHD(devices[dev].dispIndex,2);
                                 statusCode = (packet_buffer[SP_G7BYTE5] & 0x7f);
                                 
                                 if (statusCode == 0x03) {                                                               // if statcode=3, then status with device info block
@@ -714,13 +732,14 @@ void SmartPortMainLoop(){
                                     statusCode=0x27;
                                 }else{
 
-                                    updateSmartportHD(devices[dev].dispIndex,EMUL_READ);                                    // Pass the rightImageIndex    
+                                    updateCommandSmartPortHD(devices[dev].dispIndex,0);                                    // Pass the rightImageIndex    
                                                                                                                             // block num 1st byte
                                     while(fsState!=READY){};
                                     fsState=BUSY;
                                     FRESULT fres=f_lseek(&devices[dev].fil,devices[dev].dataOffset+blockNumber*512);
                                     if (fres!=FR_OK){
                                         log_error("Read seek err!, partition:%d, block:%d",dev,blockNumber);
+                                        print_packet ((unsigned char*) packet_buffer,packet_length());
                                         statusCode=0x2D;                                                                    // Invalid Block Number
                                     }else{
                                         statusCode=0x0;
@@ -800,13 +819,14 @@ void SmartPortMainLoop(){
                                     statusCode=0x27;
                                 }else{
 
-                                    updateSmartportHD(devices[dev].dispIndex,EMUL_READ);                               // Pass the rightImageIndex    
+                                    updateCommandSmartPortHD(devices[dev].dispIndex,0);                               // Pass the rightImageIndex    
                                     
                                     while(fsState!=READY){};
                                     fsState=BUSY;
                                     FRESULT fres=f_lseek(&devices[dev].fil,devices[dev].dataOffset+blockNumber*512);
                                     if (fres!=FR_OK){
                                         log_error("Read seek err!, partition:%d, block:%d",dev,blockNumber);
+                                        print_packet ((unsigned char*) packet_buffer,packet_length());
                                         statusCode=0x2D;                // Invalid Block Number
                                     }else{
                                         statusCode=0x0;
@@ -816,6 +836,7 @@ void SmartPortMainLoop(){
                                         
                                         if(fres != FR_OK){
                                             log_error("Read err!");
+                                            
                                             statusCode=0x27;
                                         }
                                         while(fsState!=READY){};
@@ -897,6 +918,7 @@ void SmartPortMainLoop(){
                                     statusCode=0x2F;                                                                                // OffLine Device off line or no disk in drive
                                 }else if (devices[dev].writeable==0)
                                     statusCode=0x2B;
+                                    
                                 else{
                                     statusCode = decodeDataPacket();
                                     if (statusCode == 0) {                                                                  // ok
@@ -1109,7 +1131,7 @@ void SmartPortMainLoop(){
                         }
                         
                         if (statusCode!=0x0){
-                            log_error("Smartport INIT cmd:%02X, dest:%02X, statusCode:%02X",packet_buffer[SP_COMMAND],dest,statusCode);
+                            log_warn("Smartport LAST INIT cmd:%02X, dest:%02X, statusCode:%02X",packet_buffer[SP_COMMAND],dest,statusCode);
                         }
                         
                         encodeReplyPacket(dest,0x0,AUX,statusCode);
@@ -1153,6 +1175,10 @@ void SmartPortMainLoop(){
 
                             Note:   As per the firmware documentation control code should be below 0x80 and thus Bit 7 (from the MSB shoulg never be set)
                                     Thus it should not be needed to check the Bit7 from the MSB GRP 1, but to make it clean let's do it.
+                        
+                        0000: C3 81 80 80 80 80 82 81 80 84 83 A0 80 AA 85 80 - ..����..�...�..�
+                        0010: 80 80 80 AA BF C8                               - ���.............
+                        
                         */
                         
                         //unsigned char PTR_LOW,PTR_HIGH;                        
@@ -1162,9 +1188,11 @@ void SmartPortMainLoop(){
                         //int ctrlPtr = (PTR_LOW & 0x7f) | (((unsigned short)MSB << 1) & 0x80);                         
                         //    ctrlPtr = ctrlPtr + (((PTR_HIGH & 0x7f) | (((unsigned short)MSB << 2) & 0x80)) << 8);      
                         
-                        ctrlCode= (packet_buffer[SP_G7BYTE3] & 0x7f) | (((unsigned short)MSB << 3) & 0x80);  ;
+                        ctrlCode= (packet_buffer[SP_G7BYTE3] & 0x7f) | (((unsigned short)MSB << 3) & 0x80);
                         
-                        statusCode=0x21;                                                                                            // Bad Control Code 
+                        //statusCode=0x21; 
+                        statusCode=0x0; 
+                        uint8_t respType=0x0;                                                                                          // Bad Control Code 
                         switch(ctrlCode){
                             case 0x00:                                                                                               // RESET
                                 log_info("Smartport cmd:%02X, dest:%02X, control command code:%02X RESET",packet_buffer[SP_COMMAND],dest,ctrlCode);
@@ -1183,16 +1211,52 @@ void SmartPortMainLoop(){
                                 log_info("Smartport cmd:%02X, dest:%02X, control command code:%02X EJECT",packet_buffer[SP_COMMAND],dest,ctrlCode);  
                                 break;
 
+                            case 0x05:
+                                SmartportReceivePacket();
+                                //log_info("before decode start");
+                                print_packet ((unsigned char*) packet_buffer,packet_length());
+                                //log_info("before decode end");
+                                //decodeDataPacket();
+                                //log_info("Data Packet Start");
+                                //print_packet ((unsigned char*) packet_buffer,packet_length());
+                                //log_info("Data Packet end");
+                                respType=0x02;
+                                break;
+
+                            case 0x06:
+                                //log_info("Smartport cmd:%02X, dest:%02X, control command code:%02X SETADDRESS",packet_buffer[SP_COMMAND],dest,ctrlCode);
+                                //SmartportReceivePacket();
+                                //log_info("before decode start");
+                                //print_packet ((unsigned char*) packet_buffer,packet_length());
+                                //log_info("before decode end");
+                                //decodeDataPacket();
+                                //log_info("Data Packet Start");
+                                print_packet ((unsigned char*) packet_buffer,packet_length());
+                                //log_info("Data Packet end");
+                                respType=0x02;
+                                break;
+                            
+                            case 0x07:
+                                //SmartportReceivePacket();
+                                //log_info("before decode start");
+                                //print_packet ((unsigned char*) packet_buffer,packet_length());
+                                //log_info("before decode end");
+                                //decodeDataPacket();
+                                //log_info("Data Packet Start");
+                                //print_packet ((unsigned char*) packet_buffer,packet_length());
+                                //log_info("Data Packet end");
+                                respType=0x02;
+                                break;
+
                             default:
                                 log_info("Smartport cmd:%02X, dest:%02X, control command code:%02X OTHER",packet_buffer[SP_COMMAND],dest,ctrlCode);
                                 
                         }
-
-                        print_packet ((unsigned char*) packet_buffer,packet_length());
-                        encodeReplyPacket(dest,0x0,AUX,statusCode);
+                        
+                        encodeReplyPacket(dest,respType,AUX,statusCode);
                         SmartPortSendPacket(packet_buffer);
                         
-                        print_packet ((unsigned char*) packet_buffer,packet_length());
+                        //print_packet ((unsigned char*) packet_buffer,packet_length());
                         break;
 
                     case 0xC4:                                                                                      // EXTENDED CONTROL CMD
@@ -1236,7 +1300,8 @@ void SmartPortMainLoop(){
                          
                         ctrlCode= (packet_buffer[SP_G7BYTE5] & 0x7f) | (((unsigned short)MSB << 5) & 0x80);  ;
                         
-                        statusCode=0x21;                                // Bad Control Code 
+                        statusCode=0x21; 
+                        statusCode=0x00;                               // Bad Control Code 
                         switch(ctrlCode){
                             case 0x00:                                  // RESET
                                 log_info("Smartport CONTROL cmd:%02X, dest:%02X, control command code:%02X RESET",packet_buffer[SP_COMMAND],dest,ctrlCode);
@@ -1317,20 +1382,19 @@ void SmartPortMainLoop(){
                         print_packet ((unsigned char*) packet_buffer,packet_length());
                         
                         encodeReplyPacket(dest,0x0,AUX,0x0);                                                                          // For the moment send a OK reply
-                        
                         SmartPortSendPacket(packet_buffer);                                                                             // We should send the data...
-                        
                         break;
+
                     case 0x89:                                                                 // Normal Write
                         log_info("Smartport cmd:%02X",packet_buffer[SP_COMMAND]);
                         print_packet ((unsigned char*) packet_buffer,packet_length());
                         break;
                     
-                    
                     case 0xC8:                                                                 // Extended Read
                         log_info("Smartport cmd:%02X",packet_buffer[SP_COMMAND]);
                         print_packet ((unsigned char*) packet_buffer,packet_length());
                         break;
+
                     case 0xc9:                                                                  // Extended Write
                         log_info("Smartport cmd:%02X",packet_buffer[SP_COMMAND]);
                         print_packet ((unsigned char*) packet_buffer,packet_length());         
@@ -1338,15 +1402,26 @@ void SmartPortMainLoop(){
                 } 
                
             }
-            HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);  // set RD_DATA LOW
+            
+            HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);                       // set RD_DATA LOW
             packet_buffer[0]=0x0;
 
             assertAck();
 
+            processSdEject(SD_EJECT_Pin);                                                       // detect SD card Eject
+
             if (nextAction!=NONE){
-                execAction(nextAction);
+                switch(nextAction){
+                    case SMARTPORT_IMGMOUNT:
+                        //TODO MANAGE THE EJECT OF THE DISK
+                        //SmartPortMountImage( devices[dev]., char * filename )
+                        nextAction=NONE;
+                        break;
+                    default:
+                        execAction(nextAction);
+                }
+                
             }
-    
         }            
 
     return;
@@ -1509,15 +1584,21 @@ int decodeDataPacket (void){
     unsigned char checksum = 0, bit0to6, bit7, oddbits, evenbits;
     unsigned char group_buffer[8];
 
-    numodd = packet_buffer[6] & 0x7f;                                                              // Handle arbitrary length packets :) 
+    int pl= packet_length();
+    log_info("Data Packet Len:%d",pl);
+    numodd = packet_buffer[6] & 0x7f;                                                               // Handle arbitrary length packets :) 
     numgrps = packet_buffer[7] & 0x7f;
 
-    for (count = 1; count < 8; count++)                                                            // First, checksum  packet header, because we're about to destroy it
+    for (count = 1; count < 8; count++)                                                             // First, checksum  packet header, because we're about to destroy it
         checksum = checksum ^ packet_buffer[count];                                                 // now xor the packet header bytes
 
-    evenbits = packet_buffer[594] & 0x55;
-    oddbits = (packet_buffer[595] & 0x55 ) << 1;
+    //evenbits = packet_buffer[594] & 0x55;
+    //oddbits = (packet_buffer[595] & 0x55 ) << 1;
+    log_info("PL-3:%02X PL-2:%02X",packet_buffer[pl-3],packet_buffer[pl-2]);
+    evenbits = packet_buffer[pl-3] & 0x55;
+    oddbits = (packet_buffer[pl-2] & 0x55 ) << 1;
 
+    log_info("evBits %02X, oddBit:%02X",evenbits,oddbits);
     for(int i = 0; i < numodd; i++){                                                                 //add oddbyte(s), 1 in a 512 data packet
         packet_buffer[i] = ((packet_buffer[8] << (i+1)) & 0x80) | (packet_buffer[9+i] & 0x7f);
     }
@@ -1531,11 +1612,14 @@ int decodeDataPacket (void){
         }
     }
 
-    for (count = 0; count < 512; count++)                                                           // Verify checksum
-        checksum = checksum ^ packet_buffer[count];                                                 // XOR all the data bytes
+    //for (count = 0; count < 512; count++)                                                           // Verify checksum
+    //    checksum = checksum ^ packet_buffer[count];                                                 // XOR all the data bytes
 
-    log_info("write checksum %02X<>%02X",checksum,(oddbits | evenbits));
-    //print_packet ((unsigned char*) packet_buffer,packet_length());
+    for (count = 0; count < (numgrps*7+1); count++)                                                   // Verify checksum
+       checksum = checksum ^ packet_buffer[count];   
+
+    log_info("decode Data checksum %02X<>%02X",checksum,(oddbits | evenbits));
+    print_packet ((unsigned char*) packet_buffer,packet_length());
     
     if (checksum == (oddbits | evenbits))
         return 0;                                                                                   // NO error
@@ -1825,6 +1909,8 @@ void encodeStatusDibReplyPacket (prodosPartition_t d){
     uint8_t deviceSubType=0;
 
     if (d.diskFormat==_2MG){
+        //devicetype=0x02;
+        //deviceSubType=0x00;
         devicetype=0x01;
         deviceSubType=0x00;
     }else if (d.diskFormat==PO){
@@ -1979,7 +2065,7 @@ void encodeExtendedStatusDibReplyPacket (prodosPartition_t d){
     uint8_t deviceSubType=0;
 
     if (d.diskFormat==_2MG){
-        devicetype=0x01;
+        devicetype=0x02;
         deviceSubType=0x00;
     }else if (d.diskFormat==PO){
         devicetype=0x02;
@@ -2137,8 +2223,8 @@ void print_packet (unsigned char* data, int bytes){
     char xx;
 
     
-    log_info("Dump packet src:%02X,dst:%02X,type:%02X,aux:%02x,cmd:%02X,paramcnt:%02X",data[SP_SRC],data[SP_DEST],data[SP_TYPE],data[SP_AUX],data[SP_COMMAND],data[SP_PARMCNT]);
-    printf("\r\n");
+    log_info("Packet id:%04d, size:%03d, src:%02X, dst:%02X, type:%02X, aux:%02x, cmd:%02X, paramcnt:%02X",messageId,bytes,data[SP_SRC],data[SP_DEST],data[SP_TYPE],data[SP_AUX],data[SP_COMMAND],data[SP_PARMCNT]);
+    
     for (count = 0; count < bytes; count = count + 16) {
         
         printf("%04X: ", count);
@@ -2160,6 +2246,7 @@ void print_packet (unsigned char* data, int bytes){
         }
         printf("\r\n");
     }
+    printf(".\r\n");
     
 }
 
@@ -2205,16 +2292,43 @@ enum STATUS SmartPortMountImage( prodosPartition_t *d, char * filename ){
         if(mount2mgFile(st2mg,filename)==RET_OK){
             d->blocks=st2mg.blockCount;
             d->dataOffset=64;
+            d->writeable=1;
         }else{
             log_error("mount2mgFile error");
             
             return RET_ERR;
         }
 
+        while(fsState!=READY){};
+        fsState=BUSY;
+        fres = f_open(&d->fil,filename , FA_READ | FA_WRITE | FA_OPEN_EXISTING);    
+
+        log_info("Mouting image file:%s",filename);
+        fsState=READY;
+
+        if(fres!=FR_OK){
+            log_error("f_open error:%s",filename);    
+            return RET_ERR;
+        }
+
     }else if (!memcmp(filename+(len-3),".po",3) ||                                // Check if PO or po
               !memcmp(filename+(len-3),".PO",3)){                                 
+        
+        while(fsState!=READY){};
+        fsState=BUSY;
+        fres = f_open(&d->fil,filename , FA_READ | FA_WRITE | FA_OPEN_EXISTING);    
+    
+        log_info("Mouting image file:%s",filename);
+        fsState=READY;
+    
+        if(fres!=FR_OK){
+            log_error("f_open error:%s",filename);    
+            return RET_ERR;
+        } 
+            
         d->diskFormat=PO;
         d->dataOffset=0;
+        d->writeable=1;                                                                     // TODO: TO BE CHANGED
 
         if (f_size(&d->fil) != (f_size(&d->fil)>>9)<<9 || (f_size(&d->fil)==0 )){
             log_error("     File must be an unadorned ProDOS order image with no header!");
@@ -2228,17 +2342,6 @@ enum STATUS SmartPortMountImage( prodosPartition_t *d, char * filename ){
         return RET_ERR;
     }                                   
      
-    while(fsState!=READY){};
-    fsState=BUSY;
-    fres = f_open(&d->fil,filename , FA_READ | FA_WRITE | FA_OPEN_EXISTING);    
-
-    log_info("Mouting image file:%s",filename);
-    fsState=READY;
-
-    if(fres!=FR_OK){
-        log_error("f_open error:%s",filename);    
-        return RET_ERR;
-    }
     
     d->mounted=1;
     log_info("Mounted: %s",filename);

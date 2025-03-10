@@ -54,6 +54,16 @@ Core/Src/list_iterator.c \
 Core/Src/favorites.c \
 Core/Src/stm32f4xx_it.c \
 Core/Src/stm32f4xx_hal_msp.c \
+Core/Src/dispScreen/screen_smartport.c \
+Core/Src/dispScreen/screen_mainmenu.c \
+Core/Src/dispScreen/screen_settings.c \
+Core/Src/dispScreen/screen_splash.c \
+Core/Src/dispScreen/screen_favorites.c \
+Core/Src/dispScreen/screen_makefs.c \
+Core/Src/dispScreen/screen_fs.c \
+Core/Src/dispScreen/screen_diroption.c \
+Core/Src/dispScreen/screen_diskii.c \
+Core/Src/dispScreen/screen_error.c \
 FATFS/App/fatfs.c \
 Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_rcc.c \
 Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_rcc_ex.c \
@@ -160,6 +170,7 @@ AS_INCLUDES =
 # C includes
 C_INCLUDES =  \
 -ICore/Inc \
+-ICore/dispScreen \
 -IDrivers/STM32F4xx_HAL_Driver/Inc \
 -IDrivers/STM32F4xx_HAL_Driver/Inc/Legacy \
 -IDrivers/CMSIS/Device/ST/STM32F4xx/Include \

@@ -17,6 +17,7 @@
 #include "log.h"
 
 //static unsigned long t1,t2,diff1=0,maxdiff1=0;
+const char * diskIIImageExt[]={"PO","po","DSK","dsk","NIC","nic","WOZ","woz"};
 
 volatile int ph_track=0;                                                // SDISK Physical track 0 - 139
 volatile int ph_track_b=0;                                              // SDISK Physical track 0 - 139 for DISK B 
@@ -26,7 +27,7 @@ unsigned char prevTrk=35;                                               // prevT
 
 extern unsigned char read_track_data_bloc[RAW_SD_TRACK_SIZE];                  // 
 extern volatile unsigned char DMA_BIT_TX_BUFFER[RAW_SD_TRACK_SIZE];            // DMA Buffer for READ Track
-
+extern char * ptrFileFilter[];
 volatile int flgWeakBit=0;                                       // Activate WeakBit only for Woz File
 uint8_t flgBitIndxCounter=0;                                    // Keep track of Bit Index Counter when changing track (only for WOZ)
 
@@ -350,7 +351,7 @@ void DiskIISendDataIRQ(){
         weakBitTankPosition=bitCounter%256;
         nextBit=weakBitTank[weakBitTankPosition] & 1;
     }else{
-        bytePtr=bitCounter/8;
+        bytePtr=bitCounter/8;                                 // TODO This is ultra ugly need to remove the %8 consumming cpu cycle
         bitPtr=bitCounter%8;
         nextBit=(*(bbPtr+bytePtr)>>(7-bitPtr) ) & 1;          // Assuming it is on GPIO PORT B and Pin 0 (0x1 Set and 0x01 << Reset)
     
@@ -615,7 +616,6 @@ enum STATUS DiskIIiniteBeaming(){
     flgBeaming=0;
 
     memset((unsigned char *)&DMA_BIT_TX_BUFFER,0,sizeof(char)*RAW_SD_TRACK_SIZE);
-    //memset((unsigned char *)&DMA_BIT_RX_BUFFER,0,sizeof(char)*RAW_SD_TRACK_SIZE);
     memset(read_track_data_bloc,0,sizeof(char)*RAW_SD_TRACK_SIZE);
 
     DWT->CYCCNT = 0;                              // Reset cpu cycle counter
@@ -649,7 +649,7 @@ enum STATUS DiskIIiniteBeaming(){
 void DiskIIInit(){
     
     ph_track=0;
-
+    //ptrFileFilter=diskIIImageExt;                                         // TODO Implement this
     HAL_GPIO_WritePin(GPIOB,GPIO_PIN_8,GPIO_PIN_RESET);                     // DISK II PIN 8 IS GND
 
     mountImageInfo.optimalBitTiming=32;
@@ -658,12 +658,10 @@ void DiskIIInit(){
     mountImageInfo.cleaned=0;
     mountImageInfo.type=0;
     
-    
-
     if (bootMode==0){
         if (DiskIIMountImagefile(tmpFullPathImageFilename)==RET_OK){
         
-            switchPage(IMAGE,currentFullPathImageFilename);
+            switchPage(DISKIIIMAGE,currentFullPathImageFilename);
 
             if (flgImageMounted==1){                                            // <!> TO BE TESTED
                 if (DiskIIiniteBeaming()==RET_OK)
@@ -681,7 +679,7 @@ void DiskIIInit(){
     }else if (bootMode==1){
         switchPage(FS,currentFullPath);
     }else if (bootMode==2){
-        switchPage(FAVORITE,NULL);
+        switchPage(FAVORITES,NULL);
     }
     HAL_TIM_PWM_Start_IT(&htim2,TIM_CHANNEL_3); 
     
@@ -720,7 +718,7 @@ void DiskIIInit(){
     */
 
     if (flgBeaming==1){
-        switchPage(IMAGE,currentFullPathImageFilename);
+        switchPage(DISKIIIMAGE,currentFullPathImageFilename);
     }
 
     // ONLY FOR DEBUG
@@ -795,7 +793,7 @@ void DiskIIMainLoop(){
 
             memcpy((unsigned char *)&DMA_BIT_TX_BUFFER,read_track_data_bloc,RAW_SD_TRACK_SIZE);
             
-            updateIMAGEScreen(0,trk);                                   // Put here otherwise Spiradisc is not working
+            updateDiskIIImageScr(0,trk);                                   // Put here otherwise Spiradisc is not working
 
             bitSize=getTrackSize(trk);
             ByteSize=bitSize/8; 
@@ -803,85 +801,61 @@ void DiskIIMainLoop(){
         }else if (nextAction!=NONE){                                            // Several action can not be done on Interrupt
         
             switch(nextAction){
-                case UPDIMGDISP:
-                updateIMAGEScreen(WR_REQ_PHASE,trk);
-                nextAction=NONE;
-                break;
-
-              
-                case MKFS:
-                    processMakeFsConfirmed();
-                    nextAction=NONE;
-                    break;
-                
+               
                 case DUMP_TX:
                 
-                char filename[128];
-                sprintf(filename,"dump_rx_trk_%d_%d.bin",intTrk,wr_attempt);
-                wr_attempt++;
-                
-                irqEnableSDIO();
-                dumpBufFile(filename,DMA_BIT_TX_BUFFER,RAW_SD_TRACK_SIZE);
-                irqDisableSDIO();
-                
-                nextAction=NONE;
+                    char filename[128];
+                    sprintf(filename,"dump_rx_trk_%d_%d.bin",intTrk,wr_attempt);
+                    wr_attempt++;
+                    
+                    irqEnableSDIO();
+                    dumpBufFile(filename,DMA_BIT_TX_BUFFER,RAW_SD_TRACK_SIZE);
+                    irqDisableSDIO();
+                    
+                    nextAction=NONE;
                 break;
 
-                /*case SYSRESET:
-                NVIC_SystemReset();
-                nextAction=NONE;
-                break;
-                */
                 case FSMOUNT:
                 // FSMOUNT will not work if SDCard is remove & reinserted...
                 // system reset is preferred
-                irqEnableSDIO();
-            
-                FRESULT fres = f_mount(&fs, "", 1);
-                if (fres == FR_OK) {
-                    log_info("FS mounting: OK");
-                }else{
-                    log_error("FS mounting: KO fres:%d",fres);
-                }
+                    irqEnableSDIO();
+                
+                    FRESULT fres = f_mount(&fs, "", 1);
+                    if (fres == FR_OK) {
+                        log_info("FS mounting: OK");
+                    }else{
+                        log_error("FS mounting: KO fres:%d",fres);
+                    }
 
-                csize=fs.csize;
-                database=fs.database;
-                nextAction=FSDISP;
+                    csize=fs.csize;
+                    database=fs.database;
+                    nextAction=FSDISP;
                 break;
 
-                case FSDISP:
-                log_info("FSDISP fsState:%d",fsState);
-                list_destroy(dirChainedList);
-                log_info("FSDISP: currentFullPath:%s",currentFullPath);
-                walkDir(currentFullPath);
-                setConfigParamStr("currentPath",currentFullPath);
-                saveConfigFile();
-                initFSScreen(currentPath);
-                updateChainedListDisplay(-1,dirChainedList);
-                nextAction=NONE;
+                
                 break;
                 
                 case IMG_MOUNT:
-                DiskIIUnmountImage();
+                    DiskIIUnmountImage();
                 
-                if (setConfigParamStr("lastFile",tmpFullPathImageFilename)==RET_ERR){
-                    log_error("Error in setting param to configFie:lastImageFile %s",tmpFullPathImageFilename);
-                }
-
-                if(DiskIIMountImagefile(tmpFullPathImageFilename)==RET_OK){
-                    if (DiskIIiniteBeaming()==RET_OK){  
-                    DiskIIDeviceEnableIRQ(DEVICE_ENABLE_Pin);                                       // <!> TO Be tested
-                    switchPage(IMAGE,tmpFullPathImageFilename);
+                    if (setConfigParamStr("lastFile",tmpFullPathImageFilename)==RET_ERR){
+                        log_error("Error in setting param to configFie:lastImageFile %s",tmpFullPathImageFilename);
                     }
 
-                    if (saveConfigFile()==RET_ERR){
-                    log_error("Error in saving JSON to file");
-                    }else{
-                    log_info("saving configFile: OK");
+                    if(DiskIIMountImagefile(tmpFullPathImageFilename)==RET_OK){
+                        if (DiskIIiniteBeaming()==RET_OK){  
+                        DiskIIDeviceEnableIRQ(DEVICE_ENABLE_Pin);                                       // <!> TO Be tested
+                        switchPage(DISKIIIMAGE,tmpFullPathImageFilename);
+                        }
+
+                        if (saveConfigFile()==RET_ERR){
+                        log_error("Error in saving JSON to file");
+                        }else{
+                        log_info("saving configFile: OK");
+                        }
                     }
-                }
-                sprintf(currentFullPathImageFilename,"%s",tmpFullPathImageFilename);
-                nextAction=NONE;
+                    sprintf(currentFullPathImageFilename,"%s",tmpFullPathImageFilename);
+                    nextAction=NONE;
                 break;
 
                 default:
@@ -894,6 +868,8 @@ void DiskIIMainLoop(){
             if (flgSoundEffect==1){
                 HAL_TIMEx_PWMN_Stop(&htim1,TIM_CHANNEL_2);
             }
+
+            processSdEject(SD_EJECT_Pin);
             
             if (cAlive==30000 && pendingWriteTrk==1){
                 
