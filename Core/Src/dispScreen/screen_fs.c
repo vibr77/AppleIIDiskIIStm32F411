@@ -292,7 +292,7 @@ static void pBtnEntrFsScr(){
       switchPage(MOUNT,selItem+2);
     }else if (emulationType==SMARTPORTHD){
       sprintf(tmpFullPathImageFilename,"%s/%s",currentFullPath,selItem+2);
-      switchPage(MOUNT,selItem+2);
+      switchPage(SMARTPORT_MOUNT,tmpFullPathImageFilename);
     }
   }
   log_debug("result |%s|",currentFullPath);

@@ -7,6 +7,7 @@
 #include "ssd1306.h"
 #include "screen_smartport.h"
 #include "display.h"
+#include "configFile.h"
 
 /**
  * 
@@ -20,6 +21,8 @@ static uint8_t harvey_ball=0;
 
 extern enum page currentPage;
 extern char *smartPortHookFilename;
+extern enum action nextAction;
+
 /* BTN FUNCTION POINTER CALLED FROM IRQ*/
 extern void (*ptrbtnUp)(void *);                                 
 extern void (*ptrbtnDown)(void *);
@@ -43,6 +46,10 @@ static void pBtnToogleOption();
 static uint8_t currentSmartPortImageIndex=4;                // the 4 Value enable the selection to disappear
 static uint8_t previousSmartPortImageIndex=4;
 char * partititionTab[MAX_PARTITIONS];
+
+
+uint8_t fsHookedPartition=0x0;                           // Partition Number when navigating the FS to save the index
+char * fsHookedFilename=NULL;
 
 void initSmartPortHDScr(){
 
@@ -85,7 +92,7 @@ void updateImageSmartPortHD(){
         // Step 1 Remove the Extension of the file
         for (uint8_t j=len;j>0;j--){
             if (filename[j]=='.'){
-                len=j;
+                len=j+1;
             }
         }
         // Step 2 Cap the length of string to be displayed
@@ -197,6 +204,7 @@ static void updateSelectSmartPortHD(uint8_t indx){
 
 static  void pBtnEntrSmartPortHD(){
   if (currentSmartPortImageIndex!=4){
+    fsHookedPartition=currentSmartPortImageIndex;
     if (partititionTab[currentSmartPortImageIndex]!=NULL){                          // If an image exists then display the option menu
       log_info("selected %d",currentSmartPortImageIndex);
       switchPage(SMARTPORT_IMAGEOPTION,0);
@@ -204,7 +212,6 @@ static  void pBtnEntrSmartPortHD(){
       switchPage(FS,0);
     }
       
-
   }
 }
   
@@ -267,6 +274,8 @@ void initSmartportMountImageScr(char * filename){
   
   clearScreen();
   i=strlen(filename);
+
+  fsHookedFilename=filename;
  
   #pragma GCC diagnostic push
   #pragma GCC diagnostic ignored "-Wformat-truncation"
@@ -324,8 +333,16 @@ static void pBtnEntrSmartportMountImageScr(){
     switchPage(FS,0x0);
     toggle=1;                               // rearm toggle switch
   }else{
-    //smartPortHookFilename
-    //nextAction=SMARTPORT_IMGMOUNT;                       // Mounting can not be done via Interrupt, must be done via the main thread
+    char key[17];
+    sprintf(key,"smartport_vol%02d",fsHookedPartition);
+    if (fsHookedFilename==NULL){
+      log_error("fs returning filename is null");
+      return;
+    }
+
+    setConfigParamStr(key,fsHookedFilename);
+    nextAction = SMARTPORT_IMGMOUNT;
+
   }
 }
 

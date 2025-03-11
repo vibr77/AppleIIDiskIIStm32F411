@@ -331,7 +331,7 @@ void SmartPortInit(){
         szFile=(char *)getConfigParamStr(key);
         if (i==0){
             szFile=(char *)malloc(128*sizeof(char));
-            sprintf(szFile,"vol01_Arkanoid.2mg");
+            sprintf(szFile,"Arka.2mg");
         }
         if (szFile==NULL){
             devices[i].filename=NULL;
@@ -633,8 +633,10 @@ void SmartPortMainLoop(){
                                                                                                                         // Added (unsigned short) cast to ensure calculated block is not underflowing.
                                 if (statusCode == 0x03) {                                                               // if statcode=3, then status with device info block
                                     encodeStatusDibReplyPacket(devices[dev]);
-                                } else {                                                                                // else just return device status
-                                    encodeStatusReplyPacket(devices[dev]);        
+                                } else if (statusCode == 0x05){                                                           
+                                         log_error("Unidisk UniDiskStat  not implemented");
+                                }else{
+                                    encodeStatusReplyPacket(devices[dev]);                                              // else just return device status
                                 }
 
                                 SmartPortSendPacket(packet_buffer);  
@@ -665,10 +667,12 @@ void SmartPortMainLoop(){
                                 
                                 if (statusCode == 0x03) {                                                               // if statcode=3, then status with device info block
                                     encodeExtendedStatusDibReplyPacket(devices[dev]);
-                                } else {                                                                                // else just return device status
-                                    encodeExtendedStatusReplyPacket(devices[dev]);        
+                                } else if (statusCode == 0x05){                                                         // Unidisk specific function
+                                         log_error("Unidisk UniDiskStat  not implemented");
+                                }else{
+                                    encodeExtendedStatusReplyPacket(devices[dev]);                                      // else just return device status
                                 }
-
+                                
                                 SmartPortSendPacket(packet_buffer);
                             }
                         }
@@ -1190,8 +1194,8 @@ void SmartPortMainLoop(){
                         
                         ctrlCode= (packet_buffer[SP_G7BYTE3] & 0x7f) | (((unsigned short)MSB << 3) & 0x80);
                         
-                        //statusCode=0x21; 
-                        statusCode=0x0; 
+                        statusCode=0x21; 
+                        
                         uint8_t respType=0x0;                                                                                          // Bad Control Code 
                         switch(ctrlCode){
                             case 0x00:                                                                                               // RESET
@@ -1211,41 +1215,35 @@ void SmartPortMainLoop(){
                                 log_info("Smartport cmd:%02X, dest:%02X, control command code:%02X EJECT",packet_buffer[SP_COMMAND],dest,ctrlCode);  
                                 break;
 
-                            case 0x05:
+                            case 0x05: // UNIDISK EXECUTE
                                 SmartportReceivePacket();
-                                //log_info("before decode start");
+                                log_info("Smartport cmd:%02X, dest:%02X, control command code:%02X EXECUTE",packet_buffer[SP_COMMAND],dest,ctrlCode);
+                                
                                 print_packet ((unsigned char*) packet_buffer,packet_length());
-                                //log_info("before decode end");
-                                //decodeDataPacket();
-                                //log_info("Data Packet Start");
-                                //print_packet ((unsigned char*) packet_buffer,packet_length());
-                                //log_info("Data Packet end");
-                                respType=0x02;
+                                
+                                respType=0x01;
+                                statusCode=0x0; 
                                 break;
 
-                            case 0x06:
+                            case 0x06: // UNIDISK SETADDRESS
+                                
+                                //
+                                SmartportReceivePacket();
                                 //log_info("Smartport cmd:%02X, dest:%02X, control command code:%02X SETADDRESS",packet_buffer[SP_COMMAND],dest,ctrlCode);
-                                //SmartportReceivePacket();
-                                //log_info("before decode start");
                                 //print_packet ((unsigned char*) packet_buffer,packet_length());
-                                //log_info("before decode end");
-                                //decodeDataPacket();
-                                //log_info("Data Packet Start");
-                                print_packet ((unsigned char*) packet_buffer,packet_length());
                                 //log_info("Data Packet end");
-                                respType=0x02;
+                                respType=0x01;
+                                statusCode=0x0; 
+                                // C3 80 81 81 80 80 80 80 AA EA C8
                                 break;
                             
-                            case 0x07:
-                                //SmartportReceivePacket();
-                                //log_info("before decode start");
+                            case 0x07: // UNIDISK DOWNLOAD
+                                //
+                                SmartportReceivePacket();
+                                //log_info("Smartport cmd:%02X, dest:%02X, control command code:%02X DOWNLOAD",packet_buffer[SP_COMMAND],dest,ctrlCode);
                                 //print_packet ((unsigned char*) packet_buffer,packet_length());
-                                //log_info("before decode end");
-                                //decodeDataPacket();
-                                //log_info("Data Packet Start");
-                                //print_packet ((unsigned char*) packet_buffer,packet_length());
-                                //log_info("Data Packet end");
-                                respType=0x02;
+                                statusCode=0x0; 
+                                respType=0x01;
                                 break;
 
                             default:
@@ -1255,8 +1253,8 @@ void SmartPortMainLoop(){
                         
                         encodeReplyPacket(dest,respType,AUX,statusCode);
                         SmartPortSendPacket(packet_buffer);
-                        
-                        //print_packet ((unsigned char*) packet_buffer,packet_length());
+                        log_info("Smartport Response Control Packet");
+                        print_packet ((unsigned char*) packet_buffer,packet_length());
                         break;
 
                     case 0xC4:                                                                                      // EXTENDED CONTROL CMD
@@ -1415,6 +1413,7 @@ void SmartPortMainLoop(){
                     case SMARTPORT_IMGMOUNT:
                         //TODO MANAGE THE EJECT OF THE DISK
                         //SmartPortMountImage( devices[dev]., char * filename )
+                        SmartPortInit();
                         nextAction=NONE;
                         break;
                     default:
@@ -1818,6 +1817,8 @@ void encodeReplyPacket(unsigned char source,unsigned char type,unsigned char aux
     and $CO indicates an extended packet. Command = $8X indicates a standard packet,
     and SCX indicates a n extended packet.
 
+
+    C3 80 81 81 80 80 80 80 AA EA C8
     */
 
     unsigned char checksum = 0;
@@ -1909,15 +1910,20 @@ void encodeStatusDibReplyPacket (prodosPartition_t d){
     uint8_t deviceSubType=0;
 
     if (d.diskFormat==_2MG){
-        //devicetype=0x02;
-        //deviceSubType=0x00;
-        devicetype=0x01;
-        deviceSubType=0x00;
+        devicetype=0x02;                                 // Hard Disk
+        //devicetype=0x01;                               // Unidisk
+        deviceSubType=0x0;                               // Removable hard disk
     }else if (d.diskFormat==PO){
+        
         devicetype=0x02;
-        deviceSubType=0x00;
-    }
 
+        //deviceSubType=0x0;                             // Removable hard disk
+        //deviceSubType=$20;                             // Hard disk
+        deviceSubType=0x40;                              // Removable hard disk supporting disk-switched errors
+        //deviceSubType=0xA0;                            // Hard disk supporting extended calls
+        //deviceSubType=0xC0;                            // Removable hard disk supporting extended calls and disk-switched errors
+    }
+    
     grpnum=3;
     oddnum=4;
 
