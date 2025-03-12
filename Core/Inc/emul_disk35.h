@@ -73,4 +73,14 @@ typedef struct image35Info_s {
 } image35Info_t;
 
 void disk35StartEjecting();
+
+void disk35PhaseIRQ();
+void disk35WrReqIRQ();
+void disk35printbits();
+void disk35ReceiveDataIRQ();
+void disk35SendDataIRQ();
+void disk35SetRddataPort(uint8_t direction);
+int disk35DeviceEnableIRQ(uint16_t GPIO_Pin);
+void disk35Init();
+void  disk35MainLoop();
 #endif 

@@ -87,24 +87,36 @@ void updateImageSmartPortHD(){
     char * filename;
     for (uint8_t i=0;i<4;i++){
       filename=partititionTab[i];
+
       if (filename!=NULL){
-        uint8_t len=strlen(filename);
-        // Step 1 Remove the Extension of the file
-        for (uint8_t j=len;j>0;j--){
-            if (filename[j]=='.'){
-                len=j+1;
-            }
+        int8_t len=strlen(filename);
+        int8_t j=0;
+
+        for (j=len-1;j>=0;j--){
+          if (filename[j]=='/'){
+            filename=filename+j+1;
+          }
         }
+
+        len=strlen(filename);
+        // Step 1 Remove the Extension of the file
+        for (j=len-1;j>0;j--){
+          if (filename[j]=='.'){
+            len=j+1;
+          }
+        }
+        
+        
         // Step 2 Cap the length of string to be displayed
         if (len>16)
-            len=16;
+          len=16;
   
         filename[0]=toupper(filename[0]);
     
         if ((i+1)==bootIndx)
-            snprintf(tmp,len+2,"*:%s",filename);
+          snprintf(tmp,len+2,"*:%s",filename);
         else
-            snprintf(tmp,len+2,"%d:%s",i+1,filename);
+          snprintf(tmp,len+2,"%d:%s",i+1,filename);
       
         displayStringAtPosition(1,(3+i)*SCREEN_LINE_HEIGHT,tmp);
       }else{
@@ -341,6 +353,7 @@ static void pBtnEntrSmartportMountImageScr(){
     }
 
     setConfigParamStr(key,fsHookedFilename);
+    saveConfigFile();
     nextAction = SMARTPORT_IMGMOUNT;
 
   }

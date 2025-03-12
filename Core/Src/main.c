@@ -1325,6 +1325,15 @@ int main(void){
 
     case DISK35:
       log_info("loading Disk3.5 emulation");
+      ptrPhaseIRQ=disk35PhaseIRQ;
+      ptrReceiveDataIRQ=disk35ReceiveDataIRQ;
+      ptrSendDataIRQ=disk35SendDataIRQ;
+      ptrWrReqIRQ=disk35WrReqIRQ;
+      ptrDeviceEnableIRQ=disk35DeviceEnableIRQ;
+      ptrMainLoop=disk35MainLoop;
+      //ptrUnmountImage=nothing;
+      //ptrMountImagefile=nothing;
+      ptrInit=disk35Init;
       break;
 
     case SMARTPORTHD:

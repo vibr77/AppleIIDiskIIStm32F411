@@ -24,12 +24,6 @@ extern image_info_t mountImageInfo;
 
 #define IMG2_HEADER_SIZE 64
 
-/*
-static const unsigned char scramble[] = {
-	0, 7, 14, 6, 13, 5, 12, 4, 11, 3, 10, 2, 9, 1, 8, 15
-	};
-*/
-
 static uint32_t get_u32le(const uint8_t *p) {
     uint32_t ret;
     ret  = ((uint32_t)(const uint8_t)p[0]) << 0;
@@ -114,7 +108,7 @@ long get2mgSDAddr(int trk,int block,int csize, long database){
 }
 
 
-enum STATUS get2mgTrackBitStream(int trk,unsigned char * buffer){
+enum STATUS get2mgTrackBitStream(_2mg_t * _2MG,int trk,unsigned char * buffer){
     
     uint16_t sectorOffset=diskGetLogicalSectorCountFromTrack(DISK_TYPE_3_5,trk);
     uint8_t diskRegion=diskGetRegionFromTrack(DISK_TYPE_3_5, trk);
@@ -138,11 +132,11 @@ enum STATUS get2mgTrackBitStream(int trk,unsigned char * buffer){
     getDataBlocksBareMetal(addr,tmp,blockNumber);          // Needs to be improved and to remove the zeros
     while (fsState!=READY){}
     
-    //if (diskTrack2Nib(tmp+_2MG_DATA_START_OFFSET,buffer,trk)==RET_ERR){                   // TO BE FIXED
+    if (diskTrack2Nib(_2MG,tmp+_2MG_DATA_START_OFFSET,buffer,trk)==RET_ERR){                   // TO BE FIXED
         log_error("diskTrack2Nib return an error");
         free(tmp);
         return RET_ERR;
-    //}
+    }
 
     free(tmp);
     return RET_OK;
@@ -152,11 +146,14 @@ enum STATUS set2mgTrackBitStream(int trk,unsigned char * buffer){
     return RET_OK;
 }
 
-enum STATUS mount2mgFile(_2mg_t _2MG, char * filename){
+enum STATUS mount2mgFile(_2mg_t *_2MG, char * filename){
     FRESULT fres; 
-    FIL fil;  
-    _2MG.blockCount=0;
-    _2MG.mounted=0;
+    FIL fil;
+
+    _2MG=(_2mg_t *)malloc(sizeof(_2mg_t ));
+
+    _2MG->blockCount=0;
+    _2MG->mounted=0;
     fres = f_open(&fil,filename , FA_READ);     // Step 2 Open the file long naming
 
     if(fres != FR_OK){
@@ -210,9 +207,9 @@ enum STATUS mount2mgFile(_2mg_t _2MG, char * filename){
 		
     free(img2_header);
     f_close(&fil);
-    _2MG.blockCount=IMG2_DataBlockCount;
-    _2MG.isDoubleSided=1;
-    _2MG.mounted=1;
+    _2MG->blockCount=IMG2_DataBlockCount;
+    _2MG->isDoubleSided=1;
+    _2MG->mounted=1;
 
     return RET_OK;
 }
@@ -334,13 +331,11 @@ static void nibEncodeData35( const uint8_t *dataSrc,uint8_t * dataTarget, unsign
 }
 
 
-/**
-  * @brief Button debouncer that reset the Timer 4
-  * @param img struct of the 2MG, buffer pointing to the start of the track, trk number
-  * @retval None
-  */
-enum STATUS diskTrack2Nib(_2mg_t _2MG,unsigned char *buffer,unsigned char * nibBuffer,uint8_t trk){
+enum STATUS diskTrack2Nib(_2mg_t *_2MG,unsigned char *buffer,unsigned char * nibBuffer,uint8_t trk){
 
+    if (_2MG==NULL){
+        log_error("structure 2mg is null");
+    }
     /*uint8_t qtr_tracks_per_track=0;
     
     if (_2MG.isDoubleSided) {   
@@ -357,7 +352,7 @@ enum STATUS diskTrack2Nib(_2mg_t _2MG,unsigned char *buffer,unsigned char * nibB
     //unsigned nib_track_index = trk / qtr_tracks_per_track;
     
     uint8_t side_index_and_track_64 = (logical_side_index << 5) | (logical_track_index >> 6);
-    uint8_t sector_format = (_2MG.isDoubleSided ? 0x20 : 0x00) | 0x2;
+    uint8_t sector_format = (_2MG->isDoubleSided ? 0x20 : 0x00) | 0x2;
     
     // Now start to Nibblize
     //int nibBufferSize=1+DISK_35_BYTES_TRACK_GAP_1+782*track_sector_count-55;

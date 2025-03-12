@@ -27,6 +27,7 @@ enum page currentPage;
 uint8_t scrI=0;
 
 
+
 char * getImageNameFromFullPath(char * fullPathImageName){
   
   if (fullPathImageName==NULL)
@@ -62,8 +63,14 @@ enum STATUS switchPage(enum page newPage,void * arg){
       initMakeFsScr();
       break;
 
+    
+
     case SMARTPORT:
       initSmartPortHDScr();
+      break;
+
+    case SMARTPORT_MOUNT:
+      initSmartportMountImageScr((char *)arg);
       break;
 
     case SMARTPORT_IMAGEOPTION:

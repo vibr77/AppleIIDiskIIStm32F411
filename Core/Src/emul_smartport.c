@@ -329,10 +329,10 @@ void SmartPortInit(){
     for(uint8_t i=0; i< MAX_PARTITIONS; i++){
         sprintf(key,"smartport_vol%02d",i);
         szFile=(char *)getConfigParamStr(key);
-        if (i==0){
+        /*if (i==0){
             szFile=(char *)malloc(128*sizeof(char));
             sprintf(szFile,"Arka.2mg");
-        }
+        }*/
         if (szFile==NULL){
             devices[i].filename=NULL;
             devices[i].mounted=0;
@@ -2293,15 +2293,14 @@ enum STATUS SmartPortMountImage( prodosPartition_t *d, char * filename ){
               !memcmp(filename+(len-4),".2MG",4)){
         
         d->diskFormat=_2MG;
-        _2mg_t st2mg;
-        st2mg.blockCount=0;
+        _2mg_t * st2mg;
+        //st2mg.blockCount=0;
         if(mount2mgFile(st2mg,filename)==RET_OK){
-            d->blocks=st2mg.blockCount;
+            d->blocks=st2mg->blockCount;
             d->dataOffset=64;
             d->writeable=1;
         }else{
-            log_error("mount2mgFile error");
-            
+            log_error("mount2mgFile error");  
             return RET_ERR;
         }
 
