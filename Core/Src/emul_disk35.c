@@ -75,7 +75,7 @@ uint8_t ctlSwitch;
 uint8_t senseOut;
 
 /**
-  * @brief SmartPortReceiveDataIRQ function is used to manage SmartPort Emulation in TIMER 
+  * @brief disk35PhaseIRQ compute phase variable according to signal received from Apple II, with the below bit shift
   * @param None
   * @retval None
   */
@@ -108,23 +108,7 @@ void disk35PhaseIRQ(){
     return;
 }
 
-
-static volatile uint8_t wrData=0;
-static volatile uint8_t prevWrData=0;
-static volatile uint8_t xorWrData=0;
-static volatile int wrStartOffset=0;
-
-static volatile unsigned int wrBitCounter=0;
-static volatile unsigned int wrBytes=0;
-static volatile unsigned int wrBytesReceived=0;
-
-static volatile unsigned char byteWindow=0x0;
-static volatile uint16_t wrCycleWithNoBytes=0;
-static volatile uint8_t flgPacket=2;
-
 static volatile int flgdebug=0;
-
-static volatile unsigned int WR_REQ_PHASE=0;
 
 unsigned max_sectors_per_region_35[DISK_35_NUM_REGIONS] = {12, 11, 10, 9, 8};
 unsigned track_start_per_region_35[DISK_35_NUM_REGIONS + 1] = {0, 32, 64, 96, 128, 160};
@@ -135,61 +119,23 @@ void disk35WrReqIRQ(){
 
 
 void disk35printbits(){
-    unsigned char bitw=0;
-    printf("wrBitcounter=%d\r\n",wrBitCounter);
-    printf("wrStartOffset=%d\r\n",wrStartOffset);
-    for (int i=0;i<wrBitCounter;i++){
-        if (i%64==0)
-            printf("\n");
-
-        if (i%8==0)
-            printf(" ");
-        //printf("%d",dbgbuf[i]);
-    }
-    printf("\r\n");
-    for (int i=0;i<wrBitCounter;i++){
-        bitw<<=1;
-        //bitw|=dbgbuf[i];
-        //printf("%d",dbgbuf[i]);
-        if (bitw & 0x80){
-            printf(" %02X\r\n",bitw);
-            bitw=0;
-        }
-    }
-    int j=0;
-    printf("\r\n");
-    for (int i=0;i<wrBitCounter;i++){
-        bitw<<=1;
-       // bitw|=dbgbuf[i];
-        //printf("%d",dbgbuf[i]);
-        if (bitw & 0x80){
-            j++;
-            if (j%16==0)
-                printf("\r\n");
-            printf(" %02X",bitw);
-            bitw=0;
-        }
-    }
-    printf("\r\n");
+    
 }
 /**
-  * @brief disk35ReceiveDataIRQ function is used to manage SmartPort Emulation in TIMER 
+  * @brief disk35ReceiveDataIRQ
   * @param None
   * @retval None
   */
 void disk35ReceiveDataIRQ(){
-        
-        
+              
 }
 
 static uint8_t nextBit=0;
 static volatile uint8_t *bbPtr=0x0;
-
 static volatile int bitCounter=0;
 static volatile int bytePtr=0;
 static volatile uint8_t bitPtr=0;
 static volatile int bitSize=0;
-
 static volatile int ByteSize=0;
 
 void disk35StartEjecting(){
@@ -237,6 +183,8 @@ void disk35SetRddataPort(uint8_t direction){
 
 int disk35DeviceEnableIRQ(uint16_t GPIO_Pin){
     // The DEVICE_ENABLE signal from the Disk controller is activeLow
+
+    // TODO Check if it is still relevant in the disk3.5 context
     
     uint8_t  a=0;
     if ((GPIOA->IDR & GPIO_Pin)==0)
@@ -280,9 +228,8 @@ int disk35DeviceEnableIRQ(uint16_t GPIO_Pin){
 }
 
 
-
 void disk35Init(){
-
+    log_info("disk35 emulation start");
     char filename[32];
     sprintf(filename,"arka.2mg");
 
@@ -302,10 +249,11 @@ void disk35Init(){
 
 void  disk35MainLoop(){
 
+    // TODO Manage to load the 2 track buffer to avoid delay between head switching
+
     log_info("disk35MainLoop entering loop");
 
     while(1){
-
 
         if (phase & 0x10){                                                                          // Strobe Line is High set the Flag and                                                                                 
             dsk35.status_mask_35 |= IWM_DISK35_STATUS_STROBE;
