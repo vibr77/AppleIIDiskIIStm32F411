@@ -760,12 +760,15 @@ void DiskIIMainLoop(){
                 irqEnableSDIO();
                 #pragma GCC diagnostic push
                 #pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
-                setTrackBitStream(prevTrk,DMA_BIT_TX_BUFFER);
+                //setTrackBitStream(prevTrk,DMA_BIT_TX_BUFFER);
                 #pragma  GCC diagnostic pop
-
+                char filename[128];
+                sprintf(filename,"dump_rx_trk_%d_%d.bin",intTrk,wr_attempt);
+                wr_attempt++;
+                dumpBufFile(filename,DMA_BIT_TX_BUFFER,RAW_SD_TRACK_SIZE);
                 irqDisableSDIO();
                 pendingWriteTrk=0;
-                //printf("Wr");
+                printf("Wr");
             }
             
 
@@ -836,12 +839,13 @@ void DiskIIMainLoop(){
                 break;
                 
                 case IMG_MOUNT:
+                    log_info("A0");
                     DiskIIUnmountImage();
-                
+                    log_info("A1");
                     if (setConfigParamStr("lastFile",tmpFullPathImageFilename)==RET_ERR){
                         log_error("Error in setting param to configFie:lastImageFile %s",tmpFullPathImageFilename);
                     }
-
+                    log_info("A2");
                     if(DiskIIMountImagefile(tmpFullPathImageFilename)==RET_OK){
                         if (DiskIIiniteBeaming()==RET_OK){  
                         DiskIIDeviceEnableIRQ(DEVICE_ENABLE_Pin);                                       // <!> TO Be tested
@@ -854,6 +858,7 @@ void DiskIIMainLoop(){
                         log_info("saving configFile: OK");
                         }
                     }
+                    log_info("A3");
                     sprintf(currentFullPathImageFilename,"%s",tmpFullPathImageFilename);
                     nextAction=NONE;
                 break;
@@ -876,10 +881,16 @@ void DiskIIMainLoop(){
                 irqEnableSDIO();
                 #pragma GCC diagnostic push
                 #pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
-                setTrackBitStream(prevTrk,DMA_BIT_TX_BUFFER);
+                //setTrackBitStream(prevTrk,DMA_BIT_TX_BUFFER);
+                /*
+                char filename[128];
+                sprintf(filename,"dump_rx_trk_%d_%d.bin",intTrk,wr_attempt);
+                wr_attempt++;
+                dumpBufFile(filename,DMA_BIT_TX_BUFFER,RAW_SD_TRACK_SIZE);
+                */
                 #pragma  GCC diagnostic pop
                 irqDisableSDIO();
-                pendingWriteTrk=0;
+                //pendingWriteTrk=0;
                 //printf("W");
             }
             

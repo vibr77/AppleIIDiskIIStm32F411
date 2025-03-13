@@ -602,7 +602,7 @@ enum STATUS dumpBufFile(char * filename,volatile unsigned char * buffer,int leng
     while(fsState!=READY){};
   }
 
-  log_info("Wrote %i bytes to '%s'!\n", totalBytes,filename);
+  //log_info("Wrote %i bytes to '%s'!\n", totalBytes,filename);
   f_close(&fil);
   fsState=READY;
   
@@ -1637,7 +1637,7 @@ static void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 0;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 32*12-1-2;//-2;                      // Needs to be investigate -5 otherwise does not work 
+  htim2.Init.Period = 32*12-1;//-2;//-2;                      // Needs to be investigate -5 otherwise does not work 
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)

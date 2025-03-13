@@ -372,7 +372,7 @@ static void pBtnEntrMountImageScr(){
       switchPage(FS,currentFullPath);
       toggle=1;                               // rearm toggle switch
     }else{
-      
+      log_info("getting here");
       nextAction=IMG_MOUNT;                       // Mounting can not be done via Interrupt, must be done via the main thread
     }
   }

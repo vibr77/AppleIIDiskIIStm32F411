@@ -329,10 +329,10 @@ void SmartPortInit(){
     for(uint8_t i=0; i< MAX_PARTITIONS; i++){
         sprintf(key,"smartport_vol%02d",i);
         szFile=(char *)getConfigParamStr(key);
-        /*if (i==0){
+        if (i==0){
             szFile=(char *)malloc(128*sizeof(char));
             sprintf(szFile,"Arka.2mg");
-        }*/
+        }
         if (szFile==NULL){
             devices[i].filename=NULL;
             devices[i].mounted=0;
@@ -351,6 +351,12 @@ void SmartPortInit(){
 
     switchPage(SMARTPORT,NULL);                                                                     // Display the Frame of the screen
     char * fileTab[4];
+
+
+    //devices[0].device_id=1;
+    //encodeUnidiskStatReplyPacket(devices[0]);
+    print_packet ((unsigned char*) packet_buffer,packet_length());
+ 
 
     for (uint8_t i=0;i<MAX_PARTITIONS;i++){
         devices[i].dispIndex=i;
@@ -634,7 +640,23 @@ void SmartPortMainLoop(){
                                 if (statusCode == 0x03) {                                                               // if statcode=3, then status with device info block
                                     encodeStatusDibReplyPacket(devices[dev]);
                                 } else if (statusCode == 0x05){                                                           
-                                         log_error("Unidisk UniDiskStat  not implemented");
+                                    //log_error("Unidisk UniDiskStat  not implemented");
+                                    /* we should provide an answer like this 
+                                        Msg: 0227
+                                        
+                                        HOST (IIGS Request) Packet size:022, src:80, dst:81, type:80, aux:80, cmd:80, paramcnt:83
+                                        0000: C3 81 80 80 80 80 82 81 80 80 83 E0 C0 AB 85 84 - ..����..��......
+                                        0010: 83 80 80 EA FE C8
+                                        
+                                        DEVICE (Unidisk Response) Packet size:021, src:81, dst:80, type:81, aux:80, cmd:80, paramcnt:81
+                                        0000: C3 80 81 81 80 80 81 81 80 80 81 80 80 80 80 80 - .�..��..��.�����
+                                        0010: 88 FF FF BB C8                                  - ................
+                                    */
+
+                                    //log_error("Unidisk UniDiskStat  not implemented");
+                                    encodeUnidiskStatReplyPacket(devices[dev]);
+                                    print_packet((unsigned char*) packet_buffer,packet_length());
+
                                 }else{
                                     encodeStatusReplyPacket(devices[dev]);                                              // else just return device status
                                 }
@@ -668,7 +690,8 @@ void SmartPortMainLoop(){
                                 if (statusCode == 0x03) {                                                               // if statcode=3, then status with device info block
                                     encodeExtendedStatusDibReplyPacket(devices[dev]);
                                 } else if (statusCode == 0x05){                                                         // Unidisk specific function
-                                         log_error("Unidisk UniDiskStat  not implemented");
+                                    log_error("Unidisk UniDiskStat  not implemented");
+                                    encodeUnidiskStatReplyPacket(devices[dev]);
                                 }else{
                                     encodeExtendedStatusReplyPacket(devices[dev]);                                      // else just return device status
                                 }
@@ -1229,7 +1252,7 @@ void SmartPortMainLoop(){
                                 
                                 //
                                 SmartportReceivePacket();
-                                //log_info("Smartport cmd:%02X, dest:%02X, control command code:%02X SETADDRESS",packet_buffer[SP_COMMAND],dest,ctrlCode);
+                                log_info("Smartport cmd:%02X, dest:%02X, control command code:%02X SETADDRESS",packet_buffer[SP_COMMAND],dest,ctrlCode);
                                 //print_packet ((unsigned char*) packet_buffer,packet_length());
                                 //log_info("Data Packet end");
                                 respType=0x01;
@@ -1630,6 +1653,70 @@ int decodeDataPacket (void){
 
 
 
+void encodeUnidiskStatReplyPacket(prodosPartition_t d){
+    unsigned char checksum = 0;
+
+
+    packet_buffer[0] = 0xff;                                                                        //sync bytes
+    packet_buffer[1] = 0x3f;
+    packet_buffer[2] = 0xcf;
+    packet_buffer[3] = 0xf3;
+    packet_buffer[4] = 0xfc;
+    packet_buffer[5] = 0xff;
+
+    /*
+    Msg: 0227
+    HOST Packet size:022, src:80, dst:81, type:80, aux:80, cmd:80, paramcnt:83
+    0000: C3 81 80 80 80 80 82 81 80 80 83 E0 C0 AB 85 84 - ..����..��......
+    0010: 83 80 80 EA FE C8                               - .��.............
+    .
+    DEVICE Packet size:021, src:81, dst:80, type:81, aux:80, cmd:80, paramcnt:81
+    0000: C3 80 81 81 80 80 81 81 80 80 81 80 80 80 80 80 - .�..��..��.�����
+    0010: 88 FF FF BB C8   
+    */
+
+
+    packet_buffer[6] = 0xC3;                                                                        // PBEGIN   - start byte
+    packet_buffer[7] = 0x80;                                                                        // DEST     - dest id - host
+    packet_buffer[8] = d.device_id;                                                                 // SRC      - source id - us
+    packet_buffer[9] =  0x81;                                                                       // TYPE     - status
+    packet_buffer[10] = 0x80;                                                                       // AUX
+    packet_buffer[11] = 0x80;                                                                       // STAT     - data status
+    packet_buffer[12] = 0x81;                                                                       // ODDCNT   - 4 data bytes
+    packet_buffer[13] = 0x81;                                                                       // GRP7CNT
+    packet_buffer[14] = 0x80; 
+    packet_buffer[15] = 0x80; 
+    packet_buffer[16] = 0x81; 
+    packet_buffer[17] = 0x80; 
+    packet_buffer[18] = 0x80; 
+    packet_buffer[19] = 0x80; 
+    packet_buffer[20] = 0x80; 
+    packet_buffer[21] = 0x80; 
+    packet_buffer[22] = 0x88; 
+    packet_buffer[23] = 0xFF;
+
+    for (count = 7; count < 14; count++)                                                            // xor the packet header bytes
+        checksum = checksum ^ packet_buffer[count];
+
+    // 14 ODD MSB
+    checksum = checksum ^ (packet_buffer[15] & 0x7f);
+
+    uint8_t grpbyte=0;
+    for (grpbyte = 0; grpbyte < 7; grpbyte++) {
+       uint8_t bit7 = (packet_buffer[16] << (grpbyte + 1)) & 0x80;
+       uint8_t bit0to6 = (packet_buffer[17 + grpbyte]) & 0x7f;
+        checksum ^= bit7 | bit0to6;
+        
+    }    
+    
+    packet_buffer[24] = checksum | 0xaa;                                                            // 1 c6 1 c4 1 c2 1 c0
+    packet_buffer[25] = checksum >> 1 | 0xaa;                                                       // 1 c7 1 c5 1 c3 1 c1
+
+    packet_buffer[26] = 0xc8;                                                                       //PEND
+    packet_buffer[27] = 0x00;                                                                       //end of packet in buffer
+}
+
+
 
 //*****************************************************************************
 // Function: encodeStatusReplyPacket
@@ -1910,8 +1997,8 @@ void encodeStatusDibReplyPacket (prodosPartition_t d){
     uint8_t deviceSubType=0;
 
     if (d.diskFormat==_2MG){
-        devicetype=0x02;                                 // Hard Disk
-        //devicetype=0x01;                               // Unidisk
+        //devicetype=0x02;                                 // Hard Disk
+        devicetype=0x01;                               // Unidisk
         deviceSubType=0x0;                               // Removable hard disk
     }else if (d.diskFormat==PO){
         

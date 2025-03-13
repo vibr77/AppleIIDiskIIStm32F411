@@ -48,6 +48,7 @@ void encodeReplyPacket(unsigned char source,unsigned char type,unsigned char aux
 void encodeStatusReplyPacket (prodosPartition_t d);
 void encodeExtendedStatusReplyPacket (prodosPartition_t d);
 
+void encodeUnidiskStatReplyPacket(prodosPartition_t d);
 void encodeStatusDibReplyPacket (prodosPartition_t d);
 void encodeExtendedStatusDibReplyPacket (prodosPartition_t d);
 
