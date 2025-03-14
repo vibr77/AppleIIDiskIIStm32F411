@@ -89,11 +89,16 @@ char tmpFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];      // fullpath from r
 // Read / Write Interrupt function variables
 // --------------------------------------------------------------------
 
+static void startReadingTimer();
+static void stopReadingTimer();
+static void startWrittingTimer();
+static void stopWrittingTimer();
+
 static volatile unsigned int WR_REQ_PHASE=0;
 static volatile unsigned int wrBitCounter=0;
 static volatile unsigned int wrBytes=0;
 
-static volatile uint8_t bitPtr=0;
+static volatile int bitPtr=0;
 static volatile int bitCounter=0;
 static volatile int bytePtr=0;
 static volatile int bitSize=0;
@@ -224,8 +229,6 @@ int dbg_e[256];
   * @retval None
   */
 void DiskIIWrReqIRQ(){
-
-   // WR_REQ_PHASE=HAL_GPIO_ReadPin(WR_REQ_GPIO_Port, WR_REQ_Pin);
     
     if ((WR_REQ_GPIO_Port->IDR & WR_REQ_Pin)==0)
         WR_REQ_PHASE=0;
@@ -237,7 +240,7 @@ void DiskIIWrReqIRQ(){
         cAlive=0;
         //updateIMAGEScreen(1,intTrk);                                                      // Update Screen for Write
 
-        HAL_TIM_PWM_Stop_IT(&htim3,TIM_CHANNEL_4);
+        HAL_TIM_PWM_Stop_IT(&htim3,TIM_CHANNEL_4);                                          // Stop READING TIMER
         irqWriteTrack();  
         
         byteWindow=0;
@@ -256,7 +259,7 @@ void DiskIIWrReqIRQ(){
 
         HAL_TIM_PWM_Stop_IT(&htim2,TIM_CHANNEL_3);                                          // Stop TIMER2 WRITE DATE
         irqReadTrack();
-        HAL_TIM_PWM_Start_IT(&htim3,TIM_CHANNEL_4);
+        HAL_TIM_PWM_Start_IT(&htim3,TIM_CHANNEL_4);                                         // Start the reading TIMER
         
         wrEndPtr=wrBitCounter;
         bitCounter=wrBitCounter;
@@ -290,9 +293,6 @@ WRITE PART:
     0111 7 us later
 */
 
-
-
-
 /**
   * @brief 
   * @param None
@@ -320,7 +320,7 @@ void DiskIIReceiveDataIRQ(){
         wrBitPos=0;
         wrBytes++;
 
-        if (wrBytes==ByteSize)
+        if (wrBytes==ByteSize)                  // TODO THIS IS WRONG ROUNDING OF DIVISION MAY EAT THE LAST BITS
             wrBytes=0;
     }
         
@@ -344,21 +344,27 @@ volatile unsigned char rByte=0x0;
   * @param None
   * @retval None
   */
+
+
 void DiskIISendDataIRQ(){
     RD_DATA_GPIO_Port->BSRR=nextBit;                          // start by outputing the nextBit and then due the internal cooking for the next one
 
     if (intTrk==255){
         weakBitTankPosition=bitCounter%256;
-        nextBit=weakBitTank[weakBitTankPosition] & 1;
+        nextBit=weakBitTank[weakBitTankPosition] & 1;    
     }else{
-        bytePtr=bitCounter/8;                                 // TODO This is ultra ugly need to remove the %8 consumming cpu cycle
-        bitPtr=bitCounter%8;
-        nextBit=(*(bbPtr+bytePtr)>>(7-bitPtr) ) & 1;          // Assuming it is on GPIO PORT B and Pin 0 (0x1 Set and 0x01 << Reset)
-    
+       
+        //nextBit=(*(bbPtr+bytePtr)>>(7-bitPtr )) & 1;
+        nextBit=(*(bbPtr+bytePtr)>>bitPtr ) & 1;
+        bitPtr--;
+        if (bitPtr<0){
+            bitPtr=7;
+            bytePtr++;
+        }
+
       // ************  WEAKBIT ****************
 
-
-#if WEAKBIT ==1
+        #if WEAKBIT ==1
 
         if ( nextBit==0 && flgWeakBit==1 ){
             if (++zeroBits>3){
@@ -371,7 +377,8 @@ void DiskIISendDataIRQ(){
             zeroBits=0;
         }
         
-#endif
+        #endif
+
       // ************  WEAKBIT ****************
 
     }
@@ -379,8 +386,32 @@ void DiskIISendDataIRQ(){
     bitCounter++;
     if (bitCounter>=bitSize){
         bitCounter=0;
+        bytePtr=0;
+        bitPtr=7;
     }
+        
 }
+
+static void startReadingTimer(){
+    bitPtr=7;
+    HAL_TIM_PWM_Start_IT(&htim3,TIM_CHANNEL_4);
+}
+
+static void stopReadingTimer(){
+    bitPtr=7;
+    HAL_TIM_PWM_Stop_IT(&htim3,TIM_CHANNEL_4);
+}
+
+static void startWrittingTimer(){
+    bitPtr=7;
+    HAL_TIM_PWM_Start_IT(&htim2,TIM_CHANNEL_3);
+}
+
+static void stopWrittingTimer(){
+    bitPtr=7;
+    HAL_TIM_PWM_Stop_IT(&htim2,TIM_CHANNEL_3);
+}
+
 
 /**
   * @brief 
@@ -410,7 +441,7 @@ int DiskIIDeviceEnableIRQ(uint16_t GPIO_Pin){
         GPIO_InitStruct.Pull  = GPIO_PULLDOWN;
         HAL_GPIO_Init(RD_DATA_GPIO_Port, &GPIO_InitStruct);
 
-        HAL_TIM_PWM_Start_IT(&htim3,TIM_CHANNEL_4);
+        startReadingTimer();
 
         GPIO_InitStruct.Pin   = WR_PROTECT_Pin;
         GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP;
@@ -438,7 +469,7 @@ int DiskIIDeviceEnableIRQ(uint16_t GPIO_Pin){
         GPIO_InitStruct.Pull  = GPIO_NOPULL;
         HAL_GPIO_Init(WR_PROTECT_GPIO_Port, &GPIO_InitStruct);
 
-        HAL_TIM_PWM_Stop_IT(&htim3,TIM_CHANNEL_4);                                                // Stop the Timer
+        stopReadingTimer();                                               // Stop the Timer
         
     }
     log_info("flgDeviceEnable==%d",flgDeviceEnable);
@@ -455,8 +486,10 @@ enum STATUS DiskIIMountImagefile(char * filename){
     int l=0;
     
     flgImageMounted=0;
-    if (filename==NULL)
+    if (filename==NULL){
+        log_error("filename is null");
         return RET_ERR;
+    }
 
     FRESULT fr;
     FILINFO fno;
@@ -484,12 +517,10 @@ enum STATUS DiskIIMountImagefile(char * filename){
     while(fsState!=READY){};
     fsState=BUSY;
 
-    //fr = f_mount(&fs, "", 1);                 // to be checked 
-
     fr = f_stat(filename, &fno);
     switch (fr) {
         case FR_OK:
-            log_info("Size: %lu", fno.fsize);
+            log_info("mount file size: %lu", fno.fsize);
             break;
         case FR_NO_FILE:
         case FR_NO_PATH:
@@ -508,8 +539,10 @@ enum STATUS DiskIIMountImagefile(char * filename){
         (!memcmp(filename+(l-4),".NIC",4)  ||           // .NIC
         !memcmp(filename+(l-4),".nic",4))){            // .nic
 
-        if (mountNicFile(filename)!=RET_OK)
+        if (mountNicFile(filename)!=RET_OK){
+            fsState=READY;
             return RET_ERR;
+        }
         
         getSDAddr=getNicSDAddr;
         getTrackBitStream=getNicTrackBitStream;
@@ -528,8 +561,10 @@ enum STATUS DiskIIMountImagefile(char * filename){
         (!memcmp(filename+(l-4),".WOZ",4)  ||           // .WOZ
         !memcmp(filename+(l-4),".woz",4))) {           // .woz
 
-        if (mountWozFile(filename)!=RET_OK)
-        return RET_ERR;
+        if (mountWozFile(filename)!=RET_OK){
+            fsState=READY;
+            return RET_ERR;
+        }
 
         getSDAddr=getWozSDAddr;
         getTrackBitStream=getWozTrackBitStream;
@@ -552,8 +587,11 @@ enum STATUS DiskIIMountImagefile(char * filename){
         !memcmp(filename+(l-3),".po",3) ||
         !memcmp(filename+(l-3),".PO",3))){ 
     
-        if (mountDskFile(filename)!=RET_OK)
-        return RET_ERR;
+        if (mountDskFile(filename)!=RET_OK){
+            fsState=READY;
+            return RET_ERR;
+        }
+        
 
         getSDAddr=getDskSDAddr;
         getTrackBitStream=getDskTrackBitStream;
@@ -566,14 +604,16 @@ enum STATUS DiskIIMountImagefile(char * filename){
         mountImageInfo.synced=0;
         mountImageInfo.version=0;
         mountImageInfo.cleaned=0;
+
         if (!memcmp(filename+(l-4),".DSK",4) || !memcmp(filename+(l-4),".dsk",4))
-        mountImageInfo.type=2;                                // DSK type
+            mountImageInfo.type=2;                                // DSK type
         else
-        mountImageInfo.type=3; 
+            mountImageInfo.type=3; 
 
         flgWriteProtected=0;
 
     }else{
+        fsState=READY;
         return RET_ERR;
     }
 
@@ -622,11 +662,11 @@ enum STATUS DiskIIiniteBeaming(){
     //t1 = DWT->CYCCNT; 
 
     if (flgWriteProtected==1)
-    HAL_GPIO_WritePin(WR_PROTECT_GPIO_Port,WR_PROTECT_Pin,GPIO_PIN_SET);                              // WRITE_PROTECT is enable
+        HAL_GPIO_WritePin(WR_PROTECT_GPIO_Port,WR_PROTECT_Pin,GPIO_PIN_SET);                              // WRITE_PROTECT is enable
     else
-    HAL_GPIO_WritePin(WR_PROTECT_GPIO_Port,WR_PROTECT_Pin,GPIO_PIN_RESET);  
+        HAL_GPIO_WritePin(WR_PROTECT_GPIO_Port,WR_PROTECT_Pin,GPIO_PIN_RESET);  
 
-    HAL_GPIO_WritePin(RD_DATA_GPIO_Port,RD_DATA_Pin,GPIO_PIN_RESET); 
+        HAL_GPIO_WritePin(RD_DATA_GPIO_Port,RD_DATA_Pin,GPIO_PIN_RESET); 
 
     bbPtr=(volatile u_int8_t*)&DMA_BIT_TX_BUFFER;
     bitSize=6656*8;
@@ -650,7 +690,7 @@ void DiskIIInit(){
     
     ph_track=0;
     //ptrFileFilter=diskIIImageExt;                                         // TODO Implement this
-    HAL_GPIO_WritePin(GPIOB,GPIO_PIN_8,GPIO_PIN_RESET);                     // DISK II PIN 8 IS GND
+    //HAL_GPIO_WritePin(GPIOB,GPIO_PIN_8,GPIO_PIN_RESET);                   // DISK II PIN 8 IS GND
 
     mountImageInfo.optimalBitTiming=32;
     mountImageInfo.writeProtected=0;
@@ -676,15 +716,15 @@ void DiskIIInit(){
             
             switchPage(FS,currentFullPath);
         }
+
     }else if (bootMode==1){
         switchPage(FS,currentFullPath);
     }else if (bootMode==2){
         switchPage(FAVORITES,NULL);
     }
-    HAL_TIM_PWM_Start_IT(&htim2,TIM_CHANNEL_3); 
-    
-    irqReadTrack();
-    createBlankWozFile("/test.woz",2,2,1);
+     
+    //irqReadTrack();
+    //createBlankWozFile("/test.woz",2,2,1);
 
     //sprintf(filename,"/WOZ 2.0/Blazing Paddles (Baudville).woz");                                     // 21/08 WORKING
     //sprintf(filename,"/WOZ 2.0/Border Zone - Disk 1, Side A.woz");                                    // 22/08 NOT WORKING
@@ -720,22 +760,6 @@ void DiskIIInit(){
     if (flgBeaming==1){
         switchPage(DISKIIIMAGE,currentFullPathImageFilename);
     }
-
-    // ONLY FOR DEBUG
-    /*
-        byteWindow=0;
-        wrBitWritten=0;                                                                     // Count the number of bits sent from the A2
-        wrBitPos=0;
-        prevWrData=0;
-        wrBitCounter=bitCounter+(8-bitCounter%8);                                           // Make it 8 Bit aligned
-        wrBytes=(wrBitCounter)/8;
-        ByteSize=6384;
-
-        for (int i=0;i<8;i++){
-            DiskIIReceiveDataIRQ();
-        }
-    */
-    // ONLY FOR DEBUG
 }
 
 
@@ -746,29 +770,30 @@ void DiskIIInit(){
   * @retval None
   */
 void DiskIIMainLoop(){
-
-    
     int trk=0;
     while(1){
+        
         if (flgDeviceEnable==1 && prevTrk!=intTrk && flgBeaming==1){              // <!> TO Be tested
 
             trk=intTrk;                                   // Track has changed, but avoid new change during the process
             DWT->CYCCNT = 0;                              // Reset cpu cycle counter
             //t1 = DWT->CYCCNT;                                       
             cAlive=0;
+           
             if (pendingWriteTrk==1){
                 irqEnableSDIO();
                 #pragma GCC diagnostic push
                 #pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
-                //setTrackBitStream(prevTrk,DMA_BIT_TX_BUFFER);
+                setTrackBitStream(prevTrk,DMA_BIT_TX_BUFFER);
                 #pragma  GCC diagnostic pop
-                char filename[128];
+                /*char filename[128];
                 sprintf(filename,"dump_rx_trk_%d_%d.bin",intTrk,wr_attempt);
                 wr_attempt++;
                 dumpBufFile(filename,DMA_BIT_TX_BUFFER,RAW_SD_TRACK_SIZE);
+                */
                 irqDisableSDIO();
                 pendingWriteTrk=0;
-                printf("Wr");
+               // printf("Wr");
             }
             
 
@@ -791,16 +816,17 @@ void DiskIIMainLoop(){
 
             irqEnableSDIO();
             getTrackBitStream(trk,read_track_data_bloc);
-            while(fsState!=READY){}
+            while(fsState!=READY);
             irqDisableSDIO();
-
+            
             memcpy((unsigned char *)&DMA_BIT_TX_BUFFER,read_track_data_bloc,RAW_SD_TRACK_SIZE);
             
-            updateDiskIIImageScr(0,trk);                                   // Put here otherwise Spiradisc is not working
+            updateDiskIIImageScr(0,trk);                                       // Put here otherwise Spiradisc is not working
 
             bitSize=getTrackSize(trk);
             ByteSize=bitSize/8; 
             prevTrk=trk;
+
         }else if (nextAction!=NONE){                                            // Several action can not be done on Interrupt
         
             switch(nextAction){
@@ -819,8 +845,8 @@ void DiskIIMainLoop(){
                 break;
 
                 case FSMOUNT:
-                // FSMOUNT will not work if SDCard is remove & reinserted...
-                // system reset is preferred
+                    // FSMOUNT will not work if SDCard is remove & reinserted...
+                    // system reset is preferred
                     irqEnableSDIO();
                 
                     FRESULT fres = f_mount(&fs, "", 1);
@@ -836,36 +862,35 @@ void DiskIIMainLoop(){
                 break;
 
                 
-                break;
+            
                 
                 case IMG_MOUNT:
-                    log_info("A0");
+                   
                     DiskIIUnmountImage();
-                    log_info("A1");
+                    
                     if (setConfigParamStr("lastFile",tmpFullPathImageFilename)==RET_ERR){
                         log_error("Error in setting param to configFie:lastImageFile %s",tmpFullPathImageFilename);
                     }
-                    log_info("A2");
+                    
                     if(DiskIIMountImagefile(tmpFullPathImageFilename)==RET_OK){
                         if (DiskIIiniteBeaming()==RET_OK){  
-                        DiskIIDeviceEnableIRQ(DEVICE_ENABLE_Pin);                                       // <!> TO Be tested
-                        switchPage(DISKIIIMAGE,tmpFullPathImageFilename);
+                            DiskIIDeviceEnableIRQ(DEVICE_ENABLE_Pin);                                       // <!> TO Be tested
+                            switchPage(DISKIIIMAGE,tmpFullPathImageFilename);
                         }
 
                         if (saveConfigFile()==RET_ERR){
-                        log_error("Error in saving JSON to file");
+                            log_error("Error in saving JSON to file");
                         }else{
-                        log_info("saving configFile: OK");
+                            log_info("saving configFile: OK");
                         }
                     }
-                    log_info("A3");
+                   
                     sprintf(currentFullPathImageFilename,"%s",tmpFullPathImageFilename);
                     nextAction=NONE;
                 break;
 
                 default:
                     execAction(nextAction);
-                    nextAction=NONE;
                 break;
             }
         }else{
@@ -878,7 +903,7 @@ void DiskIIMainLoop(){
             
             if (cAlive==30000 && pendingWriteTrk==1){
                 
-                irqEnableSDIO();
+               /* irqEnableSDIO();
                 #pragma GCC diagnostic push
                 #pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
                 //setTrackBitStream(prevTrk,DMA_BIT_TX_BUFFER);
@@ -888,9 +913,10 @@ void DiskIIMainLoop(){
                 wr_attempt++;
                 dumpBufFile(filename,DMA_BIT_TX_BUFFER,RAW_SD_TRACK_SIZE);
                 */
-                #pragma  GCC diagnostic pop
-                irqDisableSDIO();
-                //pendingWriteTrk=0;
+                //#pragma  GCC diagnostic pop
+                //irqDisableSDIO();
+                
+               //pendingWriteTrk=0;
                 //printf("W");
             }
             
@@ -899,20 +925,6 @@ void DiskIIMainLoop(){
                 //printf("%ld",maxdiff1);
                 cAlive=0;
                 
-                /*if (itmp!=0){
-                    nextAction=DUMP_TX;
-                    //dumpBuf(DMA_BIT_TX_BUFFER,0,6378);
-                    for (int j=0;j<itmp;j++){
-                        printf("dbg s:%05d e:%05d len:%d\n",dbg_s[j],dbg_e[j],dbg_e[j]-dbg_s[j]);
-                        if (dbg_e[j]-dbg_s[j]>0)
-                        dumpBuf(DMA_BIT_TX_BUFFER+dbg_s[j]/8,0,(dbg_e[j]-dbg_s[j])/8);
-                    }
-                    for (int j=0;j<itmp;j++){
-                        printf("dbg s:%05d e:%05d len:%d\n",dbg_s[j],dbg_e[j],dbg_e[j]-dbg_s[j]);
-                    }
-                    itmp=0;
-                   
-                }*/
             }
 
 #ifdef A2F_MODE

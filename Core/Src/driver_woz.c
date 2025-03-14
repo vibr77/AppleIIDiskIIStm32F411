@@ -79,9 +79,10 @@ enum STATUS getWozTrackBitStream_fopen(int trk,unsigned char * buffer){
   fsState=BUSY;
   char filename[]="/WOZ 2.0/Bouncing Kamungas - Disk 1, Side A.woz";
   fres = f_open(&fil,filename , FA_READ);    
+  
   if(fres != FR_OK){
     log_error("File open Error: (%i)",fres);
-
+    fsState=READY;
     return RET_ERR;
   }
   f_lseek(&fil,long_sector*512);
@@ -89,6 +90,7 @@ enum STATUS getWozTrackBitStream_fopen(int trk,unsigned char * buffer){
   fres = f_read(&fil,buffer,6656,&pt);
   if(fres != FR_OK){
     log_error("File read Error: (%i)",fres);
+    fsState=READY;
     return RET_ERR;
   }
   f_close(&fil);
@@ -400,6 +402,7 @@ enum STATUS createBlankWozFile(char * filename, uint8_t version,uint8_t diskForm
   
   if(fres != FR_OK){
     log_error("File open Error: (%i)",fres);
+    fsState=READY;
     return RET_ERR;
   }
 
@@ -594,6 +597,7 @@ enum STATUS createBlankWozFile(char * filename, uint8_t version,uint8_t diskForm
   
   if(fres != FR_OK){
     log_error("File open Error: (%i)",fres);
+    fsState=READY;
     return RET_ERR;
   }
   
@@ -603,7 +607,7 @@ enum STATUS createBlankWozFile(char * filename, uint8_t version,uint8_t diskForm
   f_write(&fil,&crc32,4,bw);
   log_info("crc:%04X",crc32);
   f_close(&fil);
-
+  fsState=READY;
   /*
     char tmp[1536];
     fres = f_open(&fil,filename , FA_READ );    
