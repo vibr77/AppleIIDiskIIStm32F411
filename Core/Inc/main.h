@@ -80,7 +80,7 @@ char *byte_to_binary(int x);
 
 list_t * sortLinkedList(list_t * plst);                             // Sort the chainedList
 //enum STATUS walkDir(char * path);                                   // Build chainedList of Directories/Files Items
-enum STATUS walkDir(char * path, const char * extFilter[]);
+enum STATUS walkDir(char * path, const  char ** extFilter);
 
 enum STATUS mountImagefile(char * filename);
 enum STATUS unmountImage();
@@ -88,7 +88,7 @@ enum STATUS unlinkImageFile(char* fullpathfilename);
 
 void processBtnInterrupt(uint16_t GPIO_Pin);
 
-enum STATUS execAction(enum action nextAction);
+enum STATUS execAction(enum action * nextAction);
 
 void debounceBtn(int GPIO);
 
@@ -98,7 +98,7 @@ void irqWIdle();
 
 void irqEnableSDIO();
 void irqDisableSDIO();
-
+void GPIOWritePin(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, GPIO_PinState PinState);
 void Custom_SD_WriteCpltCallback(void);
 void Custom_SD_ReadCpltCallback(void);
 

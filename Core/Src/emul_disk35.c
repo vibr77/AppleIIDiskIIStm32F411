@@ -423,7 +423,7 @@ void  disk35MainLoop(){
         }
 
         if (nextAction!=NONE){
-            execAction(nextAction);
+            execAction(&nextAction);
         }
             
         cAlive++;

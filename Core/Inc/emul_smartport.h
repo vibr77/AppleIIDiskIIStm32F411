@@ -20,6 +20,10 @@ typedef struct prodosPartition_s{
     uint8_t writeable;
     char * filename;
     uint8_t dispIndex;
+    unsigned char unidiskRegister_A;
+    unsigned char unidiskRegister_X;
+    unsigned char unidiskRegister_P;
+
 } prodosPartition_t;
 
 void SmartPortWrReqIRQ();
@@ -42,6 +46,7 @@ enum STATUS mountProdosPartition(char * filename,int partition);
 void encodeDataPacket (unsigned char source);
 void encodeExtendedDataPacket (unsigned char source);
 int decodeDataPacket (void);
+void decodeControlExecutePacket(prodosPartition_t * d);
 
 void encodeReplyPacket(unsigned char source,unsigned char type,unsigned char aux, unsigned char respCode);
 

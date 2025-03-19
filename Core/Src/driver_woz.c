@@ -166,7 +166,7 @@ enum STATUS setWozTrackBitStream(int trk,unsigned char * buffer){
     
     free(tmp2);
   }
-  //log_info("woz write trk:%d",trk);    
+  
   return RET_OK;
 }
 
@@ -206,10 +206,8 @@ enum STATUS mountWozFile(char * filename){
     unsigned int pt;
     char * woz_header=(char*)malloc(6*sizeof(char));
     
-    //while (fsState!=READY){}
     f_read(&fil,woz_header,4,&pt);
-    //while (fsState!=READY){}
-    //log_info("header:%s",woz_header);
+
     if (!memcmp(woz_header,"\x57\x4F\x5A\x31",4)){                    //57 4F 5A 31
         log_info("Image:woz version 1");
         wozFile.version=1;
@@ -276,14 +274,14 @@ enum STATUS mountWozFile(char * filename){
     
     if (!memcmp(tmap_chunk,"\x54\x4D\x41\x50",4)){          // 0x50414D54          
         for (int i=0;i<160;i++){
-            TMAP[i]=tmap_chunk[i+8];
-            log_debug("woz TMAP %03d: %02d",i,TMAP[i]);
-            
-            if (TMAP[i]!=255 && TMAP[i]>TRK_maxIndx)
-              TRK_maxIndx=TMAP[i];
-            
-            if (TRK_maxIndx>MAX_TRACK)
-              TRK_maxIndx=MAX_TRACK;
+          TMAP[i]=tmap_chunk[i+8];
+          log_debug("woz TMAP %03d: %02d",i,TMAP[i]);
+          
+          if (TMAP[i]!=255 && TMAP[i]>TRK_maxIndx)
+            TRK_maxIndx=TMAP[i];
+          
+          if (TRK_maxIndx>MAX_TRACK)
+            TRK_maxIndx=MAX_TRACK;
         }
 
         log_info("woz TMAP max track %02d",TRK_maxIndx);

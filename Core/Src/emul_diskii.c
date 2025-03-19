@@ -17,28 +17,28 @@
 #include "log.h"
 
 //static unsigned long t1,t2,diff1=0,maxdiff1=0;
-const char * diskIIImageExt[]={"PO","po","DSK","dsk","NIC","nic","WOZ","woz"};
+const  char * diskIIImageExt[]={"PO","po","DSK","dsk","NIC","nic","WOZ","woz",NULL};
 
-volatile int ph_track=0;                                                // SDISK Physical track 0 - 139
-volatile int ph_track_b=0;                                              // SDISK Physical track 0 - 139 for DISK B 
+volatile int ph_track=0;                                                                        // SDISK Physical track 0 - 139
+volatile int ph_track_b=0;                                                                      // SDISK Physical track 0 - 139 for DISK B 
 
-volatile int intTrk=0;                                                  // InterruptTrk                            
-unsigned char prevTrk=35;                                               // prevTrk to keep track of the last head track
+volatile int intTrk=0;                                                                          // InterruptTrk                            
+unsigned char prevTrk=35;                                                                       // prevTrk to keep track of the last head track
 
-extern unsigned char read_track_data_bloc[RAW_SD_TRACK_SIZE];                  // 
-extern volatile unsigned char DMA_BIT_TX_BUFFER[RAW_SD_TRACK_SIZE];            // DMA Buffer for READ Track
-extern char * ptrFileFilter[];
-volatile int flgWeakBit=0;                                       // Activate WeakBit only for Woz File
-uint8_t flgBitIndxCounter=0;                                    // Keep track of Bit Index Counter when changing track (only for WOZ)
+extern unsigned char read_track_data_bloc[RAW_SD_TRACK_SIZE];                  
+extern volatile unsigned char DMA_BIT_TX_BUFFER[RAW_SD_TRACK_SIZE];                             // DMA Buffer for READ Track
+extern const  char** ptrFileFilter;
+volatile int flgWeakBit=0;                                                                      // Activate WeakBit only for Woz File
+uint8_t flgBitIndxCounter=0;                                                                    // Keep track of Bit Index Counter when changing track (only for WOZ)
 
 extern enum action nextAction;
 
 volatile unsigned char flgDeviceEnable=0;
-unsigned char flgImageMounted=0;                            // Image file mount status flag
-unsigned char flgBeaming=0;                                 // DMA SPI1 to Apple II Databeaming status flag
-unsigned char flgWriteProtected=0;                          // Write Protected
+unsigned char flgImageMounted=0;                                                                // Image file mount status flag
+unsigned char flgBeaming=0;                                                                     // DMA SDIO Beaming
+unsigned char flgWriteProtected=0;                                                              // Write Protected
 
-uint8_t optimalBitTiming=32;                                // Read Timer Adjument 
+uint8_t optimalBitTiming=32;                                                                    // Read Timer Adjument 
 
 extern woz_info_t wozFile;
 image_info_t mountImageInfo;
@@ -47,14 +47,14 @@ image_info_t mountImageInfo;
 // Extern Declaration
 // --------------------------------------------------------------------
 
-extern TIM_HandleTypeDef htim1;                             // Timer1 is managing buzzer pwm
-extern TIM_HandleTypeDef htim2;                             // Timer2 is handling WR_DATA
-extern TIM_HandleTypeDef htim3;                             // Timer3 is handling RD_DATA
+extern TIM_HandleTypeDef htim1;                                                                 // Timer1 is managing buzzer pwm
+extern TIM_HandleTypeDef htim2;                                                                 // Timer2 is handling WR_DATA
+extern TIM_HandleTypeDef htim3;                                                                 // Timer3 is handling RD_DATA
 
 extern uint8_t bootMode;                    
 
-extern FATFS fs;                                            // fatfs global variable <!> do not remount witihn a function the fatfs otherwise it breaks the rest
-extern long database;                                     // start of the data segment in FAT
+extern FATFS fs;                                                                                // fatfs global variable <!> do not remount witihn a function the fatfs otherwise it breaks the rest
+extern long database;                                                                           // start of the data segment in FAT
 extern int csize;
 extern volatile enum FS_STATUS fsState;   
 
@@ -73,44 +73,44 @@ extern bool re_bChanged;
 // Hook function for file type driver Woz,Dsk, Po, ...
 // --------------------------------------------------------------------
 
-enum STATUS (*getTrackBitStream)(int,unsigned char*);       // pointer to readBitStream function according to driver woz/nic
-enum STATUS (*setTrackBitStream)(int,unsigned char*);       // pointer to writeBitStream function according to driver woz/nic
-long (*getSDAddr)(int ,int ,int , long);                    // pointer to getSDAddr function
-int  (*getTrackFromPh)(int);                                // pointer to track calculation function
-unsigned int  (*getTrackSize)(int);    
+enum STATUS (*getTrackBitStream)(int,unsigned char*);                                           // pointer to readBitStream function according to driver woz/nic
+enum STATUS (*setTrackBitStream)(int,unsigned char*);                                           // pointer to writeBitStream function according to driver woz/nic
+long (*getSDAddr)(int ,int ,int , long);                                                        // pointer to getSDAddr function
+int  (*getTrackFromPh)(int);                                                                    // pointer to track calculation function
+unsigned int  (*getTrackSize)(int);     
 
-char currentFullPath[MAX_FULLPATH_LENGTH];                    // current path from root
-char currentPath[MAX_PATH_LENGTH];                            // current directory name max 64 char
-char currentFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];  // fullpath from root image filename
-char tmpFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];      // fullpath from root image filename
+char currentFullPath[MAX_FULLPATH_LENGTH];                                                      // current path from root
+char currentPath[MAX_PATH_LENGTH];                                                              // current directory name max 64 char
+char currentFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];                                    // fullpath from root image filename
+char tmpFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];                                        // fullpath from root image filename
 
 
 // --------------------------------------------------------------------
 // Read / Write Interrupt function variables
 // --------------------------------------------------------------------
 
-static void startReadingTimer();
-static void stopReadingTimer();
-static void startWrittingTimer();
-static void stopWrittingTimer();
 
-static volatile unsigned int WR_REQ_PHASE=0;
-static volatile unsigned int wrBitCounter=0;
-static volatile unsigned int wrBytes=0;
+static volatile uint8_t flgWrRequest=1;                                                         // Important Active LOW so need to be HIGH
+static volatile uint8_t flgSelect=0;                                                            // Flag for Select line, PB8 High when A2 is power on
+static volatile unsigned int rdBitCounter=0;                                                    // read Bitcounter index to keep read head position on virtual floppy circle
+static volatile unsigned int wrBitCounter=0;                                                    // write Bitcounter index to keep write  head position on virtual floppy circle
+static volatile unsigned int wrLoopStartPtr=0;                                                  // index position of the start position of write segment
+static volatile unsigned char wrLoopFlg=0;                                                      // Write flag Loop when bytePtr reached wrLoopStartPtr
 
-static volatile int bitPtr=0;
-static volatile int bitCounter=0;
-static volatile int bytePtr=0;
-static volatile int bitSize=0;
-static volatile int ByteSize=0;
+static volatile uint8_t pendingWriteTrk=0;                                                      // pending write to disc flag
+static volatile int8_t wrBitPos=0;                                                              // bit number of the current WR DATA char
+static volatile uint8_t wrData=0;                                                               // GPIO WR DATA value
+static volatile uint8_t prevWrData=0;                                                           // GPIO WR Data prev value to enable XOR (changing polarity) 
+static volatile uint8_t xorWrData=0;                                                            // Result of XOR between WR Data and Prev WR DATA
+static volatile unsigned char byteWindow=0x0;                                                   // Current Byte window with shifting bit of WR DATA and RD DATA
 
-static int wrStartPtr=0;
-static int wrEndPtr=0;
-static int wrBitWritten=0;
-static int wr_attempt=0;                                             // temp variable to keep incremental counter of the debug dump to file
+static volatile int8_t bitPos=0;                                                                // Read Bit number of the current read char
+static volatile int bytePtr=0;                                                                  // BytePtr based on wrBitCounter and rdBitCounter
+static volatile int bitSize=0;                                                                  // Number of bits for the current track
+static volatile int ByteSize=0;                                                                 // Number of Bytes for the current track 
 
+static int wr_attempt=0;                                                                        // DEBUG only temp variable to keep incremental counter of the debug dump to file
 unsigned long cAlive=0;
-
 
 const uint8_t weakBitTank[]   ={1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0,
                                 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0,
@@ -125,7 +125,7 @@ const uint8_t weakBitTank[]   ={1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 
                                 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1,
                                 0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 1, 1, 0};
 
-volatile unsigned int weakBitTankPosition=0;
+volatile unsigned int weakBitTankPosition=0;                                                    // Index of the weakBitTank current position
 
 // --------------------------------------------------------------------
 // Phase Interrupt function variables
@@ -171,7 +171,6 @@ volatile const int position2Direction[8][8] = {               // position2Direct
   */
 void DiskIIPhaseIRQ(){
     
-    //log_info("1"); 
     volatile unsigned char stp=(GPIOA->IDR&0b0000000000001111);
     volatile int newPosition=magnet2Position[stp];
 
@@ -210,65 +209,59 @@ void DiskIIPhaseIRQ(){
     return;
 }
 
-uint8_t itmp=0;
-
-static volatile uint8_t pendingWriteTrk=0;
-static volatile uint8_t wrData=0;
-static volatile uint8_t prevWrData=0;
-static volatile uint8_t xorWrData=0;
-static volatile uint8_t wrBitPos=0;
-static volatile unsigned char byteWindow=0x0;
-
-int dbg_s[256];
-int dbg_e[256];
+/**
+  * @brief Function to handle Select Line IRQ IDC 20 Pin 12 PB8
+  *        it 
+  * @param None
+  * @retval None
+  */
+void DiskIISelectIRQ(){
+    if ((SELECT_GPIO_Port->IDR & SELECT_Pin)==0)
+        flgSelect=0;
+    else
+        flgSelect=1;
+}
 
 /**
   * @brief Write Req Interrupt function, Manage start and end of the write process.
   *        it 
   * @param None
   * @retval None
-  */
+***/
 void DiskIIWrReqIRQ(){
-    
+    // GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);
     if ((WR_REQ_GPIO_Port->IDR & WR_REQ_Pin)==0)
-        WR_REQ_PHASE=0;
+        flgWrRequest=0;
     else
-        WR_REQ_PHASE=1;
+        flgWrRequest=1;
 
-    if (WR_REQ_PHASE==0 && flgDeviceEnable==1 && flgImageMounted==1){                       // WR_REQUEST IS ACTIVE LOW
-          
-        cAlive=0;
-        //updateIMAGEScreen(1,intTrk);                                                      // Update Screen for Write
+    //GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);
+    if (flgSelect==0 || flgDeviceEnable==0)                                                     // A2 is not connected do nothing or DeviceEnable is not LOW
+        return;
 
-        HAL_TIM_PWM_Stop_IT(&htim3,TIM_CHANNEL_4);                                          // Stop READING TIMER
-        irqWriteTrack();  
+    if (flgWrRequest==0){                                                                       // WR_REQ is active LOW                  
+
+        HAL_TIM_PWM_Stop_IT(&htim3,TIM_CHANNEL_4);                                              // First stop the READING TIMER
         
-        byteWindow=0;
-        wrBitWritten=0;                                                                     // Count the number of bits sent from the A2
-        wrBitPos=0;
-        prevWrData=0;
-        wrBitCounter=bitCounter+(8-bitCounter%8);                                           // Make it 8 Bit aligned
+        wrBitPos=0;                                                                             // Reset the BitPos
+        wrBitCounter=bytePtr*8;                                                                 // Compute the wrCounter from bytePtr 
+        HAL_TIM_PWM_Start_IT(&htim2,TIM_CHANNEL_3);   
+        pendingWriteTrk=1;                                                                      // Pending write has to be here and not in the below section
+                                   
+        if (wrLoopStartPtr==0)                                                                  // write start pointer to check for a full loop
+            wrLoopStartPtr=bytePtr;
 
-        wrBytes=(wrBitCounter)/8;
-         
-        HAL_TIM_PWM_Start_IT(&htim2,TIM_CHANNEL_3);                                         // Start the TIMER2 to get WR signals
-        wrStartPtr=wrBitCounter;
-
-    }else if (WR_REQ_PHASE==1 && flgDeviceEnable==1 && flgImageMounted==1){
-
-
-        HAL_TIM_PWM_Stop_IT(&htim2,TIM_CHANNEL_3);                                          // Stop TIMER2 WRITE DATE
-        irqReadTrack();
-        HAL_TIM_PWM_Start_IT(&htim3,TIM_CHANNEL_4);                                         // Start the reading TIMER
+    }else if (flgWrRequest==1){
+                                                                            
+        for (int i=0;i<200;i++){}                                                               // <!> Important WR_REQ goes low too early
+        HAL_TIM_PWM_Stop_IT(&htim2,TIM_CHANNEL_3);                                              // Stop the WRITING Timer
         
-        wrEndPtr=wrBitCounter;
-        bitCounter=wrBitCounter;
+        bitPos=7;                                                                               // Reset the bitPos
+        rdBitCounter=bytePtr*8;                                                                 // Compute the bitCounter from the BytePtr
+        HAL_TIM_PWM_Start_IT(&htim3,TIM_CHANNEL_4); 
 
-        pendingWriteTrk=1;                                                      
-        cAlive=0;
-
-        //printf("Write end total %d %d/8, started:%d, ended:%d  wrBitCounter:%d bitSize:%d /8:%d\n",wrBitWritten,wrBitWritten/8,wrStartPtr,wrEndPtr,wrBitCounter,bitSize,bitSize/8);
-    }
+        cAlive=0;                                                                               // Reset the cAlive
+    }   
 }
 
 
@@ -298,44 +291,61 @@ WRITE PART:
   * @param None
   * @retval None
   */
+
+
 void DiskIIReceiveDataIRQ(){
     
-    if ((GPIOA->IDR & WR_DATA_Pin)==0)                                       // get WR_DATA DO NOT USE THE HAL function creating an overhead
+    if ((GPIOA->IDR & WR_DATA_Pin)==0)                                                          // get WR_DATA DO NOT USE THE HAL function creating an overhead
         wrData=0;
     else
         wrData=1;
+
+    wrData^= 0x01u;                                                                             // get /WR_DATA
+    xorWrData=wrData ^ prevWrData;                                                              // Compute Magnetic polarity inversion
+    prevWrData=wrData;                                                                          // for next cycle keep the wrData
+
+    byteWindow<<=1;                                                                             // Shift left 1 bit to get the next one
+    byteWindow|=xorWrData;                                                                      // Write the next bit to the byteWindow
     
-    wrData^= 0x01u;                                                           // get /WR_DATA
-    xorWrData=wrData ^ prevWrData;                                            // Compute Magnetic polarity inversion
-    prevWrData=wrData;                                                        // for next cycle keep the wrData
+     //if (byteWindow & 0x80 ){                                                                 // For debug purpose only
+    
+    if (wrBitPos==7){   
+        DMA_BIT_TX_BUFFER[bytePtr]=byteWindow;
+        byteWindow=0x0;       
+        bytePtr++;
 
-    byteWindow<<=1;                                                           // Shift left 1 bit to get the next one
-    byteWindow|=xorWrData;                                                    // Write the next bit to the byteWindow
-                                                                              // Keep track of the number of bits written to update the TMAP
-    wrBitPos++;                                                               // Increase the WR Bit index
-    if (wrBitPos==8){                                                         // After 8 Bits are received store the Byte
-        
-        DMA_BIT_TX_BUFFER[wrBytes]=byteWindow;
-        byteWindow=0x0;
-        wrBitPos=0;
-        wrBytes++;
-
-        if (wrBytes==ByteSize)                  // TODO THIS IS WRONG ROUNDING OF DIVISION MAY EAT THE LAST BITS
-            wrBytes=0;
+        if (bytePtr==wrLoopStartPtr){
+            GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);                              // DEBUG ONLY
+            wrLoopFlg=1;
+        }
     }
+
+    wrBitPos++;
+    if (wrBitPos==8){
+        wrBitPos=0;
+    }
+
+    wrBitCounter++;                                                                             // bitSize can be 53248 => bitCounter from 0 - 53247
+    if (wrBitCounter==bitSize){                                                                 // Same Size as the original track size
         
-    wrBitCounter++;                                                           // Next bit please ;)
+        byteWindow<<=7-(wrBitPos);                                                              // TODO: to be tested with bitcounter not aligned with 8 The last byte may be incomplete, and it will be read starting by the MSB Bit 7
+        //byteWindow<<=1;                                                                       // Incomplete byte need to be shift left
+        DMA_BIT_TX_BUFFER[bytePtr]=byteWindow;                                                  // Check which bit MSB LSB order
+        // variable cleared out for next disk loop
+        byteWindow=0x0;                                                                         // TODO: to be tested
+        wrBitCounter=0;
+        wrBitPos=0;
+        bytePtr=0;
+    } 
 
-    if (wrBitCounter>=bitSize)                                                // Same Size as the original track size
-        wrBitCounter=0;                                                       // Start over at the beginning of the track
-
+    GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET); 
 }
 
 
 uint8_t nextBit=0;
 volatile uint8_t *bbPtr=0x0;
 
-volatile int zeroBits=0;                                  // Count number of consecutives zero bits
+volatile int zeroBits=0;                                                                        // Count number of consecutives zero bits
 volatile unsigned char rByte=0x0;
 
 
@@ -347,22 +357,27 @@ volatile unsigned char rByte=0x0;
 
 
 void DiskIISendDataIRQ(){
-    RD_DATA_GPIO_Port->BSRR=nextBit;                          // start by outputing the nextBit and then due the internal cooking for the next one
+    
+    RD_DATA_GPIO_Port->BSRR=nextBit;                                                            // start by outputing the nextBit and then due the internal cooking for the next one
 
     if (intTrk==255){
-        weakBitTankPosition=bitCounter%256;
+        weakBitTankPosition=rdBitCounter%256;
         nextBit=weakBitTank[weakBitTankPosition] & 1;    
     }else{
        
-        //nextBit=(*(bbPtr+bytePtr)>>(7-bitPtr )) & 1;
-        nextBit=(*(bbPtr+bytePtr)>>bitPtr ) & 1;
-        bitPtr--;
-        if (bitPtr<0){
-            bitPtr=7;
+        
+        nextBit=(*(bbPtr+bytePtr)>>bitPos ) & 1;
+        bitPos--;
+        if (bitPos<0){
+            bitPos=7;
             bytePtr++;
+            if (bytePtr==wrLoopStartPtr && pendingWriteTrk==1){
+                HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);
+                wrLoopFlg=1;
+            }
         }
 
-      // ************  WEAKBIT ****************
+        // ************  WEAKBIT ****************
 
         #if WEAKBIT ==1
 
@@ -379,39 +394,18 @@ void DiskIISendDataIRQ(){
         
         #endif
 
-      // ************  WEAKBIT ****************
+        // ************  WEAKBIT ****************
 
     }
 
-    bitCounter++;
-    if (bitCounter>=bitSize){
-        bitCounter=0;
+    rdBitCounter++;
+    if (rdBitCounter>=bitSize){
+        rdBitCounter=0;
         bytePtr=0;
-        bitPtr=7;
+        bitPos=7;
     }
         
 }
-
-static void startReadingTimer(){
-    bitPtr=7;
-    HAL_TIM_PWM_Start_IT(&htim3,TIM_CHANNEL_4);
-}
-
-static void stopReadingTimer(){
-    bitPtr=7;
-    HAL_TIM_PWM_Stop_IT(&htim3,TIM_CHANNEL_4);
-}
-
-static void startWrittingTimer(){
-    bitPtr=7;
-    HAL_TIM_PWM_Start_IT(&htim2,TIM_CHANNEL_3);
-}
-
-static void stopWrittingTimer(){
-    bitPtr=7;
-    HAL_TIM_PWM_Stop_IT(&htim2,TIM_CHANNEL_3);
-}
-
 
 /**
   * @brief 
@@ -431,6 +425,7 @@ int DiskIIDeviceEnableIRQ(uint16_t GPIO_Pin){
 
     if (a==0 && flgBeaming==1){                                                                 // <!> TO BE TESTED 24/10
         flgDeviceEnable=1;
+
 #ifdef A2F_MODE
     if (flgImageMounted==1){  
       HAL_GPIO_WritePin(AB_GPIO_Port,AB_Pin,GPIO_PIN_SET);
@@ -441,7 +436,7 @@ int DiskIIDeviceEnableIRQ(uint16_t GPIO_Pin){
         GPIO_InitStruct.Pull  = GPIO_PULLDOWN;
         HAL_GPIO_Init(RD_DATA_GPIO_Port, &GPIO_InitStruct);
 
-        startReadingTimer();
+        HAL_TIM_PWM_Start_IT(&htim3,TIM_CHANNEL_4);
 
         GPIO_InitStruct.Pin   = WR_PROTECT_Pin;
         GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP;
@@ -449,15 +444,15 @@ int DiskIIDeviceEnableIRQ(uint16_t GPIO_Pin){
         HAL_GPIO_Init(WR_PROTECT_GPIO_Port, &GPIO_InitStruct);
 
         if (flgWriteProtected==1)
-            HAL_GPIO_WritePin(WR_PROTECT_GPIO_Port,WR_PROTECT_Pin,GPIO_PIN_SET);                // WRITE_PROTECT is enable
+            GPIOWritePin(WR_PROTECT_GPIO_Port,WR_PROTECT_Pin,GPIO_PIN_SET);                // WRITE_PROTECT is enable
         else
-            HAL_GPIO_WritePin(WR_PROTECT_GPIO_Port,WR_PROTECT_Pin,GPIO_PIN_RESET);
+            GPIOWritePin(WR_PROTECT_GPIO_Port,WR_PROTECT_Pin,GPIO_PIN_RESET);
     
     }else if (flgDeviceEnable==1 && a==1 ){
 
         flgDeviceEnable=0;
 #ifdef A2F_MODE        
-        HAL_GPIO_WritePin(AB_GPIO_Port,AB_Pin,GPIO_PIN_RESET);
+        GPIOWritePin(AB_GPIO_Port,AB_Pin,GPIO_PIN_RESET);
 #endif
         GPIO_InitStruct.Pin   = RD_DATA_Pin;
         GPIO_InitStruct.Mode  = GPIO_MODE_INPUT;
@@ -469,7 +464,7 @@ int DiskIIDeviceEnableIRQ(uint16_t GPIO_Pin){
         GPIO_InitStruct.Pull  = GPIO_NOPULL;
         HAL_GPIO_Init(WR_PROTECT_GPIO_Port, &GPIO_InitStruct);
 
-        stopReadingTimer();                                               // Stop the Timer
+        HAL_TIM_PWM_Stop_IT(&htim3,TIM_CHANNEL_4);                                               // Stop the Timer
         
     }
     log_info("flgDeviceEnable==%d",flgDeviceEnable);
@@ -591,8 +586,7 @@ enum STATUS DiskIIMountImagefile(char * filename){
             fsState=READY;
             return RET_ERR;
         }
-        
-
+    
         getSDAddr=getDskSDAddr;
         getTrackBitStream=getDskTrackBitStream;
         setTrackBitStream=setDskTrackBitStream;
@@ -658,19 +652,16 @@ enum STATUS DiskIIiniteBeaming(){
     memset((unsigned char *)&DMA_BIT_TX_BUFFER,0,sizeof(char)*RAW_SD_TRACK_SIZE);
     memset(read_track_data_bloc,0,sizeof(char)*RAW_SD_TRACK_SIZE);
 
-    DWT->CYCCNT = 0;                              // Reset cpu cycle counter
-    //t1 = DWT->CYCCNT; 
-
     if (flgWriteProtected==1)
-        HAL_GPIO_WritePin(WR_PROTECT_GPIO_Port,WR_PROTECT_Pin,GPIO_PIN_SET);                              // WRITE_PROTECT is enable
+        GPIOWritePin(WR_PROTECT_GPIO_Port,WR_PROTECT_Pin,GPIO_PIN_SET);                              // WRITE_PROTECT is enable
     else
-        HAL_GPIO_WritePin(WR_PROTECT_GPIO_Port,WR_PROTECT_Pin,GPIO_PIN_RESET);  
+        GPIOWritePin(WR_PROTECT_GPIO_Port,WR_PROTECT_Pin,GPIO_PIN_RESET);  
 
-        HAL_GPIO_WritePin(RD_DATA_GPIO_Port,RD_DATA_Pin,GPIO_PIN_RESET); 
+    GPIOWritePin(RD_DATA_GPIO_Port,RD_DATA_Pin,GPIO_PIN_RESET); 
 
     bbPtr=(volatile u_int8_t*)&DMA_BIT_TX_BUFFER;
     bitSize=6656*8;
-    bitCounter=0;
+    rdBitCounter=0;
 
     TIM3->ARR=(mountImageInfo.optimalBitTiming*12)-1;
 
@@ -689,15 +680,17 @@ enum STATUS DiskIIiniteBeaming(){
 void DiskIIInit(){
     
     ph_track=0;
-    //ptrFileFilter=diskIIImageExt;                                         // TODO Implement this
-    //HAL_GPIO_WritePin(GPIOB,GPIO_PIN_8,GPIO_PIN_RESET);                   // DISK II PIN 8 IS GND
-
+   
+    ptrFileFilter=diskIIImageExt;
     mountImageInfo.optimalBitTiming=32;
     mountImageInfo.writeProtected=0;
     mountImageInfo.version=0;
     mountImageInfo.cleaned=0;
     mountImageInfo.type=0;
-    
+
+    //sprintf(tmpFullPathImageFilename,"/WOZ 1.0/DOS 3.3 System Master.woz");
+    //sprintf(tmpFullPathImageFilename,"/blank.dsk");
+   
     if (bootMode==0){
         if (DiskIIMountImagefile(tmpFullPathImageFilename)==RET_OK){
         
@@ -731,7 +724,7 @@ void DiskIIInit(){
     //sprintf(filename,"/WOZ 2.0/Bouncing Kamungas - Disk 1, Side A.woz");                              // 22/08 WORKING
     //sprintf(filename,"/WOZ 2.0/Commando - Disk 1, Side A.woz");                                       // 21/08 WORKING
     //sprintf(filename,"/WOZ 2.0/Crisis Mountain - Disk 1, Side A.woz");                                // 21/08 WORKING
-    //sprintf(filename,"/WOZ 2.0/DOS 3.3 System Master.woz");                                           // 15/07 WORKING
+    //sprintf(filename,"/WOZ 1.0/DOS 3.3 System Master.woz");                                           // 15/07 WORKING
     //sprintf(filename,"/WOZ 2.0/Dino Eggs - Disk 1, Side A.woz");                                      // 22/08 WORKING
     //sprintf(filename,"/WOZ 2.0/First Math Adventures - Understanding Word Problems.woz");             // 20/07 WORKING
     //sprintf(filename,"/WOZ 1.0/Hard Hat Mack - Disk 1, Side A.woz");                                  // 22/08 WORKING
@@ -760,9 +753,29 @@ void DiskIIInit(){
     if (flgBeaming==1){
         switchPage(DISKIIIMAGE,currentFullPathImageFilename);
     }
+    /*
+
+    irqEnableSDIO();
+    FIL fil; 
+    FRESULT fr;   
+    fr = f_open(&fil, "dump_rx_trk_0_0.bin", FA_READ);
+    char buffer[6656];
+    int br;
+    f_read(&fil,buffer,6656,&br);
+    while(fsState!=READY){};
+    log_info("br:%d",br);
+    uint8_t retE=0x0;
+    if (nib2dsk(buffer,0,6656,&retE)==RET_ERR)
+        log_error("e");
+        //dumpBuf(buffer,1,6656);
+    
+    log_info("outside error:%d",retE);
+    f_close(&fil);
+    irqDisableSDIO();
+    
+    HAL_Delay(10000);
+    */
 }
-
-
 
 /**
   * @brief 
@@ -771,63 +784,119 @@ void DiskIIInit(){
   */
 void DiskIIMainLoop(){
     int trk=0;
+    
     while(1){
         
-        if (flgDeviceEnable==1 && prevTrk!=intTrk && flgBeaming==1){              // <!> TO Be tested
+        if (flgSelect==1 && flgDeviceEnable==1){                                            // A2 is Powered (Select Line HIGH) & DeviceEnable is active LOW
 
-            trk=intTrk;                                   // Track has changed, but avoid new change during the process
-            DWT->CYCCNT = 0;                              // Reset cpu cycle counter
-            //t1 = DWT->CYCCNT;                                       
-            cAlive=0;
-           
-            if (pendingWriteTrk==1){
+            if (flgWrRequest==1 && pendingWriteTrk==1 && wrLoopFlg==1){                     // Reading Mode, pending track to be written after a full revolution
+                uint8_t rTrk=intTrk;
+                wrLoopStartPtr=0;
+                wrLoopFlg=0;
+                pendingWriteTrk=0;
+                cAlive=0;
+                
+                HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);
+                
+                updateDiskIIImageScr(1,rTrk);
+                if (flgSoundEffect==1){
+                    TIM1->PSC=1000;
+                    HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_2);
+                }
+                
                 irqEnableSDIO();
-                #pragma GCC diagnostic push
-                #pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
-                setTrackBitStream(prevTrk,DMA_BIT_TX_BUFFER);
+                if (setTrackBitStream(rTrk,DMA_BIT_TX_BUFFER)==RET_OK){
+                    log_info("WR trk:%d OK",rTrk);
+                }else{
+                    log_error("WR trk:%d KO",rTrk);
+                }
+                irqDisableSDIO();
+                GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);
+                
+                /* 
                 #pragma  GCC diagnostic pop
-                /*char filename[128];
-                sprintf(filename,"dump_rx_trk_%d_%d.bin",intTrk,wr_attempt);
+                char filename[128];
+                sprintf(filename,"dump_rx_trk_%d_%d.bin",prevTrk,wr_attempt);
                 wr_attempt++;
                 dumpBufFile(filename,DMA_BIT_TX_BUFFER,RAW_SD_TRACK_SIZE);
-                */
                 irqDisableSDIO();
                 pendingWriteTrk=0;
-               // printf("Wr");
-            }
+                */
             
+            }
 
-            if (trk==255 ){
-                bitSize=51200;
-                ByteSize=6400;
-                printf("ph:%02d fakeTrack:255\n",ph_track);
+            /*if (pendingWriteTrk==1 && flgDeviceEnable==0){
+                
+                pendingWriteTrk=0;
+                dumpBuf(DMA_BIT_TX_BUFFER,1,6656);
+                if (setTrackBitStream(prevTrk,DMA_BIT_TX_BUFFER)==RET_OK){
+                    log_info("WR trk:%d OK",prevTrk);
+                }else{
+                    log_error("WR trk:%d KO",prevTrk);
+                }
+            }
+            */
+
+            if (prevTrk!=intTrk && flgBeaming==1){                            // <!> TO Be tested
+                trk=intTrk;                                                                         // Track has changed, but avoid new change during the process
+                                                
+                cAlive=0;
+            
+                if (pendingWriteTrk==1){
+                    
+                    updateDiskIIImageScr(1,prevTrk);
+                    if (flgSoundEffect==1){
+                        TIM1->PSC=1000;
+                        HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_2);
+                    }
+                    irqEnableSDIO();
+                    if (setTrackBitStream(prevTrk,DMA_BIT_TX_BUFFER)==RET_OK){
+                        log_info("sw WR trk:%d OK",prevTrk);
+                    }else{
+                        log_error("sw WR trk:%d KO",prevTrk);
+                    }
+                    irqDisableSDIO();
+                    
+                    pendingWriteTrk=0;
+                    wrLoopFlg=0;
+                    wrLoopStartPtr=0;
+                }
+                
+                if (trk==255 ){
+                    bitSize=51200;
+                    ByteSize=6400;
+                    printf("ph:%02d fakeTrack:255\n",ph_track);
+                    prevTrk=trk;
+                    continue;
+                }
+
+                // --------------------------------------------------------------------
+                // PART 1 MAIN TRACK & RESTORE AS QUICKLY AS POSSIBLE THE DMA
+                // --------------------------------------------------------------------
+                
+                if (flgSoundEffect==1){
+                    TIM1->PSC=1000;
+                    HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_2);
+                }
+
+                irqEnableSDIO();
+                getTrackBitStream(trk,read_track_data_bloc);
+                while(fsState!=READY);
+                irqDisableSDIO();
+
+                //memset(&DMA_BIT_TX_BUFFER,0x0,6656);                                              // DEBUG ONLY
+                memcpy((unsigned char *)&DMA_BIT_TX_BUFFER,read_track_data_bloc,RAW_SD_TRACK_SIZE);
+                
+                updateDiskIIImageScr(0,trk);                                                        // Put here otherwise Spiradisc is not working
+
+                bitSize=getTrackSize(trk);
+                ByteSize=bitSize/8; 
                 prevTrk=trk;
-                continue;
+
             }
+        }
 
-            // --------------------------------------------------------------------
-            // PART 1 MAIN TRACK & RESTORE AS QUICKLY AS POSSIBLE THE DMA
-            // --------------------------------------------------------------------
-            
-            if (flgSoundEffect==1){
-                TIM1->PSC=1000;
-                HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_2);
-            }
-
-            irqEnableSDIO();
-            getTrackBitStream(trk,read_track_data_bloc);
-            while(fsState!=READY);
-            irqDisableSDIO();
-            
-            memcpy((unsigned char *)&DMA_BIT_TX_BUFFER,read_track_data_bloc,RAW_SD_TRACK_SIZE);
-            
-            updateDiskIIImageScr(0,trk);                                       // Put here otherwise Spiradisc is not working
-
-            bitSize=getTrackSize(trk);
-            ByteSize=bitSize/8; 
-            prevTrk=trk;
-
-        }else if (nextAction!=NONE){                                            // Several action can not be done on Interrupt
+        if (nextAction!=NONE){                                                            // Several action can not be done on Interrupt
         
             switch(nextAction){
                
@@ -861,9 +930,6 @@ void DiskIIMainLoop(){
                     nextAction=FSDISP;
                 break;
 
-                
-            
-                
                 case IMG_MOUNT:
                    
                     DiskIIUnmountImage();
@@ -890,43 +956,29 @@ void DiskIIMainLoop(){
                 break;
 
                 default:
-                    execAction(nextAction);
+                    execAction(&nextAction);
                 break;
             }
-        }else{
+        }
+
+        if (flgSoundEffect==1){
+            HAL_TIMEx_PWMN_Stop(&htim1,TIM_CHANNEL_2);
+        }
+
+        if (flgWrRequest==1){
             cAlive++;
-            if (flgSoundEffect==1){
-                HAL_TIMEx_PWMN_Stop(&htim1,TIM_CHANNEL_2);
-            }
 
             processSdEject(SD_EJECT_Pin);
-            
-            if (cAlive==30000 && pendingWriteTrk==1){
-                
-               /* irqEnableSDIO();
-                #pragma GCC diagnostic push
-                #pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
-                //setTrackBitStream(prevTrk,DMA_BIT_TX_BUFFER);
-                /*
-                char filename[128];
-                sprintf(filename,"dump_rx_trk_%d_%d.bin",intTrk,wr_attempt);
-                wr_attempt++;
-                dumpBufFile(filename,DMA_BIT_TX_BUFFER,RAW_SD_TRACK_SIZE);
-                */
-                //#pragma  GCC diagnostic pop
-                //irqDisableSDIO();
-                
-               //pendingWriteTrk=0;
-                //printf("W");
-            }
-            
-            if (cAlive==5000000){
-                printf(".\n");
-                //printf("%ld",maxdiff1);
-                cAlive=0;
-                
-            }
 
+            if (cAlive==5000000){                                                           // DEBUG Only
+                printf(".\n");
+                cAlive=0;
+            }
+        }
+    
+            
+         
+        
 #ifdef A2F_MODE
             if (HAL_GPIO_ReadPin(SD_EJECT_GPIO_Port, SD_EJECT_Pin)){// SD-Card removed!
                 unlinkImageFile(currentFullPathImageFilename);
@@ -955,6 +1007,6 @@ void DiskIIMainLoop(){
             }
 #endif
 
-        }
+        
     }
 }

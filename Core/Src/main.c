@@ -348,34 +348,33 @@ void (*ptrbtnEntr)(void *);
 void (*ptrbtnRet)(void *);
 
 // Hook function for different type emulation
-void (*ptrPhaseIRQ)();                                      // Pointer to function managing Ph0 to Ph3
-void (*ptrReceiveDataIRQ)();                                // Pointer to Received Data function with WR_DATA
-void (*ptrSendDataIRQ)();                                   // Pointer to Send Data function with RD_DATA
-void (*ptrWrReqIRQ)();                                      // Pointer to Interrupt function for WR_REQUEST
-int (*ptrDeviceEnableIRQ)(uint16_t GPIO_Pin);               // Pointer to Interrupt function for DEVICE_ENABLE
+void (*ptrPhaseIRQ)();                                                                          // Pointer to function managing Ph0 to Ph3
+void (*ptrReceiveDataIRQ)();                                                                    // Pointer to Received Data function with WR_DATA
+void (*ptrSendDataIRQ)();                                                                       // Pointer to Send Data function with RD_DATA
+void (*ptrWrReqIRQ)();                                                                          // Pointer to Interrupt function for WR_REQUEST
+void (*ptrSelectIRQ)();                                                                         // Pointer to Select line IRQ function PB8 and IDC line 12 
+int (*ptrDeviceEnableIRQ)(uint16_t GPIO_Pin);                                                   // Pointer to Interrupt function for DEVICE_ENABLE
 enum STATUS (*ptrUnmountImage)();                           
 enum STATUS (*ptrMountImagefile)(char * filename);
-void (*ptrMainLoop)();                                      // Main Loop function pointer
-void (*ptrInit)();                                          // Init function pointer
+void (*ptrMainLoop)();                                                                          // Main Loop function pointer
+void (*ptrInit)();                                                                              // Init function pointer
 
 bool buttonDebounceState=true;
 
-FATFS fs;                                                   // fatfs global variable <!> do not remount witihn a function the fatfs otherwise it breaks the rest
-long database=0;                                            // start of the data segment in FAT
-int csize=0;                                                // Cluster size
+FATFS fs;                                                                                       // fatfs global variable <!> do not remount witihn a function the fatfs otherwise it breaks the rest
+long database=0;                                                                                // start of the data segment in FAT
+int csize=0;                                                                                    // Cluster size
 
-//char * ptrFileFilter[];
-const char * ptrFileFilter[]={"PO","po","DSK","dsk","NIC","nic","WOZ","woz"};
-
+const  char ** ptrFileFilter=NULL;
 unsigned char read_track_data_bloc[RAW_SD_TRACK_SIZE];                  
-volatile unsigned char DMA_BIT_TX_BUFFER[RAW_SD_TRACK_SIZE];         // DMA Buffer for READ Track
+volatile unsigned char DMA_BIT_TX_BUFFER[RAW_SD_TRACK_SIZE];                                    // DMA Buffer for READ Track
 
-extern char currentFullPath[MAX_FULLPATH_LENGTH];                    // current path from root
-extern char currentPath[MAX_PATH_LENGTH];                            // current directory name max 64 char
-extern char currentFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];  // fullpath from root image filename
-extern char tmpFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];      // fullpath from root image filename
+extern char currentFullPath[MAX_FULLPATH_LENGTH];                                               // current path from root
+extern char currentPath[MAX_PATH_LENGTH];                                                       // current directory name max 64 char
+extern char currentFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];                             // fullpath from root image filename
+extern char tmpFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];                                 // fullpath from root image filename
 
-uint8_t flgSoundEffect=0;                                             // Activate Buzze
+uint8_t flgSoundEffect=0;                                                                       // Activate Buzze
 uint8_t bootMode=0;
 uint8_t emulationType=0;
 uint8_t bootImageIndex=0;
@@ -501,15 +500,15 @@ void TIM2_IRQHandler(void){
   if (TIM2->SR & TIM_SR_UIF){ 
     TIM2->SR &= ~TIM_SR_UIF;                                                  // Reset the Interrupt
     //HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_RESET);
-
-  }else if (TIM2->SR & TIM_SR_CC2IF){                                        // The count & compare is on channel 2 to avoid issue with ETR1
-    //HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_RESET);
     
-    TIM2->SR &= ~TIM_SR_CC2IF;                                                // clear the count & compare interrupt
+  }else if (TIM2->SR & TIM_SR_CC2IF){                                        // The count & compare is on channel 2 to avoid issue with ETR1
+    //HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_SET);
     ptrReceiveDataIRQ();
+    //HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_RESET);
+    TIM2->SR &= ~TIM_SR_CC2IF;                                                // clear the count & compare interrupt
+    //TIM2->SR=0;
 
   }else{
-
     TIM2->SR=0;
   }    
 }
@@ -534,6 +533,7 @@ void irqReadTrack(){
 void irqWriteTrack(){
 
   HAL_NVIC_EnableIRQ(TIM2_IRQn);
+  
   HAL_NVIC_DisableIRQ(TIM3_IRQn);
   HAL_NVIC_DisableIRQ(TIM4_IRQn);
 }
@@ -563,6 +563,17 @@ void irqDisableSDIO(){
   HAL_NVIC_DisableIRQ(SDIO_IRQn);
   HAL_NVIC_DisableIRQ(DMA2_Stream3_IRQn);
   HAL_NVIC_DisableIRQ(DMA2_Stream6_IRQn);
+}
+
+void GPIOWritePin(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, GPIO_PinState PinState){
+ 
+  if(PinState != GPIO_PIN_RESET)
+  {
+    GPIOx->BSRR = GPIO_Pin;
+  }else
+  {
+    GPIOx->BSRR = (uint32_t)GPIO_Pin << 16U;
+  }
 }
 
 /**
@@ -602,7 +613,7 @@ enum STATUS dumpBufFile(char * filename,volatile unsigned char * buffer,int leng
     while(fsState!=READY){};
   }
 
-  //log_info("Wrote %i bytes to '%s'!\n", totalBytes,filename);
+  log_info("Wrote %i bytes to '%s'!\n", totalBytes,filename);
   f_close(&fil);
   fsState=READY;
   
@@ -876,7 +887,7 @@ enum STATUS processPath(char *path){
   * @param extFilter: const char * of list of file extension to filter
   * @retval RET_OK/RET_ERR
   */
-enum STATUS walkDir(char * path, const char * extFilter[]){
+enum STATUS walkDir(char * path, const  char ** extFilter){
   
   DIR dir;
   FRESULT fres;  
@@ -904,78 +915,79 @@ enum STATUS walkDir(char * path, const char * extFilter[]){
 
   if (fres == FR_OK){
       
+    fileName=malloc(MAX_FILENAME_LENGTH*sizeof(char));
+    sprintf(fileName,"D|.");
+    list_rpush(dirChainedList, list_node_new(fileName));
+
+    if (strcmp(path,"") && strcmp(path,"/")){
       fileName=malloc(MAX_FILENAME_LENGTH*sizeof(char));
-      sprintf(fileName,"D|.");
+      sprintf(fileName,"D|..");
       list_rpush(dirChainedList, list_node_new(fileName));
-
-      if (strcmp(path,"") && strcmp(path,"/")){
-        fileName=malloc(MAX_FILENAME_LENGTH*sizeof(char));
-        sprintf(fileName,"D|..");
-        list_rpush(dirChainedList, list_node_new(fileName));
-      }
-      
-      while(1){
-        FILINFO fno;
-        uint8_t fileExtMatch=0;                                           // flag is directory item match the file extension filter
-        fres = f_readdir(&dir, &fno);
- 
-        if (fres != FR_OK){
-          log_error("Error f_readdir:%d path:%s\n", fres,path);
-          return RET_ERR;
-        }
-
-        if ((fres != FR_OK) || (fno.fname[0] == 0))
-          break;
-                                                                          // 256+2
-        len=(int)strlen(fno.fname);                                       // Warning strlen
-        uint8_t extLen=0;
-        if (!(fno.fattrib & AM_DIR)){
-          //log_info("file %s",fno.fname);
-          for (uint8_t i=0;i<MAX_EXTFILTER_ITEM;i++){
-            if (extFilter[i]==NULL || !strcmp(extFilter[i],""))                                              // End of the list
-              break;
-            extLen=strlen(extFilter[i]);
-            if (!memcmp(fno.fname+(len-extLen),extFilter[i],extLen)){
-              //log_info("file %s ext %s match %d %d",fno.fname,extFilter[i],extLen,i);
-              fileExtMatch=1;
-              break;
-            }
-            
-          }
-        }
-
-        if (((fno.fattrib & AM_DIR) && 
-            !(fno.fattrib & AM_HID) && len > 0 && fno.fname[0]!='.' ) ||     // Listing Directories & File with NIC extension
-            (len>3 && fileExtMatch==1  &&            // .dsk
-             !(fno.fattrib & AM_SYS) &&                        // Not System file
-             !(fno.fattrib & AM_HID)                           // Not Hidden file
-            )
-            ){
-              
-              fileName=malloc(MAX_FILENAME_LENGTH*sizeof(char));
-          
-            if (fno.fattrib & AM_DIR){
-              fileName[0]='D';
-              fileName[1]='|';
-              strcpy(fileName+2,fno.fname);
-            }else{
-              fileName[0]='F';
-              fileName[1]='|';
-              memcpy(fileName+2,fno.fname,len);
-              fileName[len+2]=0x0;
-            }
-              list_rpush(dirChainedList, list_node_new(fileName));
-            }
-
-        /*log_debug("%c%c%c%c %10d %s/%s",
-          ((fno.fattrib & AM_DIR) ? 'D' : '-'),
-          ((fno.fattrib & AM_RDO) ? 'R' : '-'),
-          ((fno.fattrib & AM_SYS) ? 'S' : '-'),
-          ((fno.fattrib & AM_HID) ? 'H' : '-'),
-          (int)fno.fsize, path, fno.fname);
-        */
-      }
     }
+    
+    while(1){
+      FILINFO fno;
+      uint8_t fileExtMatch=0;                                                                   // flag is directory item match the file extension filter
+      fres = f_readdir(&dir, &fno);
+
+      if (fres != FR_OK){
+        log_error("Error f_readdir:%d path:%s\n", fres,path);
+        return RET_ERR;
+      }
+
+      if ((fres != FR_OK) || (fno.fname[0] == 0))
+        break;
+                                                                                                // 256+2
+      len=(int)strlen(fno.fname);                                                               // Warning strlen
+      uint8_t extLen=0;
+      if (!(fno.fattrib & AM_DIR)){
+        //log_info("file %s",fno.fname);
+        for (uint8_t i=0;i<MAX_EXTFILTER_ITEM;i++){
+          if (extFilter[i]==NULL || !strcmp(extFilter[i],""))                                   // End of the list
+            break;
+            
+          extLen=strlen(extFilter[i]);
+          if (!memcmp(fno.fname+(len-extLen),extFilter[i],extLen)){
+            //log_info("file %s ext %s match %d %d",fno.fname,extFilter[i],extLen,i);
+            fileExtMatch=1;
+            break;
+          }
+          
+        }
+      }
+
+      if (((fno.fattrib & AM_DIR) && 
+          !(fno.fattrib & AM_HID) && len > 0 && fno.fname[0]!='.' ) ||                          // Listing Directories & File with NIC extension
+          (len>3 && fileExtMatch==1  &&                      
+            !(fno.fattrib & AM_SYS) &&                                                          // Not System file
+            !(fno.fattrib & AM_HID)                                                             // Not Hidden file
+          )
+          ){
+            
+            fileName=malloc(MAX_FILENAME_LENGTH*sizeof(char));
+        
+          if (fno.fattrib & AM_DIR){
+            fileName[0]='D';
+            fileName[1]='|';
+            strcpy(fileName+2,fno.fname);
+          }else{
+            fileName[0]='F';
+            fileName[1]='|';
+            memcpy(fileName+2,fno.fname,len);
+            fileName[len+2]=0x0;
+          }
+            list_rpush(dirChainedList, list_node_new(fileName));
+          }
+
+      /*log_debug("%c%c%c%c %10d %s/%s",
+        ((fno.fattrib & AM_DIR) ? 'D' : '-'),
+        ((fno.fattrib & AM_RDO) ? 'R' : '-'),
+        ((fno.fattrib & AM_SYS) ? 'S' : '-'),
+        ((fno.fattrib & AM_HID) ? 'H' : '-'),
+        (int)fno.fsize, path, fno.fname);
+      */
+    }
+  }
   
   dirChainedList=sortLinkedList(dirChainedList);
   f_closedir(&dir);
@@ -1085,17 +1097,17 @@ enum STATUS unlinkImageFile(char* fullpathfilename){
     return RET_OK;
 }
 
-enum STATUS execAction(enum action nextAction){
-    switch(nextAction){
+enum STATUS execAction(enum action *nextAction){
+    switch(*nextAction){
       
       case SYSRESET:
         NVIC_SystemReset();
-        nextAction=NONE;
+        *nextAction=NONE;
         break;
       
       case MKFS:
         initMakeFsConfirmedScr();
-        nextAction=NONE;
+        *nextAction=NONE;
         break;
       
       case FSDISP:
@@ -1107,11 +1119,11 @@ enum STATUS execAction(enum action nextAction){
         setConfigParamStr("currentPath",currentFullPath);
         saveConfigFile();
         initFsScr(currentPath);
-        nextAction=NONE;
-      
+        *nextAction=NONE;
+        break;
       default:
         log_error("execAction not handled");
-        nextAction=NONE;
+        *nextAction=NONE;
         return RET_ERR;
         break;
     }
@@ -1156,6 +1168,7 @@ int main(void){
   ptrReceiveDataIRQ=nothingHook;
   ptrSendDataIRQ=nothingHook;
   ptrWrReqIRQ=nothingHook;
+  ptrSelectIRQ=nothingHook;
   ptrDeviceEnableIRQ=ui16NothingHook;
   ptrMainLoop=nothingHook;
   ptrUnmountImage=statusNothingHook;
@@ -1214,12 +1227,12 @@ int main(void){
   EnableTiming();                                                           // Enable WatchDog to get precise CPU Cycle counting
  
   TIM1->PSC=1000;
-
+/*
   int T2_DIER=0x0;
   T2_DIER|=TIM_DIER_CC2IE;
   T2_DIER|=TIM_DIER_UIE;
   TIM2->DIER|=T2_DIER;                                                      // Enable Output compare Interrupt
-  
+*/  
   int T4_DIER=0x0;
   T4_DIER|=TIM_DIER_CC2IE;
   T4_DIER|=TIM_DIER_UIE;
@@ -1294,7 +1307,7 @@ int main(void){
       sprintf(tmpFullPathImageFilename,"%s",imgFile);
     }
     //const char * filtr[]={"woz","WOZ"};
-    walkDir(currentFullPath,(const char **)ptrFileFilter);
+    walkDir(currentFullPath,ptrFileFilter);
 
   
   }else{
@@ -1314,6 +1327,7 @@ int main(void){
       ptrReceiveDataIRQ=DiskIIReceiveDataIRQ;
       ptrSendDataIRQ=DiskIISendDataIRQ;
       ptrWrReqIRQ=DiskIIWrReqIRQ;
+      ptrSelectIRQ=DiskIISelectIRQ;
       ptrDeviceEnableIRQ=DiskIIDeviceEnableIRQ;
       ptrMainLoop=DiskIIMainLoop;
       ptrUnmountImage=DiskIIUnmountImage;
@@ -1453,7 +1467,7 @@ static void MX_NVIC_Init(void)
   HAL_NVIC_SetPriority(TIM2_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(TIM2_IRQn);
   /* TIM3_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(TIM3_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(TIM3_IRQn, 2, 0);
   HAL_NVIC_EnableIRQ(TIM3_IRQn);
   /* TIM4_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(TIM4_IRQn, 10, 0);
@@ -1637,7 +1651,7 @@ static void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 0;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 32*12-1;//-2;//-2;                      // Needs to be investigate -5 otherwise does not work 
+  htim2.Init.Period = 32*12-1-2;//-2;//-2;                      // Needs to be investigate -5 otherwise does not work 
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -1668,7 +1682,7 @@ static void MX_TIM2_Init(void)
     Error_Handler();
   }
   sConfigOC.OCMode = TIM_OCMODE_TIMING;
-  sConfigOC.Pulse = 32*6;
+  sConfigOC.Pulse = 2*96;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   if (HAL_TIM_OC_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
@@ -1815,7 +1829,7 @@ static void MX_USART1_UART_Init(void)
 
   /* USER CODE END USART1_Init 1 */
   huart1.Instance = USART1;
-  huart1.Init.BaudRate = 921600;// 921600 230400;
+  huart1.Init.BaudRate = 460800;// 921600 230400;
   huart1.Init.WordLength = UART_WORDLENGTH_8B;
   huart1.Init.StopBits = UART_STOPBITS_1;
   huart1.Init.Parity = UART_PARITY_NONE;
@@ -1928,11 +1942,11 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin : SELECT_Pin */
   GPIO_InitStruct.Pin = SELECT_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(SELECT_GPIO_Port, &GPIO_InitStruct);
 
-  
+
   /*Configure GPIO pin : _35DSK */
   GPIO_InitStruct.Pin = _35DSK_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
@@ -2002,7 +2016,13 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
     
     ptrWrReqIRQ();
     
-  }else {
+  }else if (GPIO_Pin == SELECT_Pin){
+    
+    ptrSelectIRQ();
+    
+  }
+  
+  else {
       __NOP();
   }
 }

@@ -30,6 +30,9 @@ extern uint8_t flgSoundEffect;
 extern uint8_t bootImageIndex;
 extern enum action nextAction;
 
+extern const  char** ptrFileFilter;
+
+
 prodosPartition_t devices[MAX_PARTITIONS];
 
 char* smartPortHookFilename=NULL;
@@ -44,7 +47,7 @@ int initPartition;
 
 static volatile unsigned char phase=0x0;
 
-const char * smartportImageExt[]={"PO","po","2MG","2mg"};
+const  char * smartportImageExt[]={"PO","po","2MG","2mg",NULL};
 
 uint16_t messageId=0x0;
 
@@ -324,6 +327,9 @@ void SmartPortInit(){
     //TIM3->CCR2=32*3;
 
     //char sztmp[128];
+
+    ptrFileFilter=smartportImageExt;
+
     char * szFile;
     char key[16];
     for(uint8_t i=0; i< MAX_PARTITIONS; i++){
@@ -1240,8 +1246,15 @@ void SmartPortMainLoop(){
 
                             case 0x05: // UNIDISK EXECUTE
                                 SmartportReceivePacket();
-                                log_info("Smartport cmd:%02X, dest:%02X, control command code:%02X EXECUTE",packet_buffer[SP_COMMAND],dest,ctrlCode);
                                 
+                                for (partition = 0; partition < MAX_PARTITIONS; partition++) { 
+                                    uint8_t dev=(partition + initPartition) % MAX_PARTITIONS;                                       // Check if its one of ours
+                                    if (devices[dev].device_id == dest) {
+                                        decodeControlExecutePacket(&devices[dev]);
+                                    }
+                                }  
+                                
+                                log_info("Smartport cmd:%02X, dest:%02X, control command code:%02X EXECUTE",packet_buffer[SP_COMMAND],dest,ctrlCode);
                                 print_packet ((unsigned char*) packet_buffer,packet_length());
                                 
                                 respType=0x01;
@@ -1440,7 +1453,7 @@ void SmartPortMainLoop(){
                         nextAction=NONE;
                         break;
                     default:
-                        execAction(nextAction);
+                        execAction(&nextAction);
                 }
                 
             }
@@ -1588,6 +1601,48 @@ void encodeExtendedDataPacket (unsigned char source){
     packet_buffer[602] = 0xc8;                                                                      //pkt end
     packet_buffer[603] = 0x00;                                                                      //mark the end of the packet_buffer
 
+}
+
+//*****************************************************************************
+// Function: decodeControlExecutePacket
+// Parameters: prodosPartition
+// Returns: error code, >0 = error encountered
+//
+// Description: decode incomming packet and keep track of unidisk Register
+// to fulfill unidisk 
+//*****************************************************************************
+void decodeControlExecutePacket(prodosPartition_t * d){
+
+/*
+HOST 2nd Message
+HOST Packet size:022, src:80, dst:81, type:82, aux:80, cmd:80, paramcnt:80
+0000: C3    PBEGIN
+      
+      81    SRC  
+      80    DEST
+      82    TYPE 
+      80    AUX
+      80    STAT
+      86    MSB
+
+      80    COUNT LOW BYTE
+      80    COUNT HIGH BYTE
+      80    ACCUMULATOR
+      80    X REGISTER
+      80    Y REGISTER
+      A4    P STATE PROC VALUE
+      80    LOW PC
+      87    HIGH PC
+      AE FB CKSUM
+     
+      C8    PEND
+*/
+
+
+    d->unidiskRegister_A=   packet_buffer[9] &0x7f  | ((((unsigned short)packet_buffer[6] << 3) & 0x80));
+    d->unidiskRegister_X=   packet_buffer[10] &0x7f | ((((unsigned short)packet_buffer[6] << 4) & 0x80));
+    d->unidiskRegister_P=   packet_buffer[12] &0x7f | ((((unsigned short)packet_buffer[6] << 6) & 0x80));
+    return;
 }
 
 

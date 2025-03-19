@@ -6,14 +6,12 @@
 #include <string.h>
 #include <stdint.h>
 
-
-
-
 void DiskIIPhaseIRQ();
 
 void DiskIIReceiveDataIRQ();
 void DiskIISendDataIRQ();
 void DiskIIWrReqIRQ();
+void DiskIISelectIRQ();
 int DiskIIDeviceEnableIRQ(uint16_t GPIO_Pin);
 
 

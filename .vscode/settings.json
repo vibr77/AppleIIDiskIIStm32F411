@@ -1,8 +1,5 @@
 {
-<<<<<<< Updated upstream
-    "C_Cpp.errorSquiggles": "disabled"
-=======
-    "cortex-debug.armToolchainPath": "/Applications/ArmGNUToolchain/13.3.Rel1/arm-none-eabi/bin",
-    "cortex-debug.openocdPath": "/opt/homebrew/bin/openocd"
->>>>>>> Stashed changes
+    "cortex-debug.armToolchainPath": "/Applications/ArmGNUToolchain/14.2.rel1/arm-none-eabi/bin/",
+    "cortex-debug.openocdPath": "/opt/homebrew/bin/openocd",
+    "cmake.sourceDirectory": "/Users/vincent.besson/SynologyDrive/20.Pro/41.TechProjects/02.Apple_II/06.Apple_SDISK_II/AppleIISDiskII_stm32f411_sdio/dump/clemens_iigs-main"
 }
