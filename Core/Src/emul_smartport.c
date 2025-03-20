@@ -1725,7 +1725,24 @@ static void encodeUnidiskStatReplyPacket(prodosPartition_t d){
     packet_buffer[5] = 0xff;
 
     /*
+
+    Status Code = $05, Return UniDisk 3.5 Status This call allows the
+    diagnostic program to get more detailed information about the cause of a
+    read or write error, and to examine the contents of the 65C02's registers
+    after a CONTROL Protocol Converter call with control code = $05
+
+    The Retries byte returned by a STATUS call with status code = $05 (Return
+    UniDisk 3.5 Status) species the number of address fields that had to be
+    passed before the operation was completed. This information could be used,
+    for example, to determine the number of passes necessary to read a data
+    field correctly: If Retries is found to be greater than the number of sectors
+    on the target track, then more than one pass was required.
+    The last four bytes of the status list are set only after a CONTROL call with
+    control code = $05, and are zero after any other call (STATUS calls do not
+    clear the status bytes).
+
     Msg: 0227
+    
     HOST Packet size:022, src:80, dst:81, type:80, aux:80, cmd:80, paramcnt:83
     0000: C3 81 80 80 80 80 82 81 80 80 83 E0 C0 AB 85 84 - ..����..��......
     0010: 83 80 80 EA FE C8                               - .��.............
@@ -1773,9 +1790,6 @@ static void encodeUnidiskStatReplyPacket(prodosPartition_t d){
     data[4]=d.unidiskRegister_X;
     data[5]=d.unidiskRegister_Y;
     data[6]=d.unidiskRegister_P;
-
-            
-
 
     packet_buffer[6] = 0xC3;                                                                        // PBEGIN   - start byte
     packet_buffer[7] = 0x80;                                                                        // DEST     - dest id - host

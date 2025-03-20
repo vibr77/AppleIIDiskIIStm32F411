@@ -1,13 +1,53 @@
 # SmartDisk II for Apple II
 
+The SmartDisk II is an Apple II+ // IIe // IIc // IIGs floppy disk emulator based on the STM32F411.
 
-license attached to this project enables reusers to distribute, remix, adapt, and build upon the material in any medium or format for noncommercial purposes only, and only so long as attribution is given to the creator
+If you do not want to build yourself a board, you can order direcly a [ready to use prebuild and flashed board on eBay](
+https://www.ebay.fr/itm/306152710617.)
 
-## Apple II STM32 based Hardware DISKII EMULATOR
+The current board revision is 4
+The current firmware revision supports the followwing 
 
-This project is about an Apple II Disk II hardware emulator capable of reading / writing disk image from/to SDCARD.
+### Supported Emulation:
+| Emulation  | Status
+|:------  |:-----|
+| DISK II 5.25| YES   |
+| SMARTPORT HD| YES   |
+| UNIDISK IIGS| YES   |
 
-This hardware emulator tries to replicate the behaviour of a real DISK II and thus should pass the copy protection on guenine disk images.
+### Supported disk image format:
+
+| format  | read | write |
+|:------  |:-----|:------|
+| NIC| YES   | NO    | 
+| WOZ 1.0| YES    | NO    |
+| WOZ 2.0| YES | YES|
+| DSK       | YES  | YES    |
+| PO    | YES    | YES     |
+| 2MG    | YES    | YES     |
+
+### Copy protection status
+
+| Copy Protection | Status  | 
+|:----------|:----------|
+| FAT Track | PASSED   |
+| Weak Bit  | PASSED    | 
+| Cross track sync  | PASSED    | 
+| Half track | PASSED    | 
+| Data Latch    | PASSED    | 
+| Timing Bits   | PASSED    |
+| E7   | PASSED    | 
+| Optimal Bit Timing <4uS   | PASSED    |
+| Various Bit Counter    | PASSED    | 
+| SpiraDisc    | PASSED    | 
+
+## Licence
+
+license attached to this project enables users to distribute, remix, adapt, and build upon the material in any medium or format for noncommercial purposes only, and only so long as attribution is given to the creator. Commercial rights are reserved to the Author of this project.
+
+## Project
+
+This hardware emulator replicates the behaviour of a real DISK II and thus should pass the copy protection on guenine disk images.
 
 The project is still in beta mode, progress thread is on [AppleFritter Apple II Disk emulator using STM32]( https://www.applefritter.com/content/apple-ii-disk-emulator-using-stm32).
 
@@ -22,7 +62,7 @@ This project relies on a STM32F411(BlackPill) with SDIO Port.
 
 | Directory | Description  |
 |:----------|:----------|
-|  ./gerber  | gerber release to produce PCB    |
+| ./gerber  | gerber release to produce PCB    |
 | ./hardware    | kicad project   |
 | ./core   | firmware source code    |
 | ./Middleware    | libraries used   |
@@ -68,62 +108,11 @@ The list of features currently supported in this project:
 <img src="https://github.com/vibr77/AppleIIDiskIIStm32F411/blob/main/resources/PCB_REV_1_IMAGE.jpeg?raw=true" width="400px" />
 
 
-### Supported Emulation:
-| Emulation  | Status
-|:------  |:-----|
-| DISK II 5.25| YES   |
-| SMARTPORT HD| YES   |
-
-
-### Supported disk image format:
-
-| format  | read | write |
-|:------  |:-----|:------|
-| NIC| YES   | NO    | 
-| WOZ 1.0| YES    | NO    |
-| WOZ 2.0| YES | Experimental|
-| DSK       | YES  | NO    |
-| PO    | YES    | NO     |
-
-### Copy protection status
-
-| Copy Protection | Status  | 
-|:----------|:----------|
-| FAT Track | PASSED   |
-| Weak Bit  | PASSED    | 
-| Cross track sync  | PASSED    | 
-| Half track | PASSED    | 
-| Data Latch    | PASSED    | 
-| Timing Bits   | PASSED    |
-| E7   | PASSED    | 
-| Optimal Bit Timing <4uS   | PASSED    |
-| Various Bit Counter    | PASSED    | 
-| SpiraDisc    | PASSED    | 
-
-
-## Status of the project ##
-
-The first PCB and software are available for testing purpose only. 
-
 ## Release
 
 There are 2 releases type :
 - BIN : classic binary to be uploaded via stlink and starting at 0x08000000
 - UF2 : first you need to upload via stlink the custom bootloader, and then using USB and double click on NRST button, you can easily drag and drop UF2 release file to the stm32. WARNING if using the bootloader, the flash memory from 0x0800000 to 0x80100000 will become read-only (you need to use st-tool to change the stm32 register to reverse).
-
-
-## What is coming next ## 
-
-- Creation of a PCB with the STM32 chip directly,
-- add root panel and config panel
-- Add mkfs in the config panel
-- Addition of protection to 20 pin connector inversion,
-- Support of dsk,po image format for reading,
-- Support of nic,woz 1.x -> 2.1 for writing,
-- configuration screen,
-- adding USB & UF2 bootlooder firmware update support,
-- Remove STM HAL (High Level) driver and move to low level,
-- Finalize a stable software.
 
 ## Hardware design main principles: ##
 
@@ -135,7 +124,7 @@ A DISK II floppy track is about 50.000 Bits, and to be able to read some of the 
 
 
 - The Apple II is expecting data at a very precise pace 1 bit every 4 uS (32*125ns). Multiple options can be considered to perform this:
-	- 1/ Using SPI with DMA
+	- 1/ Using SDIO
 	- 2/ Assembly code with CPU cycle calculation & GPIO Bitbanging
 	- 3/ Timer interrupt trigger with GPIO Bitbanging (preferred option)
 
@@ -160,6 +149,14 @@ Head positionning stepper, managed by external interrupts:
   - PA2 STEP2, ExtI2
   - PA3 STEP3, ExtI3
 
+Other GPIO:
+  - PB8 SELECT, ExtI8 HIGH on Disk II controller (used to define when the A2 is POWERED ON)
+  - PB9 WR Request, ExtI9 Active LOW when writing 
+  - PA4 Device Enable, ExtI4 Active LOW when enable
+  - PB2 WR Protect 
+  - PA7 WR Data 
+  - PB0 RD Data
+  - PA11 _DISK3.5
 
 Button: External Interrupt 9-15 with Timer4 as a debouncer
   - PC13 BTN_DOWN
@@ -212,17 +209,15 @@ TIMERS:
 
 The current software version rely on :
 - STM32 HAL Driver from STMicro
-- FATFS 0.15 (becareful STCUBEMX32 override to version 0.11)
-- CJOSN for configuration file (with some tweaks to make FATFS working)
+- FATFS 0.15 (becareful STCUBEMX32 overrides to version 0.11)
+- CJSON for configuration file (with some tweaks to make FATFS working)
 - SSD1306 Lib with DMA
 
 Software Architecture: 
 
 the maximum track size is 13*512*8= 53 248 Bits or 6656 Bytes
 
-2 Unsigned char Buffers are used :
 - DMA_BIT_TX_BUFFER[6656];   	// For reading part     
-- DMA_BIT_RX_BUFFER[6656];		// For writing part
 
 weakBitTank uint_8 array & fakeBitTank char array are used to manage some copy protection mecanism
 
@@ -265,6 +260,8 @@ Please note that you will need to have a STLINK32 to upload the firmware to the 
 - Understanding the Apple II 
 - PoC|GFTO_issue10
 - PoC|GFTO_issue11
+- IIGS Firmware reference
+- IIc Programmer Guide to 3.5 ROM part 2
 
  
 
