@@ -8,8 +8,6 @@
 #include "main.h"
 #include "configFile.h"
 
-
-
 typedef struct prodosPartition_s{
     FIL fil; 
     enum DISK_FORMAT diskFormat;
@@ -22,6 +20,7 @@ typedef struct prodosPartition_s{
     uint8_t dispIndex;
     unsigned char unidiskRegister_A;
     unsigned char unidiskRegister_X;
+    unsigned char unidiskRegister_Y;
     unsigned char unidiskRegister_P;
 
 } prodosPartition_t;
@@ -43,22 +42,6 @@ void setWPProtectPort(uint8_t direction);
 
 enum STATUS mountProdosPartition(char * filename,int partition);
 
-void encodeDataPacket (unsigned char source);
-void encodeExtendedDataPacket (unsigned char source);
-int decodeDataPacket (void);
-void decodeControlExecutePacket(prodosPartition_t * d);
 
-void encodeReplyPacket(unsigned char source,unsigned char type,unsigned char aux, unsigned char respCode);
-
-void encodeStatusReplyPacket (prodosPartition_t d);
-void encodeExtendedStatusReplyPacket (prodosPartition_t d);
-
-void encodeUnidiskStatReplyPacket(prodosPartition_t d);
-void encodeStatusDibReplyPacket (prodosPartition_t d);
-void encodeExtendedStatusDibReplyPacket (prodosPartition_t d);
-
-enum STATUS verifyCmdpktChecksum(void);
-void print_packet (unsigned char* data, int bytes);
-int packet_length (void);
 
 #endif

@@ -27,9 +27,9 @@ static enum STATUS dsk2Nib(unsigned char *rawByte,unsigned char *buffer,uint8_t 
 
 static enum STATUS decodeAddr(unsigned char *buf, uint8_t * retSector,uint8_t * retTrack);
 static enum STATUS decodeGcr62(uint8_t * buffer,uint8_t * data_out,uint8_t *chksum_out, uint8_t *chksum_calc);
-static enum STATUS decodeGcr62_b(char * src, char * dst);
+
 static enum STATUS decodeGcr62b(unsigned char * src,unsigned char * dst);
-static void print_packet (unsigned char* data, int bytes);
+
 
 const unsigned char signatureAddrStart[]	={0xD5,0xAA,0x96};
 const unsigned char signatureDataStart[]	={0xD5,0xAA,0xAD};
@@ -39,8 +39,10 @@ static  uint8_t  dsk2nibSectorMap[]         = {0, 7, 14, 6, 13, 5, 12, 4, 11, 3,
 static  uint8_t  po2nibSectorMap[]         =  {0, 8,  1, 9, 2, 10, 3, 11, 4, 12, 5, 13, 6, 14, 7, 15};
 
 static  uint8_t  nib2dskSectorMap[]         = {0, 13, 11, 9, 7, 5, 3, 1, 14, 12, 10,8, 6, 4, 2, 15};
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
 static uint8_t   nib2poSectorMap[]          = {0,  2,  4, 6,  8,10, 12,14,  1, 3,  5, 7, 9, 11,13,15};
-
+#pragma GCC diagnostic pop
 static const uint8_t from_gcr_6_2_byte[128] = {
     0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,     // 0x80-0x87
     0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,     // 0x88-0x8F
@@ -367,9 +369,11 @@ static enum STATUS nib2dsk(unsigned char * dskData,unsigned char *buffer,uint8_t
    	uint8_t  dskTrack=0x0;                                                                      // track from the addr decoded block use to check with the function variable
     uint8_t  cksum_out, cksum_calc;                                                             // GCR 6_2 checksum value
 
+    /*
     unsigned long t1,t2,diff1;
     DWT->CYCCNT = 0;                                                                            // Reset cpu cycle counter
     t1 = DWT->CYCCNT;
+    */
 
     const uint8_t checkSignatureLength=3;                                                       // length of the prologue to check changed it to const
     enum BITSTREAM_PARSING_STAGE stage=ADDR_START;                                              // Current stage of the processing to find the right data signature                                                            
@@ -481,7 +485,7 @@ static enum STATUS nib2dsk(unsigned char * dskData,unsigned char *buffer,uint8_t
                         }
             			
                         byteStreamRecord=0;                                                       // Stop recording data in the buffer;
-                        memset(tmpBuffer,0,350);
+                        memset(tmpBuffer,0,346);
                         //log_info("D-E byte:%d %04X bit:%d",i,i,j); 
             		}
 
@@ -555,6 +559,8 @@ static enum STATUS decodeAddr(unsigned char *buf, uint8_t * retSector,uint8_t * 
 
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
 static enum STATUS decodeGcr62b(unsigned char * src,unsigned char * dst){
    
     int i, j;
@@ -585,7 +591,7 @@ static enum STATUS decodeGcr62b(unsigned char * src,unsigned char * dst){
 
     return RET_OK;
 }
-
+#pragma GCC diagnostic pop
 static enum STATUS decodeGcr62(uint8_t * buffer,uint8_t * data_out,uint8_t *chksum_out, uint8_t *chksum_calc) {
     
     const uint8_t *disk_bytes = buffer+3;

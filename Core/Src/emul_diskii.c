@@ -805,11 +805,14 @@ void DiskIIMainLoop(){
                 }
                 
                 irqEnableSDIO();
+                #pragma GCC diagnostic push
+                #pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
                 if (setTrackBitStream(rTrk,DMA_BIT_TX_BUFFER)==RET_OK){
                     log_info("WR trk:%d OK",rTrk);
                 }else{
                     log_error("WR trk:%d KO",rTrk);
                 }
+                #pragma GCC diagnostic pop
                 irqDisableSDIO();
                 GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);
                 
@@ -850,11 +853,14 @@ void DiskIIMainLoop(){
                         HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_2);
                     }
                     irqEnableSDIO();
+                    #pragma GCC diagnostic push
+                    #pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
                     if (setTrackBitStream(prevTrk,DMA_BIT_TX_BUFFER)==RET_OK){
                         log_info("sw WR trk:%d OK",prevTrk);
                     }else{
                         log_error("sw WR trk:%d KO",prevTrk);
                     }
+                    #pragma GCC diagnostic pop
                     irqDisableSDIO();
                     
                     pendingWriteTrk=0;

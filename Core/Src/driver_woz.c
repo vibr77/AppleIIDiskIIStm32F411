@@ -111,6 +111,7 @@ enum STATUS getWozTrackBitStream(int trk,unsigned char * buffer){
   if (wozFile.version==2){
 
     getDataBlocksBareMetal(addr,buffer,blockNumber);
+    while (fsState!=READY){} 
 
   }else if (wozFile.version==1){
     
@@ -676,7 +677,7 @@ uint32_t getWozCrc32(FIL * fil){
 	char ch[64];                                  // Chunk of 64 instead of single char is obviously faster ;)
 	uint32_t crc =0;
   crc = crc ^ ~0U;
-  int br=0;
+  unsigned int br=0;
 	while (!f_eof(fil)){
     f_read(fil,&ch,64,&br);
     for (uint8_t i=0;i<br;i++){

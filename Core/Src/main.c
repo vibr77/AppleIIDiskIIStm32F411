@@ -684,7 +684,7 @@ enum STATUS writeTrkFile(char * filename,char * buffer,uint32_t offset){
   */
 void dumpBuf(unsigned char * buf,long memoryAddr,int len){
 
-    char * data=buf;
+    unsigned char * data=buf;
     int bytes=len;
     int count, row;
     char xx;

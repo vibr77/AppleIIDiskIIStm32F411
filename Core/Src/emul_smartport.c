@@ -46,10 +46,28 @@ int partition;
 int initPartition;
 
 static volatile unsigned char phase=0x0;
-
-const  char * smartportImageExt[]={"PO","po","2MG","2mg",NULL};
-
 uint16_t messageId=0x0;
+
+// ------------------------------------------------------
+// STATIC FUNCTION DEFINITION
+// ------------------------------------------------------
+
+static void encodeDataPacket (unsigned char source);
+static void encodeExtendedDataPacket (unsigned char source);
+static void decodeControlExecutePacket(prodosPartition_t * d);
+static int  decodeDataPacket (void);
+
+static void encodeReplyPacket(unsigned char source,unsigned char type,unsigned char aux, unsigned char respCode);
+
+static void encodeStatusReplyPacket (prodosPartition_t d);
+static void encodeExtendedStatusReplyPacket (prodosPartition_t d);
+static void encodeUnidiskStatReplyPacket(prodosPartition_t d);
+static void encodeStatusDibReplyPacket (prodosPartition_t d);
+static void encodeExtendedStatusDibReplyPacket (prodosPartition_t d);
+
+static enum STATUS verifyCmdpktChecksum(void);
+static void print_packet (unsigned char* data, int bytes);
+static int packet_length (void);
 
 /**
   * @brief SmartPortReceiveDataIRQ function is used to manage SmartPort Emulation in TIMER 
@@ -327,18 +345,20 @@ void SmartPortInit(){
     //TIM3->CCR2=32*3;
 
     //char sztmp[128];
-
+    const  char * smartportImageExt[]={"PO","po","2MG","2mg",NULL};                             // TODO TO BE TESTED
     ptrFileFilter=smartportImageExt;
 
     char * szFile;
     char key[16];
     for(uint8_t i=0; i< MAX_PARTITIONS; i++){
         sprintf(key,"smartport_vol%02d",i);
+        
         szFile=(char *)getConfigParamStr(key);
         if (i==0){
             szFile=(char *)malloc(128*sizeof(char));
             sprintf(szFile,"Arka.2mg");
         }
+
         if (szFile==NULL){
             devices[i].filename=NULL;
             devices[i].mounted=0;
@@ -358,7 +378,6 @@ void SmartPortInit(){
     switchPage(SMARTPORT,NULL);                                                                     // Display the Frame of the screen
     char * fileTab[4];
 
-
     //devices[0].device_id=1;
     //encodeUnidiskStatReplyPacket(devices[0]);
     print_packet ((unsigned char*) packet_buffer,packet_length());
@@ -373,32 +392,25 @@ void SmartPortInit(){
 }
 
 
-
-void debugSend(){
-    HAL_Delay(50);
-    //log_info("%d",nextBit);
-    SmartPortSendDataIRQ();
-
-}
 void SmartPortSendPacket(unsigned char* buffer){
     
-    flgPacket=0;                                                                                    // Reset the flag before sending
+    flgPacket=0;                                                                                // Reset the flag before sending
 
-                                                                                                     // Clear out the packet buffer
+                                                                                                // Clear out the packet buffer
     setRddataPort(1);
-    setWPProtectPort(1);                                                                   // Set ACK Port to output
-    assertAck();                                                                                      // Set ACK high to signal we are ready to send
+    setWPProtectPort(1);                                                                        // Set ACK Port to output
+    assertAck();                                                                                // Set ACK high to signal we are ready to send
     
-    while (!(phase & 0x1));                                                                           // Wait Req to be HIGH, HOST is ready to receive
+    while (!(phase & 0x1));                                                                     // Wait Req to be HIGH, HOST is ready to receive
     
     HAL_TIM_PWM_Start_IT(&htim3,TIM_CHANNEL_4);
     
-    while (flgPacket!=1);                                                                             // Waiting for Send to finish   
+    while (flgPacket!=1);                                                                       // Waiting for Send to finish   
 
     setRddataPort(0);
     HAL_GPIO_WritePin(RD_DATA_GPIO_Port, RD_DATA_Pin,GPIO_PIN_RESET);    
     
-    deAssertAck();                                                                                     //set ACK(BSY) low to signal we have sent the pkt
+    deAssertAck();                                                                              // set ACK(BSY) low to signal we have sent the pkt
     
     while (phase & 0x01);
     
@@ -410,24 +422,20 @@ void SmartportReceivePacket(){
     setRddataPort(1);
     flgPacket=0;
     assertAck(); 
-                                                                            // ACK HIGH, indicates ready to receive
-    while(!(phase & 0x01) );                                                // WAIT FOR REQ TO GO HIGH
+                                                                                            // ACK HIGH, indicates ready to receive
+    while(!(phase & 0x01) );                                                                // WAIT FOR REQ TO GO HIGH
+    while (flgPacket!=1);                                                                   // Receive finish
 
-    while (flgPacket!=1);                                                   // Receive finish
-
-    deAssertAck();                                                          // ACK LOW indicates to the host we have received a packer
-    
-    while(phase & 0x01);                                                    // Wait for REQ to go low
-
-    //printbits();
+    deAssertAck();                                                                          // ACK LOW indicates to the host we have received a packer
+    while(phase & 0x01);                                                                    // Wait for REQ to go low
 
 }
 
 void assertAck(){
-    HAL_GPIO_WritePin(WR_PROTECT_GPIO_Port, WR_PROTECT_Pin,GPIO_PIN_SET);               
+    GPIOWritePin(WR_PROTECT_GPIO_Port, WR_PROTECT_Pin,GPIO_PIN_SET);               
 }
 void deAssertAck(){
-    HAL_GPIO_WritePin(WR_PROTECT_GPIO_Port, WR_PROTECT_Pin,GPIO_PIN_RESET);              
+    GPIOWritePin(WR_PROTECT_GPIO_Port, WR_PROTECT_Pin,GPIO_PIN_RESET);              
 }
 
 void SmartPortMainLoop(){
@@ -459,9 +467,7 @@ void SmartPortMainLoop(){
     unsigned char dest;
 
     HAL_GPIO_WritePin(RD_DATA_GPIO_Port, RD_DATA_Pin,GPIO_PIN_RESET);  // set RD_DATA LOW
-    //HAL_TIM_PWM_Start_IT(&htim2,TIM_CHANNEL_3);
-    //if (digitalRead(ejectPin) == HIGH) 
-    //rotate_boot();
+
     if (bootImageIndex==0)
         bootImageIndex=1;
 
@@ -479,7 +485,6 @@ void SmartPortMainLoop(){
                                                                                             // phase lines for smartport bus reset
                                                                                             // ph3=0 ph2=1 ph1=0 ph0=1
             case 0x05:
-                
                                                                                             // Monitor phase lines for reset to clear
                 while (phase == 0x05);                                                      // Wait for phases to change 
                 number_partitions_initialised = 1;                                          // Reset number of partitions init'd
@@ -524,8 +529,6 @@ void SmartPortMainLoop(){
                             break;
                         }
                         
-                        //if ( devices[(partition + initPartition) % MAX_PARTITIONS].device_id != packet_buffer[SP_DEST])  //destination id
-                        //noid++;
                     }
 
                     if (noid == MAX_PARTITIONS){  //not one of our id's
@@ -1137,7 +1140,7 @@ void SmartPortMainLoop(){
                     case 0xC5:                                                                                              // EXTENDED INIT
                     case 0x85:                                                                                              // INIT CMD                        
                         
-                        uint numMountedPartition=0;
+                        uint8_t numMountedPartition=0;
                         for (partition = 0; partition < MAX_PARTITIONS; partition++) { 
                             uint8_t dev=(partition + initPartition) % MAX_PARTITIONS;
                             if (devices[dev].mounted==1)
@@ -1476,7 +1479,7 @@ enum STATUS mountProdosPartition(char * filename,int partition){
 // requires the data to be in the packet buffer, and builds the smartport
 // packet IN PLACE in the packet buffer
 //*****************************************************************************
-void encodeDataPacket (unsigned char source){
+static void encodeDataPacket (unsigned char source){
 
     int grpbyte, grpcount;
     unsigned char checksum = 0, grpmsb;
@@ -1536,6 +1539,8 @@ void encodeDataPacket (unsigned char source){
 
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
 //*****************************************************************************
 // Function: encodeExtendedDataPacket
 // Parameters: source id
@@ -1545,7 +1550,7 @@ void encodeDataPacket (unsigned char source){
 // requires the data to be in the packet buffer, and builds the smartport
 // packet IN PLACE in the packet buffer
 //*****************************************************************************
-void encodeExtendedDataPacket (unsigned char source){
+static void encodeExtendedDataPacket (unsigned char source){
     
     int grpbyte, grpcount;
     unsigned char checksum = 0, grpmsb;
@@ -1602,7 +1607,7 @@ void encodeExtendedDataPacket (unsigned char source){
     packet_buffer[603] = 0x00;                                                                      //mark the end of the packet_buffer
 
 }
-
+#pragma GCC diagnostic pop
 //*****************************************************************************
 // Function: decodeControlExecutePacket
 // Parameters: prodosPartition
@@ -1611,7 +1616,7 @@ void encodeExtendedDataPacket (unsigned char source){
 // Description: decode incomming packet and keep track of unidisk Register
 // to fulfill unidisk 
 //*****************************************************************************
-void decodeControlExecutePacket(prodosPartition_t * d){
+static void decodeControlExecutePacket(prodosPartition_t * d){
 
 /*
 HOST 2nd Message
@@ -1638,10 +1643,10 @@ HOST Packet size:022, src:80, dst:81, type:82, aux:80, cmd:80, paramcnt:80
       C8    PEND
 */
 
-
-    d->unidiskRegister_A=   packet_buffer[9] &0x7f  | ((((unsigned short)packet_buffer[6] << 3) & 0x80));
-    d->unidiskRegister_X=   packet_buffer[10] &0x7f | ((((unsigned short)packet_buffer[6] << 4) & 0x80));
-    d->unidiskRegister_P=   packet_buffer[12] &0x7f | ((((unsigned short)packet_buffer[6] << 6) & 0x80));
+    d->unidiskRegister_A=   (packet_buffer[9]  & 0x7f)  | ((((unsigned short)packet_buffer[6] << 3) & 0x80));
+    d->unidiskRegister_X=   (packet_buffer[10] & 0x7f)  | ((((unsigned short)packet_buffer[6] << 4) & 0x80));
+    d->unidiskRegister_Y=   (packet_buffer[11] & 0x7f)  | ((((unsigned short)packet_buffer[6] << 5) & 0x80));
+    d->unidiskRegister_P=   (packet_buffer[12] & 0x7f)  | ((((unsigned short)packet_buffer[6] << 6) & 0x80));
     return;
 }
 
@@ -1654,7 +1659,7 @@ HOST Packet size:022, src:80, dst:81, type:82, aux:80, cmd:80, paramcnt:80
 // Description: decode 512 byte data packet for write block command from host
 // decodes the data from the packet_buffer IN-PLACE!
 //*****************************************************************************
-int decodeDataPacket (void){
+static int decodeDataPacket (void){
 
     int grpbyte, grpcount;
     unsigned char numgrps, numodd;
@@ -1708,7 +1713,7 @@ int decodeDataPacket (void){
 
 
 
-void encodeUnidiskStatReplyPacket(prodosPartition_t d){
+static void encodeUnidiskStatReplyPacket(prodosPartition_t d){
     unsigned char checksum = 0;
 
 
@@ -1724,11 +1729,52 @@ void encodeUnidiskStatReplyPacket(prodosPartition_t d){
     HOST Packet size:022, src:80, dst:81, type:80, aux:80, cmd:80, paramcnt:83
     0000: C3 81 80 80 80 80 82 81 80 80 83 E0 C0 AB 85 84 - ..����..��......
     0010: 83 80 80 EA FE C8                               - .��.............
-    .
+    
+    STAT_LIST   
+            DFB     00      
+            DFB     ERROR  
+            DFB     RETRIES
+            DFB     00
+            DFB     REG_A   ACC Value   after a CONTROL EXECUTE CALL
+            DFB     REG_X   X Value     after a CONTROL EXECUTE CALL
+            DFB     REG_Y   Y Value     after a CONTROL EXECUTE CALL
+            DFB     REG_P   Processor Status after a CONTROL EXECUTE CALL
+
+
     DEVICE Packet size:021, src:81, dst:80, type:81, aux:80, cmd:80, paramcnt:81
-    0000: C3 80 81 81 80 80 81 81 80 80 81 80 80 80 80 80 - .�..��..��.�����
-    0010: 88 FF FF BB C8   
+    0000:   C3          0   PBEGIN
+            80          1   DEST
+            81          2   SRC
+            81          3   TYPE
+            80          4   AUX
+            80          5   STAT
+            81          6   ODDCNT
+            81          7   GRPCNT
+            80          8   00  MSBODD
+            80          9   00  ODDBYTE
+            81          10  MSBGRP
+            80          11  ERROR
+            80          12  RETRIES
+            80          13  00
+            80          14  REG_A ACC
+            80          15  REG_X                     
+    0010:   88          16  REG_Y  
+            FF          17  REG_P
+            FF BB       18 19 CHECKSUM 1 2
+            C8          20  PEND
     */
+
+    unsigned char data[7];
+    
+    data[0]=0x0;            //  ERRROR
+    data[1]=0x0;            //  RETRIES
+    data[2]=0x0;            //  00
+    data[3]=d.unidiskRegister_A;
+    data[4]=d.unidiskRegister_X;
+    data[5]=d.unidiskRegister_Y;
+    data[6]=d.unidiskRegister_P;
+
+            
 
 
     packet_buffer[6] = 0xC3;                                                                        // PBEGIN   - start byte
@@ -1741,7 +1787,20 @@ void encodeUnidiskStatReplyPacket(prodosPartition_t d){
     packet_buffer[13] = 0x81;                                                                       // GRP7CNT
     packet_buffer[14] = 0x80; 
     packet_buffer[15] = 0x80; 
-    packet_buffer[16] = 0x81; 
+    
+    packet_buffer[16] = 0x80 |                                                                      // GROUP MSB
+                    ((data[0]>> 1) & 0x40) | 
+                    ((data[1]>> 2) & 0x20) | 
+                    ((data[2]>> 3) & 0x10) | 
+                    ((data[3]>> 4) & 0x08 )|
+                    ((data[4]>> 5) & 0x04 )|
+                    ((data[5]>> 6) & 0x02 )|
+                    ((data[6]>> 7) & 0x01 ); 
+    for (count=0;count <7;count++){
+        packet_buffer[16+count] = data[count] & 0x80; 
+    }
+    
+    /*packet_buffer[16] = 0x81; 
     packet_buffer[17] = 0x80; 
     packet_buffer[18] = 0x80; 
     packet_buffer[19] = 0x80; 
@@ -1749,6 +1808,7 @@ void encodeUnidiskStatReplyPacket(prodosPartition_t d){
     packet_buffer[21] = 0x80; 
     packet_buffer[22] = 0x88; 
     packet_buffer[23] = 0xFF;
+    */
 
     for (count = 7; count < 14; count++)                                                            // xor the packet header bytes
         checksum = checksum ^ packet_buffer[count];
@@ -1784,7 +1844,7 @@ void encodeUnidiskStatReplyPacket(prodosPartition_t d){
 // data byte 2-4 number of blocks. 2 is the LSB and 4 the MSB. 
 // Size determined from image file.
 //*****************************************************************************
-void encodeStatusReplyPacket (prodosPartition_t d){
+static void encodeStatusReplyPacket (prodosPartition_t d){
 
     unsigned char checksum = 0;
     unsigned char data[4];
@@ -1825,38 +1885,38 @@ void encodeStatusReplyPacket (prodosPartition_t d){
     packet_buffer[4] = 0xfc;
     packet_buffer[5] = 0xff;
 
-    packet_buffer[6] = 0xc3;                                                                        // PBEGIN   - start byte
-    packet_buffer[7] = 0x80;                                                                        // DEST     - dest id - host
-    packet_buffer[8] = d.device_id;                                                                 // SRC      - source id - us
-    packet_buffer[9] = 0x81;                                                                        // TYPE     - status
-    packet_buffer[10] = 0x80;                                                                       // AUX
-    packet_buffer[11] = 0x80;                                                                       // STAT     - data status
-    packet_buffer[12] = 0x84;                                                                       // ODDCNT   - 4 data bytes
-    packet_buffer[13] = 0x80;                                                                       // GRP7CNT
+    packet_buffer[6] = 0xc3;                                                                    // PBEGIN   - start byte
+    packet_buffer[7] = 0x80;                                                                    // DEST     - dest id - host
+    packet_buffer[8] = d.device_id;                                                             // SRC      - source id - us
+    packet_buffer[9] = 0x81;                                                                    // TYPE     - status
+    packet_buffer[10] = 0x80;                                                                   // AUX
+    packet_buffer[11] = 0x80;                                                                   // STAT     - data status
+    packet_buffer[12] = 0x84;                                                                   // ODDCNT   - 4 data bytes
+    packet_buffer[13] = 0x80;                                                                   // GRP7CNT
     //4 odd bytes
     packet_buffer[14] = 0x80 | 
                     ((data[0]>> 1) & 0x40) | 
                     ((data[1]>> 2) & 0x20) | 
                     ((data[2]>> 3) & 0x10) | 
-                    ((data[3]>> 4) & 0x08 );                                                        //odd msb
+                    ((data[3]>> 4) & 0x08 );                                                    // odd msb
 
-    packet_buffer[15] = data[0] | 0x80;                                                             // data 1
-    packet_buffer[16] = data[1] | 0x80;                                                             // data 2 
-    packet_buffer[17] = data[2] | 0x80;                                                             // data 3 
-    packet_buffer[18] = data[3] | 0x80;                                                             // data 4 
+    packet_buffer[15] = data[0] | 0x80;                                                         // data 1
+    packet_buffer[16] = data[1] | 0x80;                                                         // data 2 
+    packet_buffer[17] = data[2] | 0x80;                                                         // data 3 
+    packet_buffer[18] = data[3] | 0x80;                                                         // data 4 
     
-    for(int i = 0; i < 4; i++){                                                                     //calc the data bytes checksum
+    for(int i = 0; i < 4; i++){                                                                 //calc the data bytes checksum
         checksum ^= data[i];
     }
 
-    for (count = 7; count < 14; count++)                                                            // xor the packet header bytes
+    for (count = 7; count < 14; count++)                                                        // xor the packet header bytes
         checksum = checksum ^ packet_buffer[count];
     
-    packet_buffer[19] = checksum | 0xaa;                                                            // 1 c6 1 c4 1 c2 1 c0
-    packet_buffer[20] = checksum >> 1 | 0xaa;                                                       // 1 c7 1 c5 1 c3 1 c1
+    packet_buffer[19] = checksum | 0xaa;                                                        // 1 c6 1 c4 1 c2 1 c0
+    packet_buffer[20] = checksum >> 1 | 0xaa;                                                   // 1 c7 1 c5 1 c3 1 c1
 
-    packet_buffer[21] = 0xc8;                                                                       //PEND
-    packet_buffer[22] = 0x00;                                                                       //end of packet in buffer
+    packet_buffer[21] = 0xc8;                                                                   // PEND
+    packet_buffer[22] = 0x00;                                                                   // end of packet in buffer
 
 }
 
@@ -1872,7 +1932,7 @@ void encodeStatusReplyPacket (prodosPartition_t d){
 // data byte 2-5 number of blocks. 2 is the LSB and 5 the MSB. 
 // Size determined from image file.
 //*****************************************************************************
-void encodeExtendedStatusReplyPacket (prodosPartition_t d){
+static void encodeExtendedStatusReplyPacket (prodosPartition_t d){
     unsigned char checksum = 0;
 
     unsigned char data[5];
@@ -1899,56 +1959,56 @@ void encodeExtendedStatusReplyPacket (prodosPartition_t d){
     
      */
 
-    data[0] = 0b11111000;
-    //Disk size
-    data[1] = d.blocks & 0xff;
+    data[0] = 0b11111000;                                                                       // Status Bytes
+
+    data[1] = d.blocks & 0xff;                                                                  // Disk size Bytes
     data[2] = (d.blocks >> 8 ) & 0xff;
     data[3] = (d.blocks >> 16 ) & 0xff;
     data[4] = (d.blocks >> 24 ) & 0xff;
 
-    packet_buffer[0] = 0xff;                                                                        //sync bytes
+    packet_buffer[0] = 0xff;                                                                    // SYNC bytes
     packet_buffer[1] = 0x3f;
     packet_buffer[2] = 0xcf;
     packet_buffer[3] = 0xf3;
     packet_buffer[4] = 0xfc;
     packet_buffer[5] = 0xff;
 
-    packet_buffer[6] = 0xc3;                                                                        // PBEGIN - start byte
-    packet_buffer[7] = 0x80;                                                                        // DEST - dest id - host
-    packet_buffer[8] = d.device_id;                                                                 // SRC - source id - us
-    packet_buffer[9] = 0xC1;                                                                        // TYPE - extended status
-    packet_buffer[10] = 0x80;                                                                       // AUX
-    packet_buffer[11] = 0x80;                                                                       // STAT - data status
-    packet_buffer[12] = 0x85;                                                                       // ODDCNT - 5 data bytes
-    packet_buffer[13] = 0x80;                                                                       // GRP7CNT
+    packet_buffer[6] = 0xc3;                                                                    // PBEGIN - start byte
+    packet_buffer[7] = 0x80;                                                                    // DEST - dest id - host
+    packet_buffer[8] = d.device_id;                                                             // SRC - source id - us
+    packet_buffer[9] = 0xC1;                                                                    // TYPE - extended status
+    packet_buffer[10] = 0x80;                                                                   // AUX
+    packet_buffer[11] = 0x80;                                                                   // STAT - data status
+    packet_buffer[12] = 0x85;                                                                   // ODDCNT - 5 data bytes
+    packet_buffer[13] = 0x80;                                                                   // GRP7CNT
     //5 odd bytes
     packet_buffer[14] = 0x80 | 
                         ((data[0]>> 1) & 0x40) | 
                         ((data[1]>> 2) & 0x20) | 
                         ((data[2]>> 3) & 0x10) |
                         ((data[3]>> 4) & 0x08) | 
-                        ((data[4]>> 5) & 0x04) ;                                                    //odd msb
-    packet_buffer[15] = data[0] | 0x80;                                                             //data 1
-    packet_buffer[16] = data[1] | 0x80;                                                             //data 2 
-    packet_buffer[17] = data[2] | 0x80;                                                             //data 3 
-    packet_buffer[18] = data[3] | 0x80;                                                             //data 4 
-    packet_buffer[19] = data[4] | 0x80;                                                             //data 5
+                        ((data[4]>> 5) & 0x04) ;                                                // odd msb
+    packet_buffer[15] = data[0] | 0x80;                                                         // data 1
+    packet_buffer[16] = data[1] | 0x80;                                                         // data 2 
+    packet_buffer[17] = data[2] | 0x80;                                                         // data 3 
+    packet_buffer[18] = data[3] | 0x80;                                                         // data 4 
+    packet_buffer[19] = data[4] | 0x80;                                                         // data 5
     
-    for(int i = 0; i < 5; i++){                                                                     //calc the data bytes checksum
+    for(int i = 0; i < 5; i++){                                                                 // calc the data bytes checksum
         checksum ^= data[i];
     }
     
-    for (count = 7; count < 14; count++)                                                            //calc the data bytes checksum                                                           
-        checksum = checksum ^ packet_buffer[count];                                                 // xor the packet header bytes
-    packet_buffer[20] = checksum | 0xaa;                                                            // 1 c6 1 c4 1 c2 1 c0
-    packet_buffer[21] = checksum >> 1 | 0xaa;                                                       // 1 c7 1 c5 1 c3 1 c1
+    for (count = 7; count < 14; count++)                                                        // calc the data bytes checksum                                                           
+        checksum = checksum ^ packet_buffer[count];                                             // xor the packet header bytes
+    packet_buffer[20] = checksum | 0xaa;                                                        // 1 c6 1 c4 1 c2 1 c0
+    packet_buffer[21] = checksum >> 1 | 0xaa;                                                   // 1 c7 1 c5 1 c3 1 c1
 
-    packet_buffer[22] = 0xc8;                                                                       //PEND
-    packet_buffer[23] = 0x00;                                                                       //end of packet in buffer
+    packet_buffer[22] = 0xc8;                                                                   // PEND
+    packet_buffer[23] = 0x00;                                                                   // end of packet in buffer
 
 }
 
-void encodeReplyPacket(unsigned char source,unsigned char type,unsigned char aux, unsigned char respCode){
+static void encodeReplyPacket(unsigned char source,unsigned char type,unsigned char aux, unsigned char respCode){
 
     /*
 
@@ -2293,7 +2353,7 @@ void encodeExtendedStatusDibReplyPacket (prodosPartition_t d){
 //
 // 
 //*****************************************************************************
-enum STATUS verifyCmdpktChecksum(void){
+static enum STATUS verifyCmdpktChecksum(void){
     int count = 0, length;
     unsigned char evenbits, oddbits, bit7, bit0to6, grpbyte;
     unsigned char calc_checksum = 0; //initial value is 0
@@ -2366,7 +2426,7 @@ C3              PBEGIN    MARKS BEGINNING OF PACKET             32 micro Sec.   
 //
 // Description: prints packet data for debug purposes to the serial port
 //*****************************************************************************
-void print_packet (unsigned char* data, int bytes){
+static void print_packet (unsigned char* data, int bytes){
     int count, row;
     char xx;
 
@@ -2406,11 +2466,9 @@ void print_packet (unsigned char* data, int bytes){
 // Description: Calculates the length of the packet in the packet_buffer.
 // A zero marks the end of the packet data.
 //*****************************************************************************
-int packet_length (void){
+static int packet_length (void){
     int x = 0;
-
     while (packet_buffer[x++]);
-
     return x - 1; // point to last packet byte = C8
 }
 
@@ -2435,8 +2493,8 @@ enum STATUS SmartPortMountImage( prodosPartition_t *d, char * filename ){
               !memcmp(filename+(len-4),".2MG",4)){
         
         d->diskFormat=_2MG;
-        _2mg_t * st2mg;
-        //st2mg.blockCount=0;
+        
+        _2mg_t * st2mg=NULL;
         if(mount2mgFile(st2mg,filename)==RET_OK){
             d->blocks=st2mg->blockCount;
             d->dataOffset=64;
