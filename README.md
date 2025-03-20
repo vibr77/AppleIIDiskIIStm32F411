@@ -3,7 +3,7 @@
 The SmartDisk II is an Apple II+ // IIe // IIc // IIGs floppy disk emulator based on the STM32F411.
 
 If you do not want to build yourself a board, you can order direcly a [ready to use prebuild and flashed board on eBay](
-https://www.ebay.fr/itm/306152710617.)
+https://www.ebay.fr/itm/306152710617)
 
 The current board revision is 4
 The current firmware revision supports the followwing 
@@ -17,7 +17,7 @@ The current firmware revision supports the followwing
 
 ### Supported disk image format:
 
-| format  | read | write |
+| Format  | Read | Write |
 |:------  |:-----|:------|
 | NIC| YES   | NO    | 
 | WOZ 1.0| YES    | NO    |
