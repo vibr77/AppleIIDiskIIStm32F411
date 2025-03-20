@@ -363,8 +363,8 @@ static enum STATUS nib2dsk(unsigned char * dskData,unsigned char *buffer,uint8_t
    	int i=0;                                                                                    // Buffer index in the infinite while loop
    	int indxOfFirstAddr=-1;                                                                     // Byte address on the stream for the first Addressblock, to check if a full stream loop is done before exiting
    	
-   	uint8_t  nibSector=0;                                                                       // nibSector from the trackstream
-   	uint8_t  dskSector=0;                                                                       // dskSector number of applying the DOS or PRODOS sector ordering
+   	uint8_t  logicalSector=0;                                                                   // nibSector from the trackstream
+   	uint8_t  physicalSector=0;                                                                  // disk Sector number of applying the DOS or PRODOS sector ordering
    	uint8_t  sumSector=0x0;                                                                     // calculate the sum of sector to confirm a complete track is here
    	uint8_t  dskTrack=0x0;                                                                      // track from the addr decoded block use to check with the function variable
     uint8_t  cksum_out, cksum_calc;                                                             // GCR 6_2 checksum value
@@ -374,6 +374,15 @@ static enum STATUS nib2dsk(unsigned char * dskData,unsigned char *buffer,uint8_t
     DWT->CYCCNT = 0;                                                                            // Reset cpu cycle counter
     t1 = DWT->CYCCNT;
     */
+    unsigned char * sectorMap;
+    if (mountImageInfo.type==2)
+       sectorMap=nib2dskSectorMap;
+    else if (mountImageInfo.type==3)
+       sectorMap=nib2poSectorMap;
+    else{
+       log_error("Unable to match sectorMap with mountImageInfo.type");
+       return RET_ERR;
+    }
 
     const uint8_t checkSignatureLength=3;                                                       // length of the prologue to check changed it to const
     enum BITSTREAM_PARSING_STAGE stage=ADDR_START;                                              // Current stage of the processing to find the right data signature                                                            
@@ -432,7 +441,7 @@ static enum STATUS nib2dsk(unsigned char * dskData,unsigned char *buffer,uint8_t
             			stage=DATA_START;                                                       
             			ptrSearchSignature=&signatureDataStart[0];
             			
-                        if((decodeAddr(tmpBuffer,&nibSector,&dskTrack))==RET_ERR){    // decode ADDRESS Bloc field
+                        if((decodeAddr(tmpBuffer,&logicalSector,&dskTrack))==RET_ERR){    // decode ADDRESS Bloc field
                             log_error("decodeAddr error end of the process");
                             *retError=0x02;
                          
@@ -445,7 +454,7 @@ static enum STATUS nib2dsk(unsigned char * dskData,unsigned char *buffer,uint8_t
                             *retError=0x03;
                             return RET_ERR;
                         }
-            			dskSector=nib2dskSectorMap[nibSector];                                  // Will be usefull to determine position in the dsk track buffer to vbe written in the file
+            			physicalSector=sectorMap[logicalSector];                                  // Will be usefull to determine position in the dsk track buffer to vbe written in the file
             			
                         byteStreamRecord=0;                                                     // stop recording char in the buffer
             			
@@ -468,20 +477,20 @@ static enum STATUS nib2dsk(unsigned char * dskData,unsigned char *buffer,uint8_t
                         stage=ADDR_START;
             			ptrSearchSignature=&signatureAddrStart[0];                              // Next signature search is ADDRESS BLOC
             			                                                                        // Increment the sumSector as checksum with the value of the current sector number
-            			uint8_t * data_out=dskData+256*dskSector;                               // send directly the right buffer address to avoid memcpy
+            			uint8_t * data_out=dskData+256*physicalSector;                               // send directly the right buffer address to avoid memcpy
                         
                         //if (decodeGcr62b(tmpBuffer+3,(unsigned char *)data_out)==RET_ERR){
                         if(decodeGcr62(tmpBuffer,(unsigned char *)data_out,&cksum_out,&cksum_calc)==RET_ERR){    // gcr6_2 decode and expect 256 Bytes in return;
-            				log_error("GCR decoding trk:%02d, sector:%02d, bytePos:%d %02X",trk,dskSector,i,i);
+            				log_error("GCR decoding trk:%02d, sector:%02d, bytePos:%d %02X",trk,physicalSector,i,i);
                             //dumpBuf(buffer,1,6657);
                             char filename[32];
-                            sprintf(filename,"dmp_gcr_%d_%d_%d.bin",trk,dskSector,i);
+                            sprintf(filename,"dmp_gcr_%d_%d_%d.bin",trk,physicalSector,i);
                             dumpBufFile(filename,buffer,6657);
                             *retError=0x04;
             			
                         }else{
-                            sectorCheckArray[nibSector]=1;                                         // flag succesfull sector in the checkArray
-                            sumSector+=dskSector+1;
+                            sectorCheckArray[logicalSector]=1;                                         // flag succesfull sector in the checkArray
+                            sumSector+=physicalSector+1;
                         }
             			
                         byteStreamRecord=0;                                                       // Stop recording data in the buffer;
