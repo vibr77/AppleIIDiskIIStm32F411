@@ -1004,13 +1004,13 @@ char processSdEject(uint16_t GPIO_PIN){
   if ((SD_EJECT_GPIO_Port->IDR & GPIO_PIN)==1){ 
 
     ptrUnmountImage();
-    initErrorScr("SD EJECTED");                                               // Display the message on screen
+    initErrorScr("SD EJECTED");                                                                 // Display the message on screen
     
     while((SD_EJECT_GPIO_Port->IDR & GPIO_PIN)==1){
 
     };
 
-    NVIC_SystemReset();                                                     // Finally Reset 
+    NVIC_SystemReset();                                                                         // Finally Reset 
   
   }
   return 0;
@@ -1084,6 +1084,7 @@ enum STATUS makeSDFS(){
 }
 
 enum STATUS unlinkImageFile(char* fullpathfilename){
+    
     if (fullpathfilename==NULL){
         log_error("filename is null");
     }
@@ -1249,7 +1250,6 @@ int main(void){
 
   dirChainedList = list_new();                                              // ChainedList to manage File list in current path                                                     
 
-  
   char * imgFile=NULL;
 
   // --------------------------------------------------------------------

@@ -268,41 +268,12 @@ static enum STATUS dsk2Nib(unsigned char *rawByte,unsigned char *buffer,uint8_t 
     return RET_OK;
 }
 
-static void print_packet (unsigned char* data, int bytes){
-    int count, row;
-    char xx;
-
-    
-    for (count = 0; count < bytes; count = count + 16) {
-        
-        printf("%04X: ", count);
-        for (row = 0; row < 16; row++) {
-            if (count + row >= bytes)
-                printf("   ");
-            else {
-                printf("%02X ",data[count + row]);
-            }
-        }
-        printf("- ");
-        for (row = 0; row < 16; row++) {
-            if ((data[count + row] > 31) && (count + row < bytes) && (data[count + row] < 129)){
-                xx = data[count + row];
-                printf("%c",xx);
-            }
-            else
-                printf(".");
-        }
-        printf("\r\n");
-    }
-    printf(".\r\n");
-    
-}
-
+uint8_t wr_retry=0;                                                                             // DEBUG ONLY
 
 enum STATUS setDskTrackBitStream(int trk,unsigned char * buffer){
     
     uint8_t retE=0x0;
-    //return RET_OK;
+    
     unsigned char * dskData=(unsigned char *)malloc(4096*sizeof(unsigned char)); 
     if (nib2dsk(dskData,buffer,trk,16*416,&retE)==RET_ERR){
         log_error("nib2dsk error:%d",retE);
@@ -310,7 +281,29 @@ enum STATUS setDskTrackBitStream(int trk,unsigned char * buffer){
         return RET_ERR;
     }
 
-    /*FRESULT fres; 
+    if (trk==0){                                                                                // DEBUG ONLY 
+        char filename[32];
+        sprintf(filename,"dmp_trk0_%d.bin",wr_retry);
+        dumpBufFile(filename,buffer,6657);
+        
+        sprintf(filename,"dmp_dsk_trk0_%d.bin",wr_retry);
+        dumpBufFile(filename,dskData,4096);
+        wr_retry++;
+    }
+
+    int addr=getDskSDAddr(trk,0,csize,database);
+    setDataBlocksBareMetal(addr,dskData,8); 
+    
+    while (fsState!=READY){};
+    free(dskData);  
+    
+    return RET_OK;
+
+    /*
+    // --------------------------------------------------
+    // SAVING THE TRACK TO FILE USING FATFS
+    // --------------------------------------------------
+    FRESULT fres; 
     FIL fil;  
 
     while(fsState!=READY){};
@@ -319,12 +312,14 @@ enum STATUS setDskTrackBitStream(int trk,unsigned char * buffer){
     fres = f_open(&fil,filename , FA_WRITE | FA_OPEN_ALWAYS );    
   
     if(fres != FR_OK){
-    log_error("File open Error: (%i)",fres);
-    fsState=READY;
-    return RET_ERR;
-  }
-  UINT bytesWrote;
-  UINT totalBytes=0;
+        log_error("File open Error: (%i)",fres);
+        fsState=READY;
+        return RET_ERR;
+    }
+
+    UINT bytesWrote;
+    UINT totalBytes=0;
+    
     f_lseek(&fil,trk*4096);
     
     for (int i=0;i<8;i++){
@@ -343,23 +338,14 @@ enum STATUS setDskTrackBitStream(int trk,unsigned char * buffer){
     
         while(fsState!=READY){};
     }
-    */
-    /*if (trk==17){
-        log_warn("dmp");
-        dumpBuf(dskData,1,4096);
-    }*/
     
-    //free(dskData); 
-    //return RET_OK;
-
-    int addr=getDskSDAddr(trk,0,csize,database);
-    setDataBlocksBareMetal(addr,dskData,8); 
-    
-    while (fsState!=READY){};
-    //f_close(&fil);
-    free(dskData);  
-    
+    f_close(&fil);
+    free(dskData); 
     return RET_OK;
+    
+    */
+    
+  
 }
 
 static enum STATUS nib2dsk(unsigned char * dskData,unsigned char *buffer,uint8_t trk,int byteSize,uint8_t * retError){
@@ -482,10 +468,14 @@ static enum STATUS nib2dsk(unsigned char * dskData,unsigned char *buffer,uint8_t
                         
                         //if (decodeGcr62b(tmpBuffer+3,(unsigned char *)data_out)==RET_ERR){
                         if(decodeGcr62(tmpBuffer,(unsigned char *)data_out,&cksum_out,&cksum_calc)==RET_ERR){    // gcr6_2 decode and expect 256 Bytes in return;
-            				log_error("error doing GCR decoding BytePos:%d %02X",i,i);
+            				log_error("GCR decoding trk:%02d, sector:%02d, bytePos:%d %02X",trk,dskSector,i,i);
                             //dumpBuf(buffer,1,6657);
+                            char filename[32];
+                            sprintf(filename,"dmp_gcr_%d_%d_%d.bin",trk,dskSector,i);
+                            dumpBufFile(filename,buffer,6657);
                             *retError=0x04;
-            			}else{
+            			
+                        }else{
                             sectorCheckArray[nibSector]=1;                                         // flag succesfull sector in the checkArray
                             sumSector+=dskSector+1;
                         }
@@ -588,7 +578,7 @@ static enum STATUS decodeGcr62b(unsigned char * src,unsigned char * dst){
         ox = x;
     }
     
-    if (cksum!=decTable[src[345]]&0x3f){
+    if (cksum!=(decTable[src[345]]&0x3f)){
         log_error("cgcrDeocding checksum error cksum:%02X byte343:%02X",cksum,decTable[src[345]]&0x3f);
         return RET_ERR;
     }
