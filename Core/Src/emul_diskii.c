@@ -222,6 +222,8 @@ void DiskIISelectIRQ(){
         flgSelect=1;
 }
 
+uint8_t pFlgWRRequest=0;
+
 /**
   * @brief Write Req Interrupt function, Manage start and end of the write process.
   *        it 
@@ -239,7 +241,7 @@ void DiskIIWrReqIRQ(){
     if (flgSelect==0 || flgDeviceEnable==0)                                                     // A2 is not connected do nothing or DeviceEnable is not LOW
         return;
 
-    if (flgWrRequest==0){                                                                       // WR_REQ is active LOW                  
+    if (flgWrRequest==0 && pFlgWRRequest==1){                                                                       // WR_REQ is active LOW                  
 
         HAL_TIM_PWM_Stop_IT(&htim3,TIM_CHANNEL_4);                                              // First stop the READING TIMER
         
@@ -251,7 +253,7 @@ void DiskIIWrReqIRQ(){
         if (wrLoopStartPtr==0)                                                                  // write start pointer to check for a full loop
             wrLoopStartPtr=bytePtr;
 
-    }else if (flgWrRequest==1){
+    }else if (flgWrRequest==1 && pFlgWRRequest==0){
         
         HAL_TIM_PWM_Start_IT(&htim3,TIM_CHANNEL_4); 
                                                                         // Compute the bitCounter from the BytePtr
@@ -263,7 +265,8 @@ void DiskIIWrReqIRQ(){
     
         //GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);
         cAlive=0;                                                                               // Reset the cAlive
-    }   
+    }
+    pFlgWRRequest=flgWrRequest;   
 }
 
 
@@ -367,7 +370,6 @@ void DiskIISendDataIRQ(){
         nextBit=weakBitTank[weakBitTankPosition] & 1;    
     }else{
        
-        
         nextBit=(*(bbPtr+bytePtr)>>bitPos ) & 1;
         bitPos--;
         if (bitPos<0){
@@ -897,6 +899,7 @@ void DiskIIMainLoop(){
                 updateDiskIIImageScr(0,trk);                                                        // Put here otherwise Spiradisc is not working
 
                 bitSize=getTrackSize(trk);
+                bytePtr=rdBitCounter/8;
                 ByteSize=bitSize/8; 
                 prevTrk=trk;
 
