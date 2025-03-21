@@ -8,6 +8,7 @@
 #include "screen_mainmenu.h"
 #include "display.h"
 
+
 /**
  * 
  * MAIN MENU SCREEN
@@ -22,6 +23,8 @@ extern void (*ptrbtnUp)(void *);
 extern void (*ptrbtnDown)(void *);
 extern void (*ptrbtnEntr)(void *);
 extern void (*ptrbtnRet)(void *);
+
+extern enum action nextAction;
 
 /*
  * 
@@ -109,8 +112,8 @@ static void pBtnDownMainMenu(){
        break;
  
      case 1:
-
-       switchPage(FS,0x0);
+      nextAction=FSDISP;
+       //switchPage(FS,0x0);
        break;
  
      case 2:

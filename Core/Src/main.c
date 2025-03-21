@@ -927,6 +927,7 @@ enum STATUS walkDir(char * path, const  char ** extFilter){
       if (!(fno.fattrib & AM_DIR)){
         //log_info("file %s",fno.fname);
         for (uint8_t i=0;i<MAX_EXTFILTER_ITEM;i++){
+          //log_info("w %s",extFilter[i]);
           if (extFilter[i]==NULL || !strcmp(extFilter[i],""))                                   // End of the list
             break;
             

@@ -690,8 +690,8 @@ void DiskIIInit(){
     mountImageInfo.cleaned=0;
     mountImageInfo.type=0;
 
-    sprintf(tmpFullPathImageFilename,"/WOZ 2.0/DOS 3.3 System Master.woz");
-    sprintf(tmpFullPathImageFilename,"/blank.dsk");
+    //sprintf(tmpFullPathImageFilename,"/WOZ 2.0/DOS 3.3 System Master.woz");
+    //sprintf(tmpFullPathImageFilename,"/blank.dsk");
    
     if (bootMode==0){
         if (DiskIIMountImagefile(tmpFullPathImageFilename)==RET_OK){
@@ -824,7 +824,7 @@ void DiskIIMainLoop(){
                 irqDisableSDIO();
                 GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);
                 
-                /* 
+                
                 #pragma  GCC diagnostic pop
                 char filename[128];
                 sprintf(filename,"dump_rx_trk_%d_%d.bin",prevTrk,wr_attempt);
@@ -832,7 +832,7 @@ void DiskIIMainLoop(){
                 dumpBufFile(filename,DMA_BIT_TX_BUFFER,RAW_SD_TRACK_SIZE);
                 irqDisableSDIO();
                 pendingWriteTrk=0;
-                */
+                
             
             }
 
@@ -850,7 +850,7 @@ void DiskIIMainLoop(){
 
             if (prevTrk!=intTrk && flgBeaming==1){                            // <!> TO Be tested
                 trk=intTrk;                                                                         // Track has changed, but avoid new change during the process
-                                                
+                                            
                 cAlive=0;
             
                 if (pendingWriteTrk==1){
