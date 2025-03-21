@@ -277,17 +277,20 @@ enum STATUS setDskTrackBitStream(int trk,unsigned char * buffer){
         free(dskData);
         return RET_ERR;
     }
-   // free(dskData);  
+    //free(dskData);  
     //return RET_OK;
-    /*if (trk==0){                                                                                // DEBUG ONLY 
+    // if (trk==0){                                                                                // DEBUG ONLY 
         char filename[32];
-        sprintf(filename,"dmp_trk0_%d.bin",wr_retry);
+        sprintf(filename,"dmp_trk%d_%d.bin",trk,wr_retry);
+        //
         dumpBufFile(filename,buffer,6657);
         
-        sprintf(filename,"dmp_dsk_trk0_%d.bin",wr_retry);
+        sprintf(filename,"dmp_dsk_trk%d_%d.bin",trk,wr_retry);
         dumpBufFile(filename,dskData,4096);
         wr_retry++;
-    }*/
+    //
+    //}
+
 
     int addr=getDskSDAddr(trk,0,csize,database);
     setDataBlocksBareMetal(addr,dskData,8); 

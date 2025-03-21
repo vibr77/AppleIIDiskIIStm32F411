@@ -598,8 +598,8 @@ enum STATUS dumpBufFile(char * filename,volatile unsigned char * buffer,int leng
  
   UINT bytesWrote;
   UINT totalBytes=0;
-
-  for (int i=0;i<13;i++){
+  uint8_t numblock=length/512;
+  for (int i=0;i<numblock;i++){
     fsState=WRITING;
     fres = f_write(&fil, (unsigned char *)buffer+i*512, 512, &bytesWrote);
     if(fres == FR_OK) {

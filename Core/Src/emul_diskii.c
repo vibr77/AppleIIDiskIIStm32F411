@@ -823,15 +823,7 @@ void DiskIIMainLoop(){
                 #pragma GCC diagnostic pop
                 irqDisableSDIO();
                 GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);
-                
-                
-                #pragma  GCC diagnostic pop
-                char filename[128];
-                sprintf(filename,"dump_rx_trk_%d_%d.bin",prevTrk,wr_attempt);
-                wr_attempt++;
-                dumpBufFile(filename,DMA_BIT_TX_BUFFER,RAW_SD_TRACK_SIZE);
-                irqDisableSDIO();
-                pendingWriteTrk=0;
+            
                 
             
             }
