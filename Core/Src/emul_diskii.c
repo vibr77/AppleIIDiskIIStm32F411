@@ -252,15 +252,16 @@ void DiskIIWrReqIRQ(){
             wrLoopStartPtr=bytePtr;
 
     }else if (flgWrRequest==1){
-                                                                        
-        for (int i=0;i<300;i++){}
-        GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);                                  // <!> Important WR_REQ goes low too early
-        HAL_TIM_PWM_Stop_IT(&htim2,TIM_CHANNEL_3);                                              // Stop the WRITING Timer
         
-        bitPos=7;                                                                               // Reset the bitPos
-        rdBitCounter=bytePtr*8;                                                                 // Compute the bitCounter from the BytePtr
         HAL_TIM_PWM_Start_IT(&htim3,TIM_CHANNEL_4); 
-        GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);
+                                                                        // Compute the bitCounter from the BytePtr
+        //GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);                                  // <!> Important WR_REQ goes low too early
+        //for (int i=0;i<200;i++){}
+        bitPos=7;                                                                               // Reset the bitPos
+        rdBitCounter=bytePtr*8; 
+        HAL_TIM_PWM_Stop_IT(&htim2,TIM_CHANNEL_3);                                              // Stop the WRITING Timer
+    
+        //GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);
         cAlive=0;                                                                               // Reset the cAlive
     }   
 }
@@ -316,7 +317,7 @@ void DiskIIReceiveDataIRQ(){
         bytePtr++;
 
         if (bytePtr==wrLoopStartPtr){
-            GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);                              // DEBUG ONLY
+            //GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);                              // DEBUG ONLY
             wrLoopFlg=1;
         }
     }
@@ -333,13 +334,13 @@ void DiskIIReceiveDataIRQ(){
         //byteWindow<<=1;                                                                       // Incomplete byte need to be shift left
         DMA_BIT_TX_BUFFER[bytePtr]=byteWindow;                                                  // Check which bit MSB LSB order
         // variable cleared out for next disk loop
-        //byteWindow=0x0;                                                                         // TODO: to be tested
+        byteWindow=0x0;                                                                         // TODO: to be tested
         wrBitCounter=0;
         wrBitPos=0;
         bytePtr=0;
     } 
 
-    GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET); 
+    //GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET); 
 }
 
 
@@ -373,7 +374,7 @@ void DiskIISendDataIRQ(){
             bitPos=7;
             bytePtr++;
             if (bytePtr==wrLoopStartPtr && pendingWriteTrk==1){
-                HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);
+                //HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);
                 wrLoopFlg=1;
             }
         }
@@ -790,6 +791,10 @@ void DiskIIMainLoop(){
     
     while(1){
         
+
+
+
+
         if (flgSelect==1 && flgDeviceEnable==1){                                            // A2 is Powered (Select Line HIGH) & DeviceEnable is active LOW
 
             if (flgWrRequest==1 && pendingWriteTrk==1 && wrLoopFlg==1){                     // Reading Mode, pending track to be written after a full revolution
@@ -799,7 +804,7 @@ void DiskIIMainLoop(){
                 pendingWriteTrk=0;
                 cAlive=0;
                 
-                //HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);
+                GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);
                 
                 updateDiskIIImageScr(1,rTrk);
                 if (flgSoundEffect==1){
@@ -817,7 +822,7 @@ void DiskIIMainLoop(){
                 }
                 #pragma GCC diagnostic pop
                 irqDisableSDIO();
-                //GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);
+                GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);
                 
                 /* 
                 #pragma  GCC diagnostic pop

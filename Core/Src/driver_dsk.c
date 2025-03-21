@@ -270,15 +270,15 @@ enum STATUS setDskTrackBitStream(int trk,unsigned char * buffer){
     
     uint8_t retE=0x0;
     
+    //return RET_OK;
     unsigned char * dskData=(unsigned char *)malloc(4096*sizeof(unsigned char)); 
     if (nib2dsk(dskData,buffer,trk,16*416,&retE)==RET_ERR){
         log_error("nib2dsk error:%d",retE);
         free(dskData);
         return RET_ERR;
     }
-    free(dskData);  
-    
-    return RET_OK;
+   // free(dskData);  
+    //return RET_OK;
     /*if (trk==0){                                                                                // DEBUG ONLY 
         char filename[32];
         sprintf(filename,"dmp_trk0_%d.bin",wr_retry);
