@@ -613,7 +613,7 @@ enum STATUS dumpBufFile(char * filename,volatile unsigned char * buffer,int leng
     while(fsState!=READY){};
   }
 
-  log_info("Wrote %i bytes to '%s'!\n", totalBytes,filename);
+  //log_info("Wrote %i bytes to '%s'!\n", totalBytes,filename);
   f_close(&fil);
   fsState=READY;
   
@@ -684,48 +684,31 @@ enum STATUS writeTrkFile(char * filename,char * buffer,uint32_t offset){
   */
 void dumpBuf(unsigned char * buf,long memoryAddr,int len){
 
-    unsigned char * data=buf;
-    int bytes=len;
-    int count, row;
-    char xx;
+  unsigned char * data=buf;
+  int bytes=len;
+  int count, row;
+  char xx;
 
-    
+  for (count = 0; count < bytes; count = count + 16) {
+    printf("%04X: ", count);
+    for (row = 0; row < 16; row++) {
+      if (count + row >= bytes)
+        printf("   ");
+      else {
+        printf("%02X ",data[count + row]);
+      }
+    }
+    printf("- ");
+    for (row = 0; row < 16; row++) {
+      if ((data[count + row] > 31) && (count + row < bytes) && (data[count + row] < 129)){
+        xx = data[count + row];
+        printf("%c",xx);
+      }
+      else
+        printf(".");
+    }
     printf("\r\n");
-    for (count = 0; count < bytes; count = count + 16) {
-        
-        printf("%04X: ", count);
-        for (row = 0; row < 16; row++) {
-            if (count + row >= bytes)
-                printf("   ");
-            else {
-                printf("%02X ",data[count + row]);
-            }
-        }
-        printf("- ");
-        for (row = 0; row < 16; row++) {
-            if ((data[count + row] > 31) && (count + row < bytes) && (data[count + row] < 129)){
-                xx = data[count + row];
-                printf("%c",xx);
-            }
-            else
-                printf(".");
-        }
-        printf("\r\n");
-    }
-    
-/*
-  log_info("dump Buffer addr:%ld len:%d",memoryAddr,len);
-  for (int i=0;i<len;i++){
-    if (i%16==0){
-      if (i%512==0)
-        printf("\n-");
-    printf("\n%03X: ",i);
-      
-    }
-    printf("%02X ",buf[i]);
   }
-  printf("\n");
-  */
 }
 
 /**
@@ -890,7 +873,8 @@ enum STATUS processPath(char *path){
 enum STATUS walkDir(char * path, const  char ** extFilter){
   
   DIR dir;
-  FRESULT fres;  
+  FRESULT fres;
+  FILINFO fno; 
 
   log_info("walkdir() path:%s",path);
   HAL_NVIC_EnableIRQ(SDIO_IRQn);
@@ -910,7 +894,7 @@ enum STATUS walkDir(char * path, const  char ** extFilter){
     
   char * fileName;
   int len;
-
+  
   dirChainedList=list_new();
 
   if (fres == FR_OK){
@@ -926,7 +910,7 @@ enum STATUS walkDir(char * path, const  char ** extFilter){
     }
     
     while(1){
-      FILINFO fno;
+      
       uint8_t fileExtMatch=0;                                                                   // flag is directory item match the file extension filter
       fres = f_readdir(&dir, &fno);
 
@@ -951,8 +935,7 @@ enum STATUS walkDir(char * path, const  char ** extFilter){
             //log_info("file %s ext %s match %d %d",fno.fname,extFilter[i],extLen,i);
             fileExtMatch=1;
             break;
-          }
-          
+          } 
         }
       }
 
@@ -979,13 +962,6 @@ enum STATUS walkDir(char * path, const  char ** extFilter){
             list_rpush(dirChainedList, list_node_new(fileName));
           }
 
-      /*log_debug("%c%c%c%c %10d %s/%s",
-        ((fno.fattrib & AM_DIR) ? 'D' : '-'),
-        ((fno.fattrib & AM_RDO) ? 'R' : '-'),
-        ((fno.fattrib & AM_SYS) ? 'S' : '-'),
-        ((fno.fattrib & AM_HID) ? 'H' : '-'),
-        (int)fno.fsize, path, fno.fname);
-      */
     }
   }
   
@@ -1307,7 +1283,7 @@ int main(void){
       sprintf(tmpFullPathImageFilename,"%s",imgFile);
     }
     //const char * filtr[]={"woz","WOZ"};
-    walkDir(currentFullPath,ptrFileFilter);
+    //walkDir(currentFullPath,ptrFileFilter);
 
   
   }else{

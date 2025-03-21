@@ -107,7 +107,6 @@ The list of features currently supported in this project:
 
 <img src="https://github.com/vibr77/AppleIIDiskIIStm32F411/blob/main/resources/PCB_REV_1_IMAGE.jpeg?raw=true" width="400px" />
 
-
 ## Release
 
 There are 2 releases type :

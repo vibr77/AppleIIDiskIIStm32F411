@@ -15,10 +15,9 @@ extern volatile enum FS_STATUS fsState;
 unsigned int fatDskCluster[20];
 extern image_info_t mountImageInfo;
 
-#define NIBBLE_BLOCK_SIZE  416 //402
+#define NIBBLE_BLOCK_SIZE  416 // 400 51 200
 #define NIBBLE_SECTOR_SIZE 512
 #define ENCODE_525_6_2_RIGHT_BUFFER_SIZE 86
-
 
 enum BITSTREAM_PARSING_STAGE{N,ADDR_START,ADDR_END,DATA_START,DATA_END};
 
@@ -30,7 +29,6 @@ static enum STATUS decodeGcr62(uint8_t * buffer,uint8_t * data_out,uint8_t *chks
 
 static enum STATUS decodeGcr62b(unsigned char * src,unsigned char * dst);
 
-
 const unsigned char signatureAddrStart[]	={0xD5,0xAA,0x96};
 const unsigned char signatureDataStart[]	={0xD5,0xAA,0xAD};
 
@@ -39,10 +37,8 @@ static  uint8_t  dsk2nibSectorMap[]         = {0, 7, 14, 6, 13, 5, 12, 4, 11, 3,
 static  uint8_t  po2nibSectorMap[]         =  {0, 8,  1, 9, 2, 10, 3, 11, 4, 12, 5, 13, 6, 14, 7, 15};
 
 static  uint8_t  nib2dskSectorMap[]         = {0, 13, 11, 9, 7, 5, 3, 1, 14, 12, 10,8, 6, 4, 2, 15};
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-variable"
 static uint8_t   nib2poSectorMap[]          = {0,  2,  4, 6,  8,10, 12,14,  1, 3,  5, 7, 9, 11,13,15};
-#pragma GCC diagnostic pop
+
 static const uint8_t from_gcr_6_2_byte[128] = {
     0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,     // 0x80-0x87
     0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,     // 0x88-0x8F
@@ -143,8 +139,6 @@ enum STATUS getDskTrackBitStream(int trk,unsigned char * buffer){
     free(tmp);
     return RET_OK;
 }
-
-
 
 enum STATUS mountDskFile(char * filename){
     FRESULT fres; 
@@ -282,8 +276,10 @@ enum STATUS setDskTrackBitStream(int trk,unsigned char * buffer){
         free(dskData);
         return RET_ERR;
     }
-
-    if (trk==0){                                                                                // DEBUG ONLY 
+    free(dskData);  
+    
+    return RET_OK;
+    /*if (trk==0){                                                                                // DEBUG ONLY 
         char filename[32];
         sprintf(filename,"dmp_trk0_%d.bin",wr_retry);
         dumpBufFile(filename,buffer,6657);
@@ -291,7 +287,7 @@ enum STATUS setDskTrackBitStream(int trk,unsigned char * buffer){
         sprintf(filename,"dmp_dsk_trk0_%d.bin",wr_retry);
         dumpBufFile(filename,dskData,4096);
         wr_retry++;
-    }
+    }*/
 
     int addr=getDskSDAddr(trk,0,csize,database);
     setDataBlocksBareMetal(addr,dskData,8); 
@@ -346,8 +342,6 @@ enum STATUS setDskTrackBitStream(int trk,unsigned char * buffer){
     return RET_OK;
     
     */
-    
-  
 }
 
 static enum STATUS nib2dsk(unsigned char * dskData,unsigned char *buffer,uint8_t trk,int byteSize,uint8_t * retError){
@@ -374,7 +368,7 @@ static enum STATUS nib2dsk(unsigned char * dskData,unsigned char *buffer,uint8_t
     DWT->CYCCNT = 0;                                                                            // Reset cpu cycle counter
     t1 = DWT->CYCCNT;
     */
-    unsigned char * sectorMap;
+    unsigned char * sectorMap;                                                                  // Sector skewing from nibble to DSK or PO 
     if (mountImageInfo.type==2)
        sectorMap=nib2dskSectorMap;
     else if (mountImageInfo.type==3)
@@ -483,9 +477,10 @@ static enum STATUS nib2dsk(unsigned char * dskData,unsigned char *buffer,uint8_t
                         if(decodeGcr62(tmpBuffer,(unsigned char *)data_out,&cksum_out,&cksum_calc)==RET_ERR){    // gcr6_2 decode and expect 256 Bytes in return;
             				log_error("GCR decoding trk:%02d, sector:%02d, bytePos:%d %02X",trk,physicalSector,i,i);
                             //dumpBuf(buffer,1,6657);
-                            char filename[32];
+                            /*char filename[32];
                             sprintf(filename,"dmp_gcr_%d_%d_%d.bin",trk,physicalSector,i);
                             dumpBufFile(filename,buffer,6657);
+                            */
                             *retError=0x04;
             			
                         }else{
@@ -524,7 +519,7 @@ static enum STATUS nib2dsk(unsigned char * dskData,unsigned char *buffer,uint8_t
     
     if (sumSector!=136){ 
         *retError=0x06;                                                                       // Check if we have successfuly process all sector
-        log_error("Not all sector have been processed sumSector:%d!=136",sumSector);          // a better approach as multiple sector would share the same number
+        log_error("Missing sector: %d!=136",sumSector);          // a better approach as multiple sector would share the same number
         for (int8_t j=0;j<16;j++){
             if (sectorCheckArray[j]==0)
                 log_warn("sector NIB:%d is missing",j);

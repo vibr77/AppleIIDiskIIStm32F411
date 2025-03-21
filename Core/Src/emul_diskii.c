@@ -252,14 +252,15 @@ void DiskIIWrReqIRQ(){
             wrLoopStartPtr=bytePtr;
 
     }else if (flgWrRequest==1){
-                                                                            
-        for (int i=0;i<200;i++){}                                                               // <!> Important WR_REQ goes low too early
+                                                                        
+        for (int i=0;i<300;i++){}
+        GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);                                  // <!> Important WR_REQ goes low too early
         HAL_TIM_PWM_Stop_IT(&htim2,TIM_CHANNEL_3);                                              // Stop the WRITING Timer
         
         bitPos=7;                                                                               // Reset the bitPos
         rdBitCounter=bytePtr*8;                                                                 // Compute the bitCounter from the BytePtr
         HAL_TIM_PWM_Start_IT(&htim3,TIM_CHANNEL_4); 
-
+        GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);
         cAlive=0;                                                                               // Reset the cAlive
     }   
 }
@@ -328,11 +329,11 @@ void DiskIIReceiveDataIRQ(){
     wrBitCounter++;                                                                             // bitSize can be 53248 => bitCounter from 0 - 53247
     if (wrBitCounter==bitSize){                                                                 // Same Size as the original track size
         
-        byteWindow<<=7-(wrBitPos);                                                              // TODO: to be tested with bitcounter not aligned with 8 The last byte may be incomplete, and it will be read starting by the MSB Bit 7
+        //byteWindow<<=7-(wrBitPos);                                                              // TODO: to be tested with bitcounter not aligned with 8 The last byte may be incomplete, and it will be read starting by the MSB Bit 7
         //byteWindow<<=1;                                                                       // Incomplete byte need to be shift left
         DMA_BIT_TX_BUFFER[bytePtr]=byteWindow;                                                  // Check which bit MSB LSB order
         // variable cleared out for next disk loop
-        byteWindow=0x0;                                                                         // TODO: to be tested
+        //byteWindow=0x0;                                                                         // TODO: to be tested
         wrBitCounter=0;
         wrBitPos=0;
         bytePtr=0;
@@ -423,7 +424,7 @@ int DiskIIDeviceEnableIRQ(uint16_t GPIO_Pin){
 
     GPIO_InitTypeDef GPIO_InitStruct = {0};
 
-    if (a==0 && flgBeaming==1){                                                                 // <!> TO BE TESTED 24/10
+    if (a==0 /*&& flgBeaming==1*/){                                                                 // <!> TO BE TESTED 24/10
         flgDeviceEnable=1;
 
 #ifdef A2F_MODE
@@ -688,8 +689,8 @@ void DiskIIInit(){
     mountImageInfo.cleaned=0;
     mountImageInfo.type=0;
 
-    //sprintf(tmpFullPathImageFilename,"/WOZ 1.0/DOS 3.3 System Master.woz");
-    //sprintf(tmpFullPathImageFilename,"/blank.dsk");
+    sprintf(tmpFullPathImageFilename,"/WOZ 2.0/DOS 3.3 System Master.woz");
+    sprintf(tmpFullPathImageFilename,"/blank.dsk");
    
     if (bootMode==0){
         if (DiskIIMountImagefile(tmpFullPathImageFilename)==RET_OK){
@@ -775,6 +776,8 @@ void DiskIIInit(){
     
     HAL_Delay(10000);
     */
+   flgBeaming=1;
+   DiskIISelectIRQ();                                                                       // Important at the end of Init
 }
 
 /**
@@ -796,7 +799,7 @@ void DiskIIMainLoop(){
                 pendingWriteTrk=0;
                 cAlive=0;
                 
-                HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);
+                //HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);
                 
                 updateDiskIIImageScr(1,rTrk);
                 if (flgSoundEffect==1){
@@ -814,7 +817,7 @@ void DiskIIMainLoop(){
                 }
                 #pragma GCC diagnostic pop
                 irqDisableSDIO();
-                GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);
+                //GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);
                 
                 /* 
                 #pragma  GCC diagnostic pop
@@ -852,6 +855,7 @@ void DiskIIMainLoop(){
                         TIM1->PSC=1000;
                         HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_2);
                     }
+
                     irqEnableSDIO();
                     #pragma GCC diagnostic push
                     #pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
