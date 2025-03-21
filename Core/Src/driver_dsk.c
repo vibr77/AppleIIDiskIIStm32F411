@@ -269,8 +269,7 @@ uint8_t wr_retry=0;                                                             
 enum STATUS setDskTrackBitStream(int trk,unsigned char * buffer){
     
     uint8_t retE=0x0;
-    
-    //return RET_OK;
+
     unsigned char * dskData=(unsigned char *)malloc(4096*sizeof(unsigned char)); 
     if (nib2dsk(dskData,buffer,trk,16*416,&retE)==RET_ERR){
         log_error("nib2dsk error:%d",retE);
@@ -280,7 +279,7 @@ enum STATUS setDskTrackBitStream(int trk,unsigned char * buffer){
     //free(dskData);  
     //return RET_OK;
     // if (trk==0){                                                                                // DEBUG ONLY 
-        char filename[32];
+    /*    char filename[32];
         sprintf(filename,"dmp_trk%d_%d.bin",trk,wr_retry);
         //
         dumpBufFile(filename,buffer,6657);
@@ -288,9 +287,9 @@ enum STATUS setDskTrackBitStream(int trk,unsigned char * buffer){
         sprintf(filename,"dmp_dsk_trk%d_%d.bin",trk,wr_retry);
         dumpBufFile(filename,dskData,4096);
         wr_retry++;
+    */
     //
     //}
-
 
     int addr=getDskSDAddr(trk,0,csize,database);
     setDataBlocksBareMetal(addr,dskData,8); 
@@ -451,7 +450,13 @@ static enum STATUS nib2dsk(unsigned char * dskData,unsigned char *buffer,uint8_t
                             *retError=0x03;
                             return RET_ERR;
                         }
-            			physicalSector=sectorMap[logicalSector];                                  // Will be usefull to determine position in the dsk track buffer to vbe written in the file
+                        for (int8_t j=0;j<16;j++){
+                            if (sectorMap[j]==logicalSector){
+                                physicalSector=j;
+                                break;
+                            }
+                        }
+            			//physicalSector=sectorMap[logicalSector];                                  // Will be usefull to determine position in the dsk track buffer to vbe written in the file
             			
                         byteStreamRecord=0;                                                     // stop recording char in the buffer
             			
