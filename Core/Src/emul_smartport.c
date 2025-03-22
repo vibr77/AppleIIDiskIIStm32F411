@@ -1450,7 +1450,7 @@ void SmartPortMainLoop(){
 
             assertAck();
 
-            processSdEject(SD_EJECT_Pin);                                                       // detect SD card Eject
+            pSdEject();                                                                          // detect SD card Eject
 
             if (nextAction!=NONE){
                 switch(nextAction){
@@ -1817,9 +1817,11 @@ static void encodeUnidiskStatReplyPacket(prodosPartition_t d){
                     ((data[6]>> 7) & 0x01 ); 
     
     for (count=0;count <7;count++){
-        packet_buffer[17+count] = data[count] & 0x80; 
+        packet_buffer[17+count] = data[count] | 0x80; 
     }
-    
+    //log_warn("message");
+    //print_packet(packet_buffer,24);
+
     packet_buffer[16] = 0x81; 
     packet_buffer[17] = 0x80; 
     packet_buffer[18] = 0x80; 

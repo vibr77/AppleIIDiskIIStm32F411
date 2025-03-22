@@ -107,7 +107,8 @@ void setDataBlocksBareMetal(long memoryAdr,volatile unsigned char * buffer,int c
 
 void processDiskHeadMoveInterrupt(uint16_t GPIO_Pin);
 char processDeviceEnableInterrupt(uint16_t GPIO_Pin);
-char processSdEject(uint16_t GPIO_PIN);
+void pSdEject();
+
 
 enum STATUS makeSDFS();
 

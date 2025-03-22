@@ -25,6 +25,7 @@ extern void (*ptrbtnEntr)(void *);
 extern void (*ptrbtnRet)(void *);
 
 extern enum action nextAction;
+extern uint8_t emulationType;
 
 /*
  * 
@@ -37,50 +38,113 @@ static void pBtnUpMainMenu();
 static void pBtnDownMainMenu();
 static void pBtnEntrMainMenu();
 
+static void pFavorites();
+static void pFS();
+static void pSettings();
+static void pDiskIIImage();
+static void pSmartport();
+
 int8_t currentMainMenuItem=0;
 
+listWidget_t menuLw;
 
  void initMainMenuScr(uint8_t i){
-   
-    char * menuItem[5];
-    uint8_t numItems=4;
-    uint8_t h_offset=10;
-  
-    if (i>=numItems)
-      i=0;
-  
-    if (i<0)
-      i=numItems-1;
-  
-    menuItem[0]="Favorites";
-    menuItem[1]="File manager";
-    menuItem[2]="Mounted image";
-    menuItem[3]="Settings";
+     
+    listItem_t * manuItem;
     
-    uint8_t menuIcon[5];
-    menuIcon[0]=5;
-    menuIcon[1]=0;
-    menuIcon[2]=4;
-    menuIcon[3]=3;
-  
-    primPrepNewScreen("Main menu");
-  
-    ssd1306_SetColor(White);
-    for (int j=0;j<numItems;j++){
-      displayStringAtPosition(1+h_offset,(1+j)*SCREEN_LINE_HEIGHT+5,menuItem[j]);
-  
-      dispIcon(1,(1+j)*SCREEN_LINE_HEIGHT+5,menuIcon[j]);
+    menuLw.lst=list_new();
+    menuLw.currentClistPos=0;
+    menuLw.dispLineSelected=0;
+    menuLw.dispMaxNumLine=4;
+    menuLw.dispStartLine=0;
+    menuLw.hOffset=1;
+    menuLw.vOffset=5;
+    
+   if (emulationType==DISKII){
+      manuItem=(listItem_t *)malloc(sizeof(listItem_t));
+      if (manuItem==NULL){
+          log_error("malloc error listItem_t");
+          return;
+      }
+
+      sprintf(manuItem->title,"Favorites");
+      manuItem->type=0;
+      manuItem->icon=5;
+      manuItem->triggerfunction=pFavorites;
+      manuItem->ival=0;
+      manuItem->arg=0;
+      
+      list_rpush(menuLw.lst, list_node_new(manuItem));
     }
-  
-    ssd1306_SetColor(Inverse);
-    ssd1306_FillRect(1,(1+i)*SCREEN_LINE_HEIGHT-1+5,126,9);
+
+    if (emulationType==DISKII){
+      manuItem=(listItem_t *)malloc(sizeof(listItem_t));
+      if (manuItem==NULL){
+          log_error("malloc error listItem_t");
+          return;
+      }
+      sprintf(manuItem->title,"File manager");
+      manuItem->type=0;
+      manuItem->icon=0;
+      manuItem->triggerfunction=pFS;
+      manuItem->ival=0;
+      manuItem->arg=0;
+      
+      list_rpush(menuLw.lst, list_node_new(manuItem));
+    }
+
+    if (emulationType==DISKII){
+      manuItem=(listItem_t *)malloc(sizeof(listItem_t));
+      if (manuItem==NULL){
+          log_error("malloc error listItem_t");
+          return;
+      }
+      
+      sprintf(manuItem->title,"DISK II");
+      manuItem->type=0;
+      manuItem->icon=4;
+      manuItem->triggerfunction=pDiskIIImage;
+      manuItem->ival=0;
+      manuItem->arg=0;
+      
+      list_rpush(menuLw.lst, list_node_new(manuItem));
+    }
+
+    if (emulationType==SMARTPORTHD){
+      manuItem=(listItem_t *)malloc(sizeof(listItem_t));
+      if (manuItem==NULL){
+          log_error("malloc error listItem_t");
+          return;
+      }
+      
+      sprintf(manuItem->title,"SMARTPORT");
+      manuItem->type=0;
+      manuItem->icon=4;
+      manuItem->triggerfunction=pSmartport;
+      manuItem->ival=0;
+      manuItem->arg=0;
+      
+      list_rpush(menuLw.lst, list_node_new(manuItem));
+    }
+
+    manuItem=(listItem_t *)malloc(sizeof(listItem_t));
+    if (manuItem==NULL){
+        log_error("malloc error listItem_t");
+        return;
+    }
+    sprintf(manuItem->title,"Settings");
+    manuItem->type=0;
+    manuItem->icon=3;
+    manuItem->triggerfunction=pSettings;
+    manuItem->ival=0;
+    manuItem->arg=0;
     
-    ssd1306_SetColor(White);
-    ssd1306_DrawLine(0,6*SCREEN_LINE_HEIGHT-1,127,6*SCREEN_LINE_HEIGHT-1);
-  
-    displayStringAtPosition(1,6*SCREEN_LINE_HEIGHT+1,_VERSION);
-  
-    currentMainMenuItem=i;
+    list_rpush(menuLw.lst, list_node_new(manuItem));
+
+
+    primPrepNewScreen("Main menu");   
+    primUpdListWidget(&menuLw,0,0);
+
   
     primUpdScreen();
  
@@ -95,38 +159,45 @@ int8_t currentMainMenuItem=0;
   }
 
 static void pBtnDownMainMenu(){
-   currentMainMenuItem++;
-   initMainMenuScr(currentMainMenuItem);
+  primUpdListWidget(&menuLw,-1,1);
  }
  
  static void pBtnUpMainMenu(){
-   currentMainMenuItem--;
-   initMainMenuScr(currentMainMenuItem);
+  primUpdListWidget(&menuLw,-1,-1);
  }
  
  static void pBtnEntrMainMenu(){
-   switch(currentMainMenuItem){
-     
-     case 0:
-       switchPage(FAVORITES,NULL);
-       break;
+   
+  listItem_t *item= menuLw.currentSelectedItem->val;
+  if (item){
+      log_info("selected:%s ",item->title);
+      item->triggerfunction(item->arg);
+  }else{
+      log_error("item is null");
+  }
+}
  
-     case 1:
-      nextAction=FSDISP;
-       //switchPage(FS,0x0);
-       break;
- 
-     case 2:
-       switchPage(DISKIIIMAGE,NULL);
-       break;
- 
-     case 3:
-       switchPage(SETTINGS,NULL);
-       break;
- 
-     default:
-       break;
-   }
-   return;
- }
- 
+
+static void pFavorites(){
+  switchPage(FAVORITES,NULL);
+}
+
+static void pFS(){
+  nextAction=FSDISP;
+  return;
+}
+
+static void pSettings(){
+  switchPage(SETTINGS,NULL);
+  return;
+}
+
+static void pDiskIIImage(){
+  switchPage(DISKIIIMAGE,NULL);
+  return;
+}
+
+static void pSmartport(){
+  switchPage(SMARTPORT,NULL); 
+  return;
+}

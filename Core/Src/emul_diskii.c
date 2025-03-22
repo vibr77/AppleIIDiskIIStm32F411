@@ -975,13 +975,13 @@ void DiskIIMainLoop(){
         if (flgWrRequest==1){
             cAlive++;
 
-            processSdEject(SD_EJECT_Pin);
-
             if (cAlive==5000000){                                                           // DEBUG Only
                 printf(".\n");
                 cAlive=0;
             }
         }
+
+        pSdEject();
     
             
          

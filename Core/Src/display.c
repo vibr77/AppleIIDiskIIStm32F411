@@ -67,6 +67,7 @@ enum STATUS switchPage(enum page newPage,void * arg){
 
     case SMARTPORT:
       initSmartPortHDScr();
+      updateImageSmartPortHD();
       break;
 
     case SMARTPORT_MOUNT:

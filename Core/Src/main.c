@@ -108,7 +108,10 @@ UART
 
 // Changelog
 /*
-22.03.25
+22.03.25 v0.81
+  + [SDEJECT] Fixing SD Eject function for all emulator
+  + [MAINMENU] Making the main menu dynamic according to emulation type
+22.03.25 v0.80.5d
   + [DSK/PO] write process
   + [DSK/PO] sector skewing
   + [READ] optimize function timing duration
@@ -985,21 +988,16 @@ enum STATUS walkDir(char * path, const  char ** extFilter){
   * @param None
   * @retval None
   */
-char processSdEject(uint16_t GPIO_PIN){
+void pSdEject(){
 
-  if ((SD_EJECT_GPIO_Port->IDR & GPIO_PIN)==1){ 
-
-    ptrUnmountImage();
-    initErrorScr("SD EJECTED");                                                                 // Display the message on screen
-    
-    while((SD_EJECT_GPIO_Port->IDR & GPIO_PIN)==1){
-
-    };
-
-    NVIC_SystemReset();                                                                         // Finally Reset 
+    if ((SD_EJECT_GPIO_Port->IDR & SD_EJECT_Pin)!=0){
+      initErrorScr("SD EJECTED");                                                                 // Display the message on screen
+      while((SD_EJECT_GPIO_Port->IDR & SD_EJECT_Pin)!=0){};
+      NVIC_SystemReset(); 
+    }
+                                                                       // Finally Reset 
   
-  }
-  return 0;
+  return ;
 }
 
 /**
@@ -1230,7 +1228,8 @@ int main(void){
   dier|=TIM_DIER_UIE;
   TIM3->DIER=dier;
   
-  processSdEject(SD_EJECT_Pin);
+  pSdEject();
+
   
   ptrDeviceEnableIRQ(DEVICE_ENABLE_Pin);
 
