@@ -111,6 +111,8 @@ UART
 22.03.25 v0.81
   + [SDEJECT] Fixing SD Eject function for all emulator
   + [MAINMENU] Making the main menu dynamic according to emulation type
+  - [UNIDISK / HD EDJECT] Manage Eject request from Smartport on update screen on SmartDisk
+  - [SMARTPORT WRITE KO]
 22.03.25 v0.80.5d
   + [DSK/PO] write process
   + [DSK/PO] sector skewing
