@@ -112,7 +112,7 @@ UART
   + [SDEJECT] Fixing SD Eject function for all emulator
   + [MAINMENU] Making the main menu dynamic according to emulation type
   - [UNIDISK / HD EDJECT] Manage Eject request from Smartport on update screen on SmartDisk
-  - [SMARTPORT WRITE KO]
+  - [SMARTPORT WRITE KO] error on checksum to be fixed 
 22.03.25 v0.80.5d
   + [DSK/PO] write process
   + [DSK/PO] sector skewing
@@ -1319,7 +1319,7 @@ int main(void){
       ptrReceiveDataIRQ=DiskIIReceiveDataIRQ;
       ptrSendDataIRQ=DiskIISendDataIRQ;
       ptrWrReqIRQ=DiskIIWrReqIRQ;
-      ptrSelectIRQ=DiskIISelectIRQ;
+      //ptrSelectIRQ=DiskIISelectIRQ;
       ptrDeviceEnableIRQ=DiskIIDeviceEnableIRQ;
       ptrMainLoop=DiskIIMainLoop;
       ptrUnmountImage=DiskIIUnmountImage;

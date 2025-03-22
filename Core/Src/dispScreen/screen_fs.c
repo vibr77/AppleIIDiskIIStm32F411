@@ -34,12 +34,16 @@ extern void (*ptrbtnDown)(void *);
 extern void (*ptrbtnEntr)(void *);
 extern void (*ptrbtnRet)(void *);
 
-
-
 static void pBtnUpFsScr();
 static void pBtnDownFsScr();
 static void pBtnEntrFsScr();
 static void pBtnRetFsScr();
+
+static void pBtnUpLabelInputScr();
+static void pBtnDownLabelInputScr();
+static void pBtnRetLabelInputScr();
+static void pBtnEntrLabelInputScr();
+static void pLabelItem();
 
 
 uint8_t selectedIndx=0;
@@ -297,4 +301,67 @@ static void pBtnEntrFsScr(){
   }
   log_debug("result |%s|",currentFullPath);
   
+}
+
+rollingWidget_t labelRw;
+
+void initLabelInputScr(){
+  primPrepNewScreen("Image Name");
+    
+  listItem_t * lblItem;
+  
+  labelRw.lst=list_new();
+
+  labelRw.currentClistPos=0;
+  labelRw.dispLine=3;
+  labelRw.hOffset=1;
+  labelRw.vOffset=5;
+
+  const char * lstValues[]={"A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","R","S","T","U","V","W","X","Y","Z","0","1","2","3","4","5","6","7","8","9","[OK]",NULL};
+  
+  uint8_t i=0;
+  while(lstValues[i]!=NULL){
+    
+    lblItem=(listItem_t *)malloc(sizeof(listItem_t));
+    if (lblItem==NULL){
+        log_error("malloc error listItem_t");
+        return;
+    }
+
+    sprintf(lblItem->title,"%s",lstValues[i]);
+    lblItem->type=0;
+    lblItem->triggerfunction=pLabelItem;
+    lblItem->ival=lstValues[i][0];
+
+    list_rpush(labelRw.lst, list_node_new(lblItem));
+    i++;
+  }
+
+  ptrbtnUp=pBtnUpLabelInputScr;
+  ptrbtnDown=pBtnDownLabelInputScr;
+  ptrbtnEntr=pBtnEntrLabelInputScr;
+  ptrbtnRet=pBtnRetLabelInputScr;
+  currentPage=FSLABEL;
+}
+
+static void pBtnUpLabelInputScr(){
+  //primUpdRollingLabelListWidget()
+}
+
+static void pBtnDownLabelInputScr(){
+
+}
+
+static void pBtnRetLabelInputScr(){
+
+}
+
+static void pBtnEntrLabelInputScr(){
+
+}
+
+static void pLabelItem(){
+  uint8_t i=labelRw.index;
+  labelRw.index++;
+  labelRw.label[i]='x';
 }

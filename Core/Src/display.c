@@ -63,8 +63,6 @@ enum STATUS switchPage(enum page newPage,void * arg){
       initMakeFsScr();
       break;
 
-    
-
     case SMARTPORT:
       initSmartPortHDScr();
       updateImageSmartPortHD();
@@ -121,6 +119,66 @@ enum STATUS switchPage(enum page newPage,void * arg){
 void nothing(){
   return;
   //__NOP();
+}
+
+void primUpdRollingLabelListWidget(rollingWidget_t * rw,int8_t init, int8_t direction){
+  
+  uint8_t lstIndx=0;
+  if (rw){
+    rw->lstItemCount=rw->lst->len;
+  }
+
+  switch(direction){
+    
+    case 1:
+      rw->currentClistPos=(rw->currentClistPos+1)%rw->lstItemCount;
+      break;
+    
+    case -1:
+      rw->currentClistPos=(rw->currentClistPos-1)%rw->lstItemCount;
+      break;
+    
+    case 0:
+      log_info("listwidget do nothing direction==0");
+      break;
+
+    default:
+      log_warn("listwidget unsupported direction");
+      break;
+  }
+
+  if (init!=-1){
+    rw->currentClistPos=(init)%rw->lstItemCount;
+  }
+
+  lstIndx=(rw->currentClistPos-1)%rw->lstItemCount;
+  rw->beforeItem=list_at(rw->lst, lstIndx);
+  
+  rw->currentSelectedItem=list_at(rw->lst,rw->currentClistPos);
+
+  lstIndx=(rw->currentClistPos+1)%rw->lstItemCount;
+  rw->afterItem=list_at(rw->lst, lstIndx);
+
+  listItem_t *itm;
+  ssd1306_SetColor(White);
+
+  clearLineStringAtPosition(rw->dispLine+1,rw->vOffset);
+  clearLineStringAtPosition(rw->dispLine,rw->vOffset);
+  clearLineStringAtPosition(rw->dispLine+1,rw->vOffset);
+
+  displayStringAtPosition(1+rw->hOffset,rw->dispLine*SCREEN_LINE_HEIGHT+rw->vOffset,rw->label);
+      
+  itm=rw->beforeItem->val;  
+  displayStringAtPosition(1+rw->hOffset+rw->index*8,(rw->dispLine-1)*SCREEN_LINE_HEIGHT+rw->vOffset,itm->title);
+  
+  itm=rw->currentSelectedItem->val;
+  displayStringAtPosition(1+rw->hOffset+rw->index*8,(rw->dispLine)*SCREEN_LINE_HEIGHT+rw->vOffset,itm->title);
+
+  itm=rw->afterItem->val;
+  displayStringAtPosition(1+rw->hOffset+rw->index*8,(rw->dispLine+1)*SCREEN_LINE_HEIGHT+rw->vOffset,itm->title);
+
+  primUpdScreen();
+
 }
 
 void primUpdListWidget(listWidget_t * lw,int8_t init, int8_t direction){

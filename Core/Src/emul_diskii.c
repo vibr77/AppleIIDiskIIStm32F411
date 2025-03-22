@@ -451,6 +451,7 @@ int DiskIIDeviceEnableIRQ(uint16_t GPIO_Pin){
     
     }else if (flgDeviceEnable==1 && a==1 ){
 
+        pendingWriteTrk=0;                                                                 // We do that on purpose to avoid writing on extern power
         flgDeviceEnable=0;
 #ifdef A2F_MODE        
         GPIOWritePin(AB_GPIO_Port,AB_Pin,GPIO_PIN_RESET);
@@ -778,6 +779,7 @@ void DiskIIInit(){
     */
    flgBeaming=1;
    DiskIISelectIRQ();                                                                       // Important at the end of Init
+   flgSelect=1;
 }
 
 /**

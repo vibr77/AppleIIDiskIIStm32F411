@@ -544,7 +544,7 @@ void SmartPortMainLoop(){
                         
                         while (phase & 0x08);
                         
-                        print_packet ((unsigned char*) packet_buffer, packet_length());
+                        //print_packet ((unsigned char*) packet_buffer, packet_length());
 
                                                                                             // Assume its a cmd packet, cmd code is in byte 14
                                                                                             // Now we need to work out what type of packet and stay out of the way
@@ -589,8 +589,9 @@ void SmartPortMainLoop(){
                 dest =  packet_buffer[SP_DEST];
                 MSB  =  packet_buffer[SP_GRP7MSB];
                 AUX  =  packet_buffer[SP_AUX] & 0x7f;                                                                          
-                if(packet_buffer[SP_COMMAND]!=0x81)
-                    print_packet ((unsigned char*) packet_buffer, packet_length());
+                
+                //if(packet_buffer[SP_COMMAND]!=0x81)
+                //    print_packet ((unsigned char*) packet_buffer, packet_length());
 
                 switch (packet_buffer[SP_COMMAND]) {
 
@@ -1245,6 +1246,15 @@ void SmartPortMainLoop(){
                                     uint8_t dev=(partition + initPartition) % MAX_PARTITIONS;                                       // Check if its one of ours
                                     if (devices[dev].device_id == dest) {
                                         devices[dev].mounted=0;
+                                        devices[dev].filename=NULL;
+                                        
+                                        char * fileTab[4];
+                                        for (uint8_t i=0;i<MAX_PARTITIONS;i++){
+                                            devices[i].dispIndex=i;
+                                            fileTab[i]=devices[i].filename;                                                         // Display the name of the PO according to the position
+                                        }
+                                        setImageTabSmartPortHD(fileTab,bootImageIndex);
+                                        
                                         statusCode=0x0;
                                     }
                                 }  
@@ -1673,14 +1683,15 @@ static int decodeDataPacket (void){
 
     int pl= packet_length();
     log_info("Data Packet Len:%d",pl);
+    
+    print_packet ((unsigned char*) packet_buffer,packet_length());
+    
     numodd = packet_buffer[6] & 0x7f;                                                               // Handle arbitrary length packets :) 
     numgrps = packet_buffer[7] & 0x7f;
 
     for (count = 1; count < 8; count++)                                                             // First, checksum  packet header, because we're about to destroy it
         checksum = checksum ^ packet_buffer[count];                                                 // now xor the packet header bytes
 
-    //evenbits = packet_buffer[594] & 0x55;
-    //oddbits = (packet_buffer[595] & 0x55 ) << 1;
     log_info("PL-3:%02X PL-2:%02X",packet_buffer[pl-3],packet_buffer[pl-2]);
     evenbits = packet_buffer[pl-3] & 0x55;
     oddbits = (packet_buffer[pl-2] & 0x55 ) << 1;
@@ -1688,6 +1699,7 @@ static int decodeDataPacket (void){
     log_info("evBits %02X, oddBit:%02X",evenbits,oddbits);
     for(int i = 0; i < numodd; i++){                                                                 //add oddbyte(s), 1 in a 512 data packet
         packet_buffer[i] = ((packet_buffer[8] << (i+1)) & 0x80) | (packet_buffer[9+i] & 0x7f);
+        checksum ^= packet_buffer[i];
     }
 
     for (grpcount = 0; grpcount < numgrps; grpcount++){                                             // 73 grps of 7 in a 512 byte packet
@@ -1696,17 +1708,12 @@ static int decodeDataPacket (void){
             bit7 = (group_buffer[0] << (grpbyte + 1)) & 0x80;
             bit0to6 = (group_buffer[grpbyte + 1]) & 0x7f;
             packet_buffer[1 + (grpcount * 7) + grpbyte] = bit7 | bit0to6;
+            checksum ^= bit7 | bit0to6;
         }
     }
 
-    //for (count = 0; count < 512; count++)                                                           // Verify checksum
-    //    checksum = checksum ^ packet_buffer[count];                                                 // XOR all the data bytes
-
-    for (count = 0; count < (numgrps*7+1); count++)                                                   // Verify checksum
-       checksum = checksum ^ packet_buffer[count];   
-
     log_info("decode Data checksum %02X<>%02X",checksum,(oddbits | evenbits));
-    print_packet ((unsigned char*) packet_buffer,packet_length());
+    //print_packet ((unsigned char*) packet_buffer,packet_length());
     
     if (checksum == (oddbits | evenbits))
         return 0;                                                                                   // NO error
@@ -1894,6 +1901,10 @@ static void encodeStatusReplyPacket (prodosPartition_t d){
      */
 
     data[0] = 0b11111000;
+
+    if (d.mounted==0){
+        data[0]=data[0] & 0x1110111;
+    }
     
     //Disk size Bytes [1-3]:
     data[1] = d.blocks & 0xff;
