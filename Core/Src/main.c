@@ -108,6 +108,14 @@ UART
 
 // Changelog
 /*
+22.03.25
+  + [DSK/PO] write process
+  + [DSK/PO] sector skewing
+  + [READ] optimize function timing duration
+  + [WRITE] GCR_6_2 chksum comp
+  + [WEAKBIT] option in setting
+  + [UNIDISK 2MG] Full emulation of SMartport Unidisk with 2MG image file
+  + [DISPLAY] Huge code clean up
 06.03.25
   + [ALL] code refactoring
   + [FS] Adding directory option
@@ -1634,7 +1642,7 @@ static void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 0;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 32*12-1-2;//-2;//-2;                      // Needs to be investigate -5 otherwise does not work 
+  htim2.Init.Period = 32*12-1-2;                                                                // Needs to be investigate -5 otherwise does not work 
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
