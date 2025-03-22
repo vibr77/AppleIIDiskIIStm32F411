@@ -360,9 +360,12 @@ void SmartPortInit(){
             sprintf(szFile,"Arka.2mg");
         }*/
 
+        
+        //devices[0].device_id=1;
         if (szFile==NULL || !strcmp(szFile,"")){
             devices[i].filename=NULL;
             devices[i].mounted=0;
+
             log_warn("[config] smartport_vol%02d does not exist",i);
         }else{
             devices[i].filename=szFile;
@@ -1682,28 +1685,39 @@ static int decodeDataPacket (void){
     unsigned char group_buffer[8];
 
     int pl= packet_length();
-    log_info("Data Packet Len:%d",pl);
+    //log_info("Data Packet Len:%d",pl);
     
-    print_packet ((unsigned char*) packet_buffer,packet_length());
-    
+    //print_packet ((unsigned char*) packet_buffer,packet_length());
+
     numodd = packet_buffer[6] & 0x7f;                                                               // Handle arbitrary length packets :) 
     numgrps = packet_buffer[7] & 0x7f;
 
     for (count = 1; count < 8; count++)                                                             // First, checksum  packet header, because we're about to destroy it
         checksum = checksum ^ packet_buffer[count];                                                 // now xor the packet header bytes
 
-    log_info("PL-3:%02X PL-2:%02X",packet_buffer[pl-3],packet_buffer[pl-2]);
-    evenbits = packet_buffer[pl-3] & 0x55;
-    oddbits = (packet_buffer[pl-2] & 0x55 ) << 1;
+    //log_info("PL-3:%02X PL-2:%02X",packet_buffer[pl-3],packet_buffer[pl-2]);
+    
+    if (packet_buffer[pl-1]==0xC8){
+        evenbits = packet_buffer[pl-3] & 0x55;
+        oddbits = (packet_buffer[pl-2] & 0x55 ) << 1;
+    }else{
+        evenbits = packet_buffer[pl-2] & 0x55;
+        oddbits = (packet_buffer[pl-1] & 0x55 ) << 1;
+    }
 
-    log_info("evBits %02X, oddBit:%02X",evenbits,oddbits);
+    //log_info("evBits %02X, oddBit:%02X",evenbits,oddbits);
     for(int i = 0; i < numodd; i++){                                                                 //add oddbyte(s), 1 in a 512 data packet
         packet_buffer[i] = ((packet_buffer[8] << (i+1)) & 0x80) | (packet_buffer[9+i] & 0x7f);
         checksum ^= packet_buffer[i];
     }
+    
+    uint8_t oddOffset=0;
+    if (numodd!=0){
+        oddOffset=1+numodd;
+    }
 
     for (grpcount = 0; grpcount < numgrps; grpcount++){                                             // 73 grps of 7 in a 512 byte packet
-        memcpy(group_buffer, packet_buffer + 10 + (grpcount * 8), 8);
+        memcpy(group_buffer, packet_buffer + 8+oddOffset + (grpcount * 8), 8);
         for (grpbyte = 0; grpbyte < 7; grpbyte++) {
             bit7 = (group_buffer[0] << (grpbyte + 1)) & 0x80;
             bit0to6 = (group_buffer[grpbyte + 1]) & 0x7f;
@@ -1712,14 +1726,12 @@ static int decodeDataPacket (void){
         }
     }
 
-    log_info("decode Data checksum %02X<>%02X",checksum,(oddbits | evenbits));
-    //print_packet ((unsigned char*) packet_buffer,packet_length());
-    
     if (checksum == (oddbits | evenbits))
         return 0;                                                                                   // NO error
-    else
+    else{
+        log_error("decode Data checksum %02X<>%02X",checksum,(oddbits | evenbits));
         return 6;                                                                                   // Smartport bus error code
-
+    }
 }
 
 
