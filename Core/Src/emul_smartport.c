@@ -331,7 +331,7 @@ char * SmartPortFindImage(char * pattern){
     f_closedir(&dir);
     return NULL;
 }
-
+const  char * smartportImageExt[]={"PO","po","2MG","2mg",NULL};   
 void SmartPortInit(){
     //log_info("SmartPort init");
 
@@ -341,11 +341,12 @@ void SmartPortInit(){
     HAL_TIMEx_PWMN_Stop(&htim1,TIM_CHANNEL_2);
 
     TIM3->ARR=(32*12)-1;
+    TIM2->ARR=(32*12)-1-2-5;
     //TIM3->ARR=(16*12)-1;
     //TIM3->CCR2=32*3;
 
     //char sztmp[128];
-    const  char * smartportImageExt[]={"PO","po","2MG","2mg",NULL};                             // TODO TO BE TESTED
+                              // TODO TO BE TESTED
     ptrFileFilter=smartportImageExt;
 
     char * szFile;
@@ -354,12 +355,12 @@ void SmartPortInit(){
         sprintf(key,"smartport_vol%02d",i);
         
         szFile=(char *)getConfigParamStr(key);
-        if (i==0){
+        /*if (i==0){
             szFile=(char *)malloc(128*sizeof(char));
             sprintf(szFile,"Arka.2mg");
-        }
+        }*/
 
-        if (szFile==NULL){
+        if (szFile==NULL || !strcmp(szFile,"")){
             devices[i].filename=NULL;
             devices[i].mounted=0;
             log_warn("[config] smartport_vol%02d does not exist",i);
@@ -369,13 +370,17 @@ void SmartPortInit(){
         
             if (devices[i].mounted!=1){
                 log_error("Mount error: %s not mounted",szFile);
+                sprintf(key,"smartport_vol%02d",i);
+                setConfigParamStr(key,"");
+                saveConfigFile();
+                devices[i].filename=NULL;
             }else{
                 log_info("%s mounted",szFile);
             }
         }
     }
 
-    switchPage(SMARTPORT,NULL);                                                                     // Display the Frame of the screen
+    switchPage(SMARTPORT,NULL);                                                                 // Display the Frame of the screen
     char * fileTab[4];
 
     //devices[0].device_id=1;
@@ -385,7 +390,7 @@ void SmartPortInit(){
 
     for (uint8_t i=0;i<MAX_PARTITIONS;i++){
         devices[i].dispIndex=i;
-        fileTab[i]=devices[i].filename;                                                                // Display the name of the PO according to the position
+        fileTab[i]=devices[i].filename;                                                         // Display the name of the PO according to the position
     }
     setImageTabSmartPortHD(fileTab,bootImageIndex);
 
@@ -1810,11 +1815,12 @@ static void encodeUnidiskStatReplyPacket(prodosPartition_t d){
                     ((data[4]>> 5) & 0x04 )|
                     ((data[5]>> 6) & 0x02 )|
                     ((data[6]>> 7) & 0x01 ); 
+    
     for (count=0;count <7;count++){
-        packet_buffer[16+count] = data[count] & 0x80; 
+        packet_buffer[17+count] = data[count] & 0x80; 
     }
     
-    /*packet_buffer[16] = 0x81; 
+    packet_buffer[16] = 0x81; 
     packet_buffer[17] = 0x80; 
     packet_buffer[18] = 0x80; 
     packet_buffer[19] = 0x80; 
@@ -1822,7 +1828,7 @@ static void encodeUnidiskStatReplyPacket(prodosPartition_t d){
     packet_buffer[21] = 0x80; 
     packet_buffer[22] = 0x88; 
     packet_buffer[23] = 0xFF;
-    */
+    
 
     for (count = 7; count < 14; count++)                                                            // xor the packet header bytes
         checksum = checksum ^ packet_buffer[count];
@@ -2486,6 +2492,17 @@ static int packet_length (void){
     return x - 1; // point to last packet byte = C8
 }
 
+enum STATUS SmartPortUnMountImageFromIndex(uint8_t i){
+    return SmartPortUnMountImage(&devices[i]);
+}
+
+enum STATUS SmartPortUnMountImage(prodosPartition_t *d){
+    d->mounted=0;
+    free(d->filename);
+    d->filename=NULL;
+    return RET_OK;
+
+}
 
 enum STATUS SmartPortMountImage( prodosPartition_t *d, char * filename ){
                                                                                     // Note: Image can be PO or 2MG

@@ -374,6 +374,7 @@ extern char currentPath[MAX_PATH_LENGTH];                                       
 extern char currentFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];                             // fullpath from root image filename
 extern char tmpFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];                                 // fullpath from root image filename
 
+uint8_t flgWeakBit=0;
 uint8_t flgSoundEffect=0;                                                                       // Activate Buzze
 uint8_t bootMode=0;
 uint8_t emulationType=0;
@@ -1268,6 +1269,11 @@ int main(void){
         log_warn("error getting soundEffect from Config");
       else 
         log_info("soundEffect=%d",flgSoundEffect);
+      
+      if (getConfigParamUInt8("weakBit",&flgWeakBit)==RET_ERR)
+        log_warn("error getting weakBit from Config");
+      else 
+        log_info("weakBit=%d",flgWeakBit);
 
     }
 

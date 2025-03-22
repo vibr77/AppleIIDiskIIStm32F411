@@ -8,6 +8,7 @@
 #include "screen_smartport.h"
 #include "display.h"
 #include "configFile.h"
+#include "emul_smartport.h"
 
 /**
  * 
@@ -37,6 +38,7 @@ static void pBtnEntrSmartPortHD();
 static void updateSelectSmartPortHD(uint8_t indx);
 static void pBtnToggleOptionSmartPortImage();
 static void toggleSmartPortIO(int i);
+static void pBtnEntrSmartPortHDImageOption();
 
 static void pBtnEntrSmartportMountImageScr();
 static void pBtnRetSmartportMountImageScr();
@@ -221,7 +223,8 @@ static  void pBtnEntrSmartPortHD(){
       log_info("selected %d",currentSmartPortImageIndex);
       switchPage(SMARTPORT_IMAGEOPTION,0);
     }else{                                                                          // Otherwise display directly the FS screen to select an image
-      switchPage(FS,0);
+      nextAction=FSDISP;
+
     }
       
   }
@@ -233,17 +236,16 @@ void initSmartPortHDImageOptionScr(){
 
   primPrepNewScreen("Smartport Image");
 
-  displayStringAtPosition(5,1*SCREEN_LINE_HEIGHT,"Options:");
-  displayStringAtPosition(30,3*SCREEN_LINE_HEIGHT,"Clear");
-  displayStringAtPosition(30,4*SCREEN_LINE_HEIGHT,"Select image");
-  
+  displayStringAtPosition(30,2*SCREEN_LINE_HEIGHT,"Clear");
+  displayStringAtPosition(30,3*SCREEN_LINE_HEIGHT,"Select image");
+
   ssd1306_SetColor(Inverse);
-  ssd1306_FillRect(30-5,4*SCREEN_LINE_HEIGHT-1,50,9);
+  ssd1306_FillRect(30-5,3*SCREEN_LINE_HEIGHT-1,80,9);
   
   primUpdScreen();
   ptrbtnUp=pBtnToggleOptionSmartPortImage;
   ptrbtnDown=pBtnToggleOptionSmartPortImage;
-  ptrbtnEntr=pBtnEntrSmartPortHD;
+  ptrbtnEntr=pBtnEntrSmartPortHDImageOption;
   ptrbtnRet=pBtnRetSmartPortHD;
   currentPage=SMARTPORT_IMAGEOPTION;
 
@@ -264,8 +266,8 @@ static void pBtnToggleOptionSmartPortImage(){
   
 static void toggleSmartPortIO(int i){
   ssd1306_SetColor(Inverse);
-  ssd1306_FillRect(30-5,3*SCREEN_LINE_HEIGHT-1,50,9);
-  ssd1306_FillRect(30-5,4*SCREEN_LINE_HEIGHT-1,50,9);
+  ssd1306_FillRect(30-5,2*SCREEN_LINE_HEIGHT-1,80,9);
+  ssd1306_FillRect(30-5,3*SCREEN_LINE_HEIGHT-1,80,9);
   primUpdScreen();
 
 }
@@ -274,6 +276,23 @@ void processSmartPortImageOptionRetScreen(){
   switchPage(SMARTPORT,NULL); 
 }
 
+static void pBtnEntrSmartPortHDImageOption(){
+
+  if (toggleSmartPortImageOption==0)
+    nextAction=FSDISP;
+  else {
+    SmartPortUnMountImageFromIndex(fsHookedPartition);
+    char key[17];
+    sprintf(key,"smartport_vol%02d",fsHookedPartition);
+    setConfigParamStr(key,"");
+    saveConfigFile();
+    switchPage(SMARTPORT,NULL); 
+
+    partititionTab[fsHookedPartition]=NULL;
+    updateImageSmartPortHD();
+  }
+
+}
 
 void initSmartportMountImageScr(char * filename){
   

@@ -28,7 +28,7 @@ unsigned char prevTrk=35;                                                       
 extern unsigned char read_track_data_bloc[RAW_SD_TRACK_SIZE];                  
 extern volatile unsigned char DMA_BIT_TX_BUFFER[RAW_SD_TRACK_SIZE];                             // DMA Buffer for READ Track
 extern const  char** ptrFileFilter;
-volatile int flgWeakBit=0;                                                                      // Activate WeakBit only for Woz File
+//volatile int flgWeakBit=0;                                                                      // Activate WeakBit only for Woz File
 uint8_t flgBitIndxCounter=0;                                                                    // Keep track of Bit Index Counter when changing track (only for WOZ)
 
 extern enum action nextAction;
@@ -60,6 +60,7 @@ extern volatile enum FS_STATUS fsState;
 
 extern list_t * dirChainedList;
 extern uint8_t flgSoundEffect;
+extern uint8_t flgWeakBit;
 
 #ifdef A2F_MODE
 extern uint8_t rEncoder;
@@ -231,13 +232,12 @@ uint8_t pFlgWRRequest=0;
   * @retval None
 ***/
 void DiskIIWrReqIRQ(){
-    // GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);
+
     if ((WR_REQ_GPIO_Port->IDR & WR_REQ_Pin)==0)
         flgWrRequest=0;
     else
         flgWrRequest=1;
 
-    //GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);
     if (flgSelect==0 || flgDeviceEnable==0)                                                     // A2 is not connected do nothing or DeviceEnable is not LOW
         return;
 
@@ -256,14 +256,11 @@ void DiskIIWrReqIRQ(){
     }else if (flgWrRequest==1 && pFlgWRRequest==0){
         
         HAL_TIM_PWM_Start_IT(&htim3,TIM_CHANNEL_4); 
-                                                                        // Compute the bitCounter from the BytePtr
-        //GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);                                  // <!> Important WR_REQ goes low too early
-        //for (int i=0;i<200;i++){}
+                                                                                                      
         bitPos=7;                                                                               // Reset the bitPos
         rdBitCounter=bytePtr*8; 
         HAL_TIM_PWM_Stop_IT(&htim2,TIM_CHANNEL_3);                                              // Stop the WRITING Timer
     
-        //GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);
         cAlive=0;                                                                               // Reset the cAlive
     }
     pFlgWRRequest=flgWrRequest;   
@@ -383,7 +380,7 @@ void DiskIISendDataIRQ(){
 
         // ************  WEAKBIT ****************
 
-        #if WEAKBIT ==1
+//        #if WEAKBIT ==1
 
         if ( nextBit==0 && flgWeakBit==1 ){
             if (++zeroBits>3){
@@ -396,7 +393,7 @@ void DiskIISendDataIRQ(){
             zeroBits=0;
         }
         
-        #endif
+//        #endif
 
         // ************  WEAKBIT ****************
 
@@ -427,7 +424,7 @@ int DiskIIDeviceEnableIRQ(uint16_t GPIO_Pin){
 
     GPIO_InitTypeDef GPIO_InitStruct = {0};
 
-    if (a==0 /*&& flgBeaming==1*/){                                                                 // <!> TO BE TESTED 24/10
+    if (a==0){                                                                 // <!> TO BE TESTED 24/10
         flgDeviceEnable=1;
 
 #ifdef A2F_MODE
@@ -558,7 +555,7 @@ enum STATUS DiskIIMountImagefile(char * filename){
 
     }else if (l>4 && 
         (!memcmp(filename+(l-4),".WOZ",4)  ||           // .WOZ
-        !memcmp(filename+(l-4),".woz",4))) {           // .woz
+        !memcmp(filename+(l-4),".woz",4))) {            // .woz
 
         if (mountWozFile(filename)!=RET_OK){
             fsState=READY;
@@ -618,8 +615,8 @@ enum STATUS DiskIIMountImagefile(char * filename){
     log_info("Mount image:OK");
     flgImageMounted=1;
     
-    if (mountImageInfo.cleaned==1)
-        flgWeakBit=1;
+    //if (mountImageInfo.cleaned==1)
+    //    flgWeakBit=1;
 
     sprintf(currentFullPathImageFilename,"%s",filename);
     log_info("currentFullPathImageFilename:%s",currentFullPathImageFilename);

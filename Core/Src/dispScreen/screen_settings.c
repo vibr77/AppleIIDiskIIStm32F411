@@ -26,6 +26,7 @@ extern void (*ptrbtnRet)(void *);
 extern uint8_t emulationType;
 extern uint8_t bootImageIndex;
 extern uint8_t flgSoundEffect;
+extern uint8_t flgWeakBit;
 
 /*
 *
@@ -42,6 +43,7 @@ static void pBtnRetSettingEmulationSrc();
 static void pBtnEntrSettingEmulationSrc(int arg);
 
 static void pBootOption(int arg);
+static void pWeakBit();
 static void pSoundEffect();
 static void pClearprefs();
 static void pClearFavorites();
@@ -158,6 +160,20 @@ void initSettingsScr(uint8_t i){
     settingItem->icon=9;
     settingItem->triggerfunction=pSoundEffect;
     settingItem->ival=flgSoundEffect;
+    settingItem->arg=0;
+    list_rpush(settingLw.lst, list_node_new(settingItem));
+
+
+    settingItem=(listItem_t *)malloc(sizeof(listItem_t));
+    if (settingItem==NULL){
+        log_error("malloc error listItem_t");
+        return;
+    }
+    sprintf(settingItem->title,"WeakBit");
+    settingItem->type=1;
+    settingItem->icon=9;
+    settingItem->triggerfunction=pWeakBit;
+    settingItem->ival=flgWeakBit;
     settingItem->arg=0;
     list_rpush(settingLw.lst, list_node_new(settingItem));
   
@@ -278,8 +294,9 @@ void initSettingsScr(uint8_t i){
     list_rpush(settingLw.lst, list_node_new(settingItem));
 
     primPrepNewScreen("Emulation type");
-    primUpdListWidget(&settingLw,-1,0);
-
+    settingLw.dispLineSelected=0;
+    primUpdListWidget(&settingLw,1,0);
+    
     ptrbtnRet=pBtnRetSettingEmulationSrc;
     currentPage=EMULATIONTYPE;
 }
@@ -368,7 +385,28 @@ static void pBootOption(int arg){
     primUpdListWidget(&settingLw,-1,0);
     return;
 }
-  
+
+static void pWeakBit(){
+    
+    listItem_t *item= settingLw.currentSelectedItem->val;
+    if (item==NULL){
+        log_error("item is null");
+        return;
+    } 
+    
+    if (item->ival==1){
+      
+      flgWeakBit=0;
+    }else{
+      flgWeakBit=1;
+    }
+    setConfigParamInt("weakBit",flgWeakBit);
+    saveConfigFile();
+    item->ival=flgWeakBit;
+    
+    primUpdListWidget(&settingLw,-1,0);
+}
+
 static void pSoundEffect(){
     
     listItem_t *item= settingLw.currentSelectedItem->val;

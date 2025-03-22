@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include "main.h"
 #include "configFile.h"
+#include "fatfs.h"
 
 typedef struct prodosPartition_s{
     FIL fil; 
@@ -36,6 +37,8 @@ void assertAck();
 void deAssertAck();
 
 char * SmartPortFindImage(char * pattern);
+enum STATUS SmartPortUnMountImageFromIndex(uint8_t i);
+enum STATUS SmartPortUnMountImage(prodosPartition_t *d);
 enum STATUS SmartPortMountImage( prodosPartition_t *d, char * filename );
 
 void setWPProtectPort(uint8_t direction);
