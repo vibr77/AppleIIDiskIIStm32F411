@@ -468,7 +468,7 @@ void TIM4_IRQHandler(void){
     }
 
 #ifdef A2F_MODE
-    if(HAL_GPIO_ReadPin(BTN_RET_GPIO_Port, BTN_RET_Pin) && // Reset on RE push
+    if(HAL_GPIO_ReadPin(BTN_RET_GPIO_Port, BTN_RET_Pin) && // Reset on push all
        HAL_GPIO_ReadPin(BTN_ENTR_GPIO_Port, BTN_ENTR_Pin) &&
        HAL_GPIO_ReadPin(BTN_UP_GPIO_Port, BTN_UP_Pin) &&
        HAL_GPIO_ReadPin(BTN_DOWN_GPIO_Port, BTN_DOWN_Pin)){

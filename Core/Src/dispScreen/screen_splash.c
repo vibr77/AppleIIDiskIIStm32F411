@@ -8,6 +8,10 @@
 #include "screen_splash.h"
 #include "display.h"
 
+#ifdef A2F_MODE
+#include "a2f.h"
+#endif
+
 /**
  * 
  * SPLASH SCREEN
@@ -43,10 +47,8 @@ void initSplash(){
   }  
   displayStringAtPosition(1,1*SCREEN_LINE_HEIGHT,"VIBR SmartDisk][");
   displayStringAtPosition(1,6*SCREEN_LINE_HEIGHT,_VERSION);
-  ssd1306_UpdateScreen();
+  primUpdScreen();
 
-  makeScreenShot(scrI);
-  scrI++;
   HAL_Delay(1000);
   ssd1306_Clear();
 }
