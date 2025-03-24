@@ -278,6 +278,7 @@ void initSettingsScr(uint8_t i){
         settingItem->ival=1;
     list_rpush(settingLw.lst, list_node_new(settingItem));
 
+    /*
     settingItem=(listItem_t *)malloc(sizeof(listItem_t));
     if (settingItem==NULL){
         log_error("malloc error listItem_t");
@@ -292,6 +293,7 @@ void initSettingsScr(uint8_t i){
     if (emulationType==settingItem->arg)
         settingItem->ival=1;
     list_rpush(settingLw.lst, list_node_new(settingItem));
+    */
 
     primPrepNewScreen("Emulation type");
     settingLw.dispLineSelected=0;
