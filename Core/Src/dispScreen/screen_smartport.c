@@ -162,13 +162,13 @@ void updateCommandSmartPortHD(uint8_t imageIndex, uint8_t cmd ){
 
   sprintf(szTmp,"  ");
   for (int i=0;i<4;i++){
-    displayStringAtPosition(128-2*7,(3+i)*SCREEN_LINE_HEIGHT,szTmp);      // 2nd half of the screen Line 3 & 4 
+    displayStringAtPosition(128-2*7,(3+i)*SCREEN_LINE_HEIGHT,szTmp);              // 2nd half of the screen Line 3 & 4 
   }
 
   if (cmd == EMUL_READ){
     sprintf(szTmp,"RD");
   }else if (cmd == EMUL_WRITE){
-    sprintf(szTmp,"WR");                            // Need to change to short instead of printing int 0-65000
+    sprintf(szTmp,"WR");                                                          // Need to change to short instead of printing int 0-65000
   }else if (cmd== EMUL_STATUS){
     sprintf(szTmp,"I ");
   }else{

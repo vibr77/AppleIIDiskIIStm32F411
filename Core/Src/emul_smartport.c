@@ -649,15 +649,16 @@ void SmartPortMainLoop(){
                         
                         statusCode= (packet_buffer[SP_G7BYTE3] & 0x7f) | (((unsigned short)MSB << 3) & 0x80);  ;
 
-                        for (partition = 0; partition < MAX_PARTITIONS; partition++) {                                  // Check if its one of ours
+                        for (partition = 0; partition < MAX_PARTITIONS; partition++) {                                      // Check if its one of ours
                             uint8_t dev=(partition + initPartition) % MAX_PARTITIONS;
                             if (devices[dev].device_id == dest && devices[dev].mounted==1 ) {                           // yes it is, and it's online, then reply
                                 
                                 updateCommandSmartPortHD(devices[dev].dispIndex,2);
-                                                                                                                        // Added (unsigned short) cast to ensure calculated block is not underflowing.
-                                if (statusCode == 0x03) {                                                               // if statcode=3, then status with device info block
+                                                                                                                            // Added (unsigned short) cast to ensure calculated block is not underflowing.
+                                if (statusCode == 0x03) {                                                                   // if statcode=3, then status with device info block
                                     encodeStatusDibReplyPacket(devices[dev]);
                                 } else if (statusCode == 0x05){                                                           
+                                    
                                     //log_error("Unidisk UniDiskStat  not implemented");
                                     /* we should provide an answer like this 
                                         Msg: 0227
@@ -1276,7 +1277,7 @@ void SmartPortMainLoop(){
                                 }  
                                 
                                 log_info("Smartport cmd:%02X, dest:%02X, control command code:%02X EXECUTE",packet_buffer[SP_COMMAND],dest,ctrlCode);
-                                print_packet ((unsigned char*) packet_buffer,packet_length());
+                                //print_packet ((unsigned char*) packet_buffer,packet_length());
                                 
                                 respType=0x01;
                                 statusCode=0x0; 
@@ -1311,7 +1312,7 @@ void SmartPortMainLoop(){
                         encodeReplyPacket(dest,respType,AUX,statusCode);
                         SmartPortSendPacket(packet_buffer);
                         log_info("Smartport Response Control Packet");
-                        print_packet ((unsigned char*) packet_buffer,packet_length());
+                        //print_packet ((unsigned char*) packet_buffer,packet_length());
                         break;
 
                     case 0xC4:                                                                                      // EXTENDED CONTROL CMD
@@ -1379,12 +1380,12 @@ void SmartPortMainLoop(){
                                 log_error("Smartport CONTROL cmd:%02X, dest:%02X, control command code:%02X OTHER",packet_buffer[SP_COMMAND],dest,ctrlCode);
                         }
 
-                        print_packet ((unsigned char*) packet_buffer,packet_length());
+                        //print_packet ((unsigned char*) packet_buffer,packet_length());
 
                         encodeReplyPacket(dest,0x0,AUX,statusCode);                                                     // just send back a successful response
                         SmartPortSendPacket(packet_buffer);
                         
-                        print_packet ((unsigned char*) packet_buffer,packet_length());
+                        //print_packet ((unsigned char*) packet_buffer,packet_length());
                         
                         break;
                 
@@ -1434,7 +1435,7 @@ void SmartPortMainLoop(){
                             
                         log_info("Smartport READ cmd:%02X, dst:%02X, dataPtr:%04x, ByteCount:%d, addrPtr:%lu",packet_buffer[SP_COMMAND],dest,dataPtr,ByteCount,addressPtr);
                         
-                        print_packet ((unsigned char*) packet_buffer,packet_length());
+                        //print_packet ((unsigned char*) packet_buffer,packet_length());
                         
                         encodeReplyPacket(dest,0x0,AUX,0x0);                                                                          // For the moment send a OK reply
                         SmartPortSendPacket(packet_buffer);                                                                             // We should send the data...
@@ -1442,17 +1443,17 @@ void SmartPortMainLoop(){
 
                     case 0x89:                                                                 // Normal Write
                         log_info("Smartport cmd:%02X",packet_buffer[SP_COMMAND]);
-                        print_packet ((unsigned char*) packet_buffer,packet_length());
+                        //print_packet ((unsigned char*) packet_buffer,packet_length());
                         break;
                     
                     case 0xC8:                                                                 // Extended Read
                         log_info("Smartport cmd:%02X",packet_buffer[SP_COMMAND]);
-                        print_packet ((unsigned char*) packet_buffer,packet_length());
+                        //print_packet ((unsigned char*) packet_buffer,packet_length());
                         break;
 
                     case 0xc9:                                                                  // Extended Write
                         log_info("Smartport cmd:%02X",packet_buffer[SP_COMMAND]);
-                        print_packet ((unsigned char*) packet_buffer,packet_length());         
+                        //print_packet ((unsigned char*) packet_buffer,packet_length());         
                         break;
                 } 
                
@@ -1915,7 +1916,7 @@ static void encodeStatusReplyPacket (prodosPartition_t d){
     data[0] = 0b11111000;
 
     if (d.mounted==0){
-        data[0]=data[0] & 0x1110111;
+        data[0]=data[0] & 0b11101111;
     }
     
     //Disk size Bytes [1-3]:
@@ -2005,7 +2006,9 @@ static void encodeExtendedStatusReplyPacket (prodosPartition_t d){
      */
 
     data[0] = 0b11111000;                                                                       // Status Bytes
-
+    if (d.mounted==0){
+        data[0]=data[0] & 0b11101111;
+    }
     data[1] = d.blocks & 0xff;                                                                  // Disk size Bytes
     data[2] = (d.blocks >> 8 ) & 0xff;
     data[3] = (d.blocks >> 16 ) & 0xff;
@@ -2163,7 +2166,7 @@ void encodeStatusDibReplyPacket (prodosPartition_t d){
     }else if (d.diskFormat==PO){
         
         devicetype=0x02;
-
+        
         //deviceSubType=0x0;                             // Removable hard disk
         //deviceSubType=$20;                             // Hard disk
         deviceSubType=0x40;                              // Removable hard disk supporting disk-switched errors
@@ -2178,12 +2181,14 @@ void encodeStatusDibReplyPacket (prodosPartition_t d){
 
     //* write data buffer first (25 bytes) 3 grp7 + 4 odds
     data[0] = 0xF8;                                                                                 // 0b11111000; general status - f8 
-                                                                                                    // number of blocks =0x00ffff = 65525 or 32mb
+    if (d.mounted==0){
+        data[0]=data[0] & 0b11101111;
+    }                                                                                               // number of blocks =0x00ffff = 65525 or 32mb
     data[1] = d.blocks & 0xff;                                                                      // block size 1 
     data[2] = (d.blocks >> 8 ) & 0xff;                                                              // block size 2 
     data[3] = (d.blocks >> 16 ) & 0xff ;                                                            // block size 3 
     
-    data[4] = 0x0b;                                                                                 // ID string length - 11 chars
+    data[4] = 0x0c;                                                                                 // ID string length - 11 chars
     data[5] = 'S';
     data[6] = 'M';
     data[7] = 'A';
@@ -2195,7 +2200,7 @@ void encodeStatusDibReplyPacket (prodosPartition_t d){
     data[13] = 'K';
     data[14] = 'H';
     data[15] = 'D';
-    data[16] = ' ';
+    data[16] = d.device_id+0x30;                                                                    // 
     data[17] = ' ';
     data[18] = ' ';
     data[19] = ' ';
@@ -2344,13 +2349,17 @@ void encodeExtendedStatusDibReplyPacket (prodosPartition_t d){
     packet_buffer[13] = 0x83;                                                                       // GRP7CNT - 3 grps of 7
     packet_buffer[14] = 0xf0;                                                                       // grp1 msb
     packet_buffer[15] = 0xf8;                                                                       // general status - f8
+    
+    if (d.mounted==0){
+        packet_buffer[15]=packet_buffer[15] & 0b11101111;
+    }    
 
     //number of blocks =0x00ffff = 65525 or 32mb
     packet_buffer[16] = d.blocks & 0xff;                                                            // block size 1 
     packet_buffer[17] = (d.blocks >> 8 ) & 0xff;                                                    // block size 2 
     packet_buffer[18] = ((d.blocks >> 16 ) & 0xff) | 0x80 ;                                         // block size 3 - why is the high bit set?
     packet_buffer[19] = ((d.blocks >> 24 ) & 0xff) | 0x80 ;                                         // block size 4 - why is the high bit set?  
-    packet_buffer[20] = 0x8B;                                                                       // ID string length - 11 chars
+    packet_buffer[20] = 0x8C;                                                                       // ID string length - 11 chars
     packet_buffer[21] = 'S';
     packet_buffer[22] = 'M';                                                                         // ID string (16 chars total)
     packet_buffer[23] = 0x80;                                                                       // grp2 msb
@@ -2366,7 +2375,7 @@ void encodeExtendedStatusDibReplyPacket (prodosPartition_t d){
     packet_buffer[31] = 0x80;                                                                       // grp3 msb
     packet_buffer[32] = 'H';
     packet_buffer[33] = 'D';  
-    packet_buffer[34] = ' ';  
+    packet_buffer[34] = d.device_id+0x30; 
     packet_buffer[35] = ' ';  
     packet_buffer[36] = ' ';  
     packet_buffer[37] = ' ';  
