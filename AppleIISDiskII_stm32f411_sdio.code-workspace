@@ -13,7 +13,12 @@
 			"log.h": "c",
 			"complex": "c",
 			"valarray": "c",
-			"main.h": "c"
+			"main.h": "c",
+			"array": "c",
+			"span": "c",
+			"string": "c",
+			"string_view": "c",
+			"vector": "c"
 		}
 	},
 	"tasks": {
