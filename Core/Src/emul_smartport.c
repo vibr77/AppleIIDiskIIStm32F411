@@ -419,8 +419,18 @@ void SmartPortSendPacket(unsigned char* buffer){
     HAL_GPIO_WritePin(RD_DATA_GPIO_Port, RD_DATA_Pin,GPIO_PIN_RESET);    
     
     deAssertAck();                                                                              // set ACK(BSY) low to signal we have sent the pkt
-    
-    while (phase & 0x01);
+    int i=0;
+    while (phase & 0x01){
+        i++;
+        if (i==5000){
+            log_warn("Smartport stalled, resending assert");
+            assertAck();
+            deAssertAck(); 
+            i=0;
+            break;
+        }
+
+    }
     
     return;
 }
@@ -651,7 +661,7 @@ void SmartPortMainLoop(){
 
                         for (partition = 0; partition < MAX_PARTITIONS; partition++) {                                      // Check if its one of ours
                             uint8_t dev=(partition + initPartition) % MAX_PARTITIONS;
-                            if (devices[dev].device_id == dest && devices[dev].mounted==1 ) {                           // yes it is, and it's online, then reply
+                            if (devices[dev].device_id == dest /*&& devices[dev].mounted==1 */) {                           // yes it is, and it's online, then reply
                                 
                                 updateCommandSmartPortHD(devices[dev].dispIndex,2);
                                                                                                                             // Added (unsigned short) cast to ensure calculated block is not underflowing.

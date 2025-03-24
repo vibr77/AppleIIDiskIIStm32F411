@@ -83,11 +83,15 @@ void setImageTabSmartPortHD(char * fileTab[4],uint8_t bootImageIndex){
 void updateImageSmartPortHD(){
 
     // Display the 4 image Filename without with extension and only 10 char.
-  
+    for (uint8_t i=0;i<4;i++){
+      ssd1306_SetColor(Black);
+      clearLineStringAtPosition((3+i)*SCREEN_LINE_HEIGHT,0);
+    }
     char tmp[22]; 
     ssd1306_SetColor(White);
     char * filename;
     for (uint8_t i=0;i<4;i++){
+      
       filename=partititionTab[i];
 
       if (filename!=NULL){
