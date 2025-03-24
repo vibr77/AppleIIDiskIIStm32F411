@@ -95,6 +95,10 @@ enum STATUS switchPage(enum page newPage,void * arg){
     case FS:
       initFsScr(arg);
       break;
+    
+    case FSLABEL:
+     initLabelInputScr();
+     break;
 
     case MENU:
       initMainMenuScr(0);
@@ -127,15 +131,17 @@ void primUpdRollingLabelListWidget(rollingWidget_t * rw,int8_t init, int8_t dire
   if (rw){
     rw->lstItemCount=rw->lst->len;
   }
+  
 
   switch(direction){
     
     case 1:
-      rw->currentClistPos=(rw->currentClistPos+1)%rw->lstItemCount;
+      rw->currentClistPos=(rw->currentClistPos+1)%(rw->lstItemCount);
       break;
     
     case -1:
-      rw->currentClistPos=(rw->currentClistPos-1)%rw->lstItemCount;
+      
+      rw->currentClistPos=(rw->currentClistPos-1)%(rw->lstItemCount);
       break;
     
     case 0:
@@ -151,32 +157,60 @@ void primUpdRollingLabelListWidget(rollingWidget_t * rw,int8_t init, int8_t dire
     rw->currentClistPos=(init)%rw->lstItemCount;
   }
 
-  lstIndx=(rw->currentClistPos-1)%rw->lstItemCount;
+  if (rw->currentClistPos==0)
+    lstIndx=rw->lstItemCount-1;
+  else
+    lstIndx=rw->currentClistPos-1;
+
   rw->beforeItem=list_at(rw->lst, lstIndx);
-  
+
+
+  if (rw->currentClistPos==rw->lstItemCount-1)
+    lstIndx=0;
+  else
+    lstIndx=rw->currentClistPos+1;
+
+  rw->afterItem=list_at(rw->lst,lstIndx );
+
   rw->currentSelectedItem=list_at(rw->lst,rw->currentClistPos);
 
-  lstIndx=(rw->currentClistPos+1)%rw->lstItemCount;
-  rw->afterItem=list_at(rw->lst, lstIndx);
-
   listItem_t *itm;
-  ssd1306_SetColor(White);
+  
+  uint8_t len=strlen(rw->label);
+  uint8_t lblOffset=0;
+  if (len<rw->labelMaxLen)
+  rw->index=len;
+  else{
+    rw->index=rw->labelMaxLen;
+    lblOffset=len-rw->labelMaxLen;
+  }
+   
 
-  clearLineStringAtPosition(rw->dispLine+1,rw->vOffset);
+  
+
+
+
+  clearLineStringAtPosition(rw->dispLine-1,rw->vOffset);
   clearLineStringAtPosition(rw->dispLine,rw->vOffset);
   clearLineStringAtPosition(rw->dispLine+1,rw->vOffset);
 
-  displayStringAtPosition(1+rw->hOffset,rw->dispLine*SCREEN_LINE_HEIGHT+rw->vOffset,rw->label);
-      
-  itm=rw->beforeItem->val;  
-  displayStringAtPosition(1+rw->hOffset+rw->index*8,(rw->dispLine-1)*SCREEN_LINE_HEIGHT+rw->vOffset,itm->title);
+  ssd1306_SetColor(White);
+
+  displayStringAtPosition(1+rw->hOffset,rw->dispLine*SCREEN_LINE_HEIGHT+rw->vOffset,rw->label+lblOffset);
+  itm=rw->beforeItem->val;
+  //itm=rw->beforeItem->val;  
+  //displayStringAtPosition(1+rw->hOffset+rw->index*6,(rw->dispLine-1)*SCREEN_LINE_HEIGHT+rw->vOffset,itm->title);
   
+  ssd1306_SetColor(Black);
   itm=rw->currentSelectedItem->val;
-  displayStringAtPosition(1+rw->hOffset+rw->index*8,(rw->dispLine)*SCREEN_LINE_HEIGHT+rw->vOffset,itm->title);
 
-  itm=rw->afterItem->val;
-  displayStringAtPosition(1+rw->hOffset+rw->index*8,(rw->dispLine+1)*SCREEN_LINE_HEIGHT+rw->vOffset,itm->title);
-
+  
+  displayStringAtPosition(1+rw->hOffset+rw->index*6,(rw->dispLine)*SCREEN_LINE_HEIGHT+rw->vOffset,itm->title);
+  
+  //ssd1306_SetColor(White);
+  //itm=rw->afterItem->val;
+  //displayStringAtPosition(1+rw->hOffset+rw->index*6+1,(rw->dispLine+1)*SCREEN_LINE_HEIGHT+rw->vOffset,itm->title);
+  
   primUpdScreen();
 
 }

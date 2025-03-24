@@ -304,7 +304,7 @@ static void pBtnEntrFsScr(){
 }
 
 rollingWidget_t labelRw;
-
+//const char * lstValues[]={"A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","R","S","T","U","V","W","X","Y","Z","0","1","2","3","4","5","6","7","8","9","[OK]",NULL};
 void initLabelInputScr(){
   primPrepNewScreen("Image Name");
     
@@ -315,7 +315,10 @@ void initLabelInputScr(){
   labelRw.currentClistPos=0;
   labelRw.dispLine=3;
   labelRw.hOffset=1;
-  labelRw.vOffset=5;
+  labelRw.vOffset=1;
+  labelRw.labelMaxLen=10;
+
+  sprintf(labelRw.label,"lbl");
 
   const char * lstValues[]={"A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","R","S","T","U","V","W","X","Y","Z","0","1","2","3","4","5","6","7","8","9","[OK]",NULL};
   
@@ -329,6 +332,7 @@ void initLabelInputScr(){
     }
 
     sprintf(lblItem->title,"%s",lstValues[i]);
+    log_info("title:%s",lstValues[i]);
     lblItem->type=0;
     lblItem->triggerfunction=pLabelItem;
     lblItem->ival=lstValues[i][0];
@@ -342,21 +346,41 @@ void initLabelInputScr(){
   ptrbtnEntr=pBtnEntrLabelInputScr;
   ptrbtnRet=pBtnRetLabelInputScr;
   currentPage=FSLABEL;
+  primUpdRollingLabelListWidget(&labelRw,0,0);
+  primUpdScreen();
+
 }
 
 static void pBtnUpLabelInputScr(){
-  //primUpdRollingLabelListWidget()
+  primUpdRollingLabelListWidget(&labelRw,-1,-1);
 }
 
 static void pBtnDownLabelInputScr(){
-
+  primUpdRollingLabelListWidget(&labelRw,-1,1);
 }
 
 static void pBtnRetLabelInputScr(){
-
+  uint8_t len=strlen(labelRw.label);
+  if (len!=0)
+    labelRw.label[len-1]=0x0;
+  primUpdRollingLabelListWidget(&labelRw,-1,0); 
 }
 
 static void pBtnEntrLabelInputScr(){
+  
+  listItem_t *itm;
+  itm=labelRw.currentSelectedItem->val;
+  
+  if (!strcmp(itm->title,"[OK]")){
+    log_info("ok");
+    return; 
+  }
+
+  uint8_t len=strlen(labelRw.label);
+  if (len<32-2){
+    sprintf(labelRw.label+len,"%s",itm->title);
+  }
+  primUpdRollingLabelListWidget(&labelRw,-1,0);
 
 }
 

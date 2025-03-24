@@ -1487,7 +1487,6 @@ void SmartPortMainLoop(){
                     default:
                         execAction(&nextAction);
                 }
-                
             }
         }            
 
@@ -2170,18 +2169,21 @@ void encodeStatusDibReplyPacket (prodosPartition_t d){
     uint8_t deviceSubType=0;
 
     if (d.diskFormat==_2MG){
-        //devicetype=0x02;                                 // Hard Disk
-        devicetype=0x01;                               // Unidisk
-        deviceSubType=0x0;                               // Removable hard disk
+        //devicetype=0x02;                                                                      // Hard Disk
+        devicetype=0x01;                                                                        // Unidisk
+        deviceSubType=0x0;                                                                      // Removable hard disk
     }else if (d.diskFormat==PO){
         
         devicetype=0x02;
         
-        //deviceSubType=0x0;                             // Removable hard disk
-        //deviceSubType=$20;                             // Hard disk
+        //deviceSubType=0x0;                                                                    // Removable hard disk
+        //deviceSubType=$20;                                                                    // Hard disk
         deviceSubType=0x40;                              // Removable hard disk supporting disk-switched errors
         //deviceSubType=0xA0;                            // Hard disk supporting extended calls
         //deviceSubType=0xC0;                            // Removable hard disk supporting extended calls and disk-switched errors
+    }else{
+        devicetype=0x01;                                 // Unidisk
+        deviceSubType=0x0;                               // Removable hard disk
     }
     
     grpnum=3;
@@ -2240,8 +2242,7 @@ void encodeStatusDibReplyPacket (prodosPartition_t d){
         for (grpbyte = 0; grpbyte < 7; grpbyte++)                                                   // now add the group data bytes bits 6-0
             packet_buffer[(14 + oddnum + 2) + (grpcount * 8) + grpbyte] = group_buffer[grpbyte] | 0x80;
     }
-        
-                
+           
     //odd byte
     packet_buffer[14] = 0x80 | 
                     ((data[0]>> 1) & 0x40) | 
@@ -2338,6 +2339,9 @@ void encodeExtendedStatusDibReplyPacket (prodosPartition_t d){
     }else if (d.diskFormat==PO){
         devicetype=0x02;
         deviceSubType=0x00;
+    }else{
+        devicetype=0x01;                                 // Unidisk
+        deviceSubType=0x0;                               // Removable hard disk
     }
 
     unsigned char checksum = 0;
@@ -2467,9 +2471,6 @@ C3              PBEGIN    MARKS BEGINNING OF PACKET             32 micro Sec.   
     evenbits = packet_buffer[length - 3] & 0x55;
     
     pkt_checksum = oddbits | evenbits;
-
-    // calculate checksum for overhead bytes
-    
 
     if ( pkt_checksum == calc_checksum )
         return RET_OK;

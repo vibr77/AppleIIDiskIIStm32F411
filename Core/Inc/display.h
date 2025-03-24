@@ -54,11 +54,12 @@ typedef struct listWidget_s{
 
 typedef struct rollingWidget_s{
     char  label[32];
+    uint8_t labelMaxLen;
     uint8_t index;
     uint8_t hOffset;                        
     uint8_t vOffset; 
     uint8_t dispLine;                                       
-    uint8_t currentClistPos;
+    int8_t currentClistPos;
     uint8_t lstItemCount;
     list_t * lst;
     list_node_t * beforeItem;

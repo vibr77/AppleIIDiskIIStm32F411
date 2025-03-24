@@ -61,6 +61,7 @@ void initSmartPortHDScr(){
     displayStringAtPosition(35,1*SCREEN_LINE_HEIGHT,"SMARTPORT HD");
     primUpdScreen();
     previousSmartPortImageIndex=-1;
+    currentSmartPortImageIndex=4;
 
     ptrbtnUp=pBtnUpSmartPortHD;
     ptrbtnDown=pBtnDownSmartPortHD;
@@ -83,10 +84,7 @@ void setImageTabSmartPortHD(char * fileTab[4],uint8_t bootImageIndex){
 void updateImageSmartPortHD(){
 
     // Display the 4 image Filename without with extension and only 10 char.
-    for (uint8_t i=0;i<4;i++){
-      ssd1306_SetColor(Black);
-      clearLineStringAtPosition((3+i)*SCREEN_LINE_HEIGHT,0);
-    }
+    
     char tmp[22]; 
     ssd1306_SetColor(White);
     char * filename;
@@ -127,9 +125,9 @@ void updateImageSmartPortHD(){
         displayStringAtPosition(1,(3+i)*SCREEN_LINE_HEIGHT,tmp);
       }else{
         if ((i+1)==bootIndx)
-            sprintf(tmp,"*:[SELECT]");
+            sprintf(tmp,"*:[SELECT]          ");
         else
-            sprintf(tmp,"%d:[SELECT]",i+1);
+            sprintf(tmp,"%d:[SELECT]         ",i+1);
         displayStringAtPosition(1,(3+i)*SCREEN_LINE_HEIGHT,tmp); 
       }
     }
@@ -212,6 +210,7 @@ static void pBtnDownSmartPortHD(){
 
 static void updateSelectSmartPortHD(uint8_t indx){
   log_info("prev:%d current:%d",previousSmartPortImageIndex,currentSmartPortImageIndex);
+  
   ssd1306_SetColor(Inverse);
   if (previousSmartPortImageIndex!=4)
     ssd1306_FillRect(1,(3+previousSmartPortImageIndex)*SCREEN_LINE_HEIGHT-1,126,9);
