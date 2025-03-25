@@ -709,7 +709,7 @@ void DiskIIInit(){
             else
                 log_error("no imageFile to mount");
             
-            switchPage(FS,currentFullPath);
+            switchPage(MENU,0);
         }
 
     }else if (bootMode==1){

@@ -1361,8 +1361,8 @@ int main(void){
   // Init emulation
   // --------------------------------------------------------------------
 
-  switchPage(FSSELECTIMAGE,0);
-  while(1);
+  //switchPage(FSSELECTIMAGE,0);
+  //while(1);
   ptrInit();
 
   // --------------------------------------------------------------------

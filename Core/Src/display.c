@@ -149,11 +149,11 @@ void primUpdRollingLabelListWidget(rollingWidget_t * rw,int8_t init, int8_t dire
       break;
     
     case 0:
-      log_info("listwidget do nothing direction==0");
+      //log_info("listwidget do nothing direction==0");
       break;
 
     default:
-      log_warn("listwidget unsupported direction");
+      //log_warn("listwidget unsupported direction");
       break;
   }
 
@@ -237,7 +237,7 @@ void primUpdListWidget(listWidget_t * lw,int8_t init, int8_t direction){
   switch(direction){
     
     case 1:
-      log_info("listWidget going forward item cnt %d dispLineSelected:%d",lw->lstItemCount,lw->dispLineSelected);
+      //log_info("listWidget going forward item cnt %d dispLineSelected:%d",lw->lstItemCount,lw->dispLineSelected);
       if (lw->lstItemCount<=lw->dispMaxNumLine && lw->dispLineSelected==lw->lstItemCount-1){
         lw->dispLineSelected=0;
       }else if (lw->dispLineSelected==(lw->dispMaxNumLine-1))
@@ -248,7 +248,7 @@ void primUpdListWidget(listWidget_t * lw,int8_t init, int8_t direction){
       break;
     
     case -1:
-      log_info("listWidget going backward item cnt %d dispLineSelected:%d",lw->lstItemCount,lw->dispLineSelected);
+      //log_info("listWidget going backward item cnt %d dispLineSelected:%d",lw->lstItemCount,lw->dispLineSelected);
       if (lw->lstItemCount<=lw->dispMaxNumLine && lw->dispLineSelected==0){
         lw->dispLineSelected=lw->lstItemCount-1;
       }else if (lw->dispLineSelected==0)
@@ -270,8 +270,8 @@ void primUpdListWidget(listWidget_t * lw,int8_t init, int8_t direction){
       break;
   }
 
-  log_info("new currentClistPos:%d, dispLineSelected:%d",lw->currentClistPos,lw->dispLineSelected);
-  log_info("lst_count:%d init:%d",lw->lstItemCount,init);
+  //log_info("new currentClistPos:%d, dispLineSelected:%d",lw->currentClistPos,lw->dispLineSelected);
+  //log_info("lst_count:%d init:%d",lw->lstItemCount,init);
 
   if (init!=-1){
     lw->currentClistPos=(init-lw->dispLineSelected)%lw->lstItemCount;
