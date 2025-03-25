@@ -379,7 +379,7 @@ static void pBtnEntrLabelInputScr(){
   itm=labelRw.currentSelectedItem->val;
   
   if (!strcmp(itm->title,"[OK]")){
-    log_info("labelname:%s selectedImageFormat:%d",labelRw.label, selectedDiskImageFormat);
+    makeNewDisk(currentFullPath,labelRw.label,selectedDiskImageFormat);
     return; 
   }
 
@@ -443,12 +443,10 @@ void initSelectDiskImageFormatScr(){                                            
 
 static void pBtnUpSelectDiskImageFormatScr(){
   primUpdListWidget(&diskImageLw,-1,-1);
-  log_info("select %d",diskImageLw.lstSelectIndx);
 }
 
 static void pBtnDownSelectDiskImageFormatScr(){
   primUpdListWidget(&diskImageLw,-1,1);
-  log_info("select %d",diskImageLw.lstSelectIndx);
 }
 
 static void pBtnRetSelectDiskImageFormatScr(){
@@ -456,7 +454,6 @@ static void pBtnRetSelectDiskImageFormatScr(){
 }
 
 static void pBtnEntrSelectDiskImageFormatScr(){
-  log_info("select %d",diskImageLw.lstSelectIndx);
   selectedDiskImageFormat=diskImageLw.lstSelectIndx;
   switchPage(FSLABEL,0);
 }

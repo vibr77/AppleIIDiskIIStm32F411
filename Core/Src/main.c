@@ -293,6 +293,8 @@ UART
 #include "favorites.h"
 #include "log.h"
 
+#include "driver_dsk.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -878,6 +880,59 @@ enum STATUS processPath(char *path){
   return RET_OK;
 }
 
+
+
+enum STATUS makeNewDisk(char * location,char * imageName,enum DISK_IMAGE di){
+  log_info("location: %s",location);
+  log_info("imageName: %s",imageName);
+  log_info("DI: %d",di);
+
+  switch(di){
+    
+    case DSK140K:
+      char filename[256];
+      sprintf(filename,"%s/%s.dsk",location,imageName);
+      createNewEmptyDSK(filename);
+      nextAction=FSDISP;
+      break;
+
+    case NIB140K:
+    
+      break;
+    
+    case WOZ140K:
+      
+      break;
+    
+    case PO140K:
+      
+      break;
+
+    case PO800K:
+      
+      break;
+    
+    case PO32M:
+      
+      break;
+    
+    case _2MG400K:
+
+      break;
+
+    case _2MG800K:
+      
+      break;
+
+    default:
+    log_error("not managed");
+
+  }
+
+  return RET_OK;
+}
+
+
 /**
   * @brief Build & sort a new chainedlist of file/dir item based on the current path
   * @param path,
@@ -996,9 +1051,7 @@ void pSdEject(){
       initErrorScr("SD EJECTED");                                                                 // Display the message on screen
       while((SD_EJECT_GPIO_Port->IDR & SD_EJECT_Pin)!=0){};
       NVIC_SystemReset(); 
-    }
-                                                                       // Finally Reset 
-  
+    }                                                          
   return ;
 }
 

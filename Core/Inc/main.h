@@ -81,7 +81,9 @@ enum STATUS writeTrkFile(char * filename,char * buffer,uint32_t offset);
 char *byte_to_binary(int x);
 
 list_t * sortLinkedList(list_t * plst);                             // Sort the chainedList
-//enum STATUS walkDir(char * path);                                   // Build chainedList of Directories/Files Items
+
+
+enum STATUS makeNewDisk(char * location,char * imageName,enum DISK_IMAGE di);
 enum STATUS walkDir(char * path, const  char ** extFilter);
 
 enum STATUS mountImagefile(char * filename);
