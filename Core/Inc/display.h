@@ -17,7 +17,7 @@
 #define disp
 
 enum EMUL_CMD{EMUL_READ,EMUL_WRITE,EMUL_STATUS};
-enum page{FS,MOUNT,MENU,DISKIIIMAGE,FAVORITES,SETTINGS,EMULATIONTYPE,IMAGEMENU,SMARTPORT,SMARTPORT_IMAGEOPTION,SMARTPORT_MOUNT,MAKEFS,DIROPTION,NEWIMAGE,FSLABEL};
+enum page{FS,MOUNT,MENU,DISKIIIMAGE,FAVORITES,SETTINGS,EMULATIONTYPE,IMAGEMENU,SMARTPORT,SMARTPORT_IMAGEOPTION,SMARTPORT_MOUNT,MAKEFS,DIROPTION,NEWIMAGE,FSLABEL,FSSELECTIMAGE};
 
 
 typedef struct lstItem_s{
@@ -45,6 +45,7 @@ typedef struct listWidget_s{
     uint8_t dispMaxNumLine;                                         // Number of line to be displayed on the screen
     uint8_t dispLineSelected;
     uint8_t currentClistPos;
+    uint8_t lstSelectIndx;
     uint8_t lstItemCount;
     list_t * lst;
     list_node_t * currentSelectedItem;

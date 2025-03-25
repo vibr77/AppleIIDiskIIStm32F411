@@ -8,5 +8,6 @@ void initFsScr(char * path);
 void updateChainedListDisplay(int init, list_t * lst );
 
 void initLabelInputScr();
+void initSelectDiskImageFormatScr();
 
 #endif

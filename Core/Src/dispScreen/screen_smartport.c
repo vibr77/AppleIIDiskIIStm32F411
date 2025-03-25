@@ -239,8 +239,9 @@ void initSmartPortHDImageOptionScr(){
 
   primPrepNewScreen("Smartport Image");
 
-  displayStringAtPosition(30,2*SCREEN_LINE_HEIGHT,"Clear");
+  displayStringAtPosition(30,2*SCREEN_LINE_HEIGHT,"Unmount image");
   displayStringAtPosition(30,3*SCREEN_LINE_HEIGHT,"Select image");
+  displayStringAtPosition(30,4*SCREEN_LINE_HEIGHT,"New image");
 
   ssd1306_SetColor(Inverse);
   ssd1306_FillRect(30-5,3*SCREEN_LINE_HEIGHT-1,80,9);

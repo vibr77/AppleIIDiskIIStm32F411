@@ -97,8 +97,12 @@ enum STATUS switchPage(enum page newPage,void * arg){
       break;
     
     case FSLABEL:
-     initLabelInputScr();
-     break;
+      initLabelInputScr();
+      break;
+
+    case FSSELECTIMAGE:
+      initSelectDiskImageFormatScr();
+      break;
 
     case MENU:
       initMainMenuScr(0);
@@ -273,6 +277,7 @@ void primUpdListWidget(listWidget_t * lw,int8_t init, int8_t direction){
     lw->currentClistPos=(init-lw->dispLineSelected)%lw->lstItemCount;
   }
 
+  lw->lstSelectIndx= (lw->currentClistPos+lw->dispLineSelected)%lw->lstItemCount;
   // STEP 2 BUILD THE dispItem Array 
 
   for (int i=0;i<lw->dispMaxNumLine;i++){
@@ -302,17 +307,17 @@ void primUpdListWidget(listWidget_t * lw,int8_t init, int8_t direction){
   }
 
   // Step 3 Render the list on the screen 
-
+  
   for (int i=0;i<SCREEN_MAX_LINE_ITEM;i++){
 
     clearLineStringAtPosition(lw->dispStartLine+1+i,lw->vOffset);
     if (lw->dispItem[i].status!=0){
+      
       listItem_t *itm=lw->dispItem[i].lstItem->val;
-      
+     
       ssd1306_SetColor(White);
-      dispIcon(1,lw->dispStartLine+(1+i)*SCREEN_LINE_HEIGHT+lw->vOffset,itm->icon);
+      dispIcon(1,lw->dispStartLine+(1+i)*SCREEN_LINE_HEIGHT+lw->vOffset,itm->icon);                                                       // TODO AJOUTER UNE PROTECTION SUR OFFSET ICON INVALID
       displayStringAtPosition(1+lw->hOffset,lw->dispStartLine+(1+i)*SCREEN_LINE_HEIGHT+lw->vOffset,itm->title);
-      
       if (itm->type==1){
         if (itm->ival==1)
           dispIcon(118,lw->dispStartLine+(1+i)*SCREEN_LINE_HEIGHT+lw->vOffset,7); // 7 FULL
