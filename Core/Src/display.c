@@ -59,10 +59,9 @@ enum STATUS switchPage(enum page newPage,void * arg){
       initMakeFsScr();
       break;
 
-    
-
     case SMARTPORT:
       initSmartPortHDScr();
+      updateImageSmartPortHD();
       break;
 
     case SMARTPORT_MOUNT:
@@ -92,6 +91,14 @@ enum STATUS switchPage(enum page newPage,void * arg){
     case FS:
       initFsScr(arg);
       break;
+    
+    case FSLABEL:
+      initLabelInputScr();
+      break;
+
+    case FSSELECTIMAGE:
+      initSelectDiskImageFormatScr();
+      break;
 
     case MENU:
       initMainMenuScr(0);
@@ -118,6 +125,96 @@ void nothing(){
   //__NOP();
 }
 
+void primUpdRollingLabelListWidget(rollingWidget_t * rw,int8_t init, int8_t direction){
+  
+  uint8_t lstIndx=0;
+  if (rw){
+    rw->lstItemCount=rw->lst->len;
+  }
+  
+
+  switch(direction){
+    
+    case 1:
+      rw->currentClistPos=(rw->currentClistPos+1)%(rw->lstItemCount);
+      break;
+    
+    case -1:
+      
+      rw->currentClistPos=(rw->currentClistPos-1)%(rw->lstItemCount);
+      break;
+    
+    case 0:
+      //log_info("listwidget do nothing direction==0");
+      break;
+
+    default:
+      //log_warn("listwidget unsupported direction");
+      break;
+  }
+
+  if (init!=-1){
+    rw->currentClistPos=(init)%rw->lstItemCount;
+  }
+
+  if (rw->currentClistPos==0)
+    lstIndx=rw->lstItemCount-1;
+  else
+    lstIndx=rw->currentClistPos-1;
+
+  rw->beforeItem=list_at(rw->lst, lstIndx);
+
+
+  if (rw->currentClistPos==rw->lstItemCount-1)
+    lstIndx=0;
+  else
+    lstIndx=rw->currentClistPos+1;
+
+  rw->afterItem=list_at(rw->lst,lstIndx );
+
+  rw->currentSelectedItem=list_at(rw->lst,rw->currentClistPos);
+
+  listItem_t *itm;
+  
+  uint8_t len=strlen(rw->label);
+  uint8_t lblOffset=0;
+  if (len<rw->labelMaxLen)
+  rw->index=len;
+  else{
+    rw->index=rw->labelMaxLen;
+    lblOffset=len-rw->labelMaxLen;
+  }
+   
+
+  
+
+
+
+  clearLineStringAtPosition(rw->dispLine-1,rw->vOffset);
+  clearLineStringAtPosition(rw->dispLine,rw->vOffset);
+  clearLineStringAtPosition(rw->dispLine+1,rw->vOffset);
+
+  ssd1306_SetColor(White);
+
+  displayStringAtPosition(1+rw->hOffset,rw->dispLine*SCREEN_LINE_HEIGHT+rw->vOffset,rw->label+lblOffset);
+  itm=rw->beforeItem->val;
+  //itm=rw->beforeItem->val;  
+  //displayStringAtPosition(1+rw->hOffset+rw->index*6,(rw->dispLine-1)*SCREEN_LINE_HEIGHT+rw->vOffset,itm->title);
+  
+  ssd1306_SetColor(Black);
+  itm=rw->currentSelectedItem->val;
+
+  
+  displayStringAtPosition(1+rw->hOffset+rw->index*6,(rw->dispLine)*SCREEN_LINE_HEIGHT+rw->vOffset,itm->title);
+  
+  //ssd1306_SetColor(White);
+  //itm=rw->afterItem->val;
+  //displayStringAtPosition(1+rw->hOffset+rw->index*6+1,(rw->dispLine+1)*SCREEN_LINE_HEIGHT+rw->vOffset,itm->title);
+  
+  primUpdScreen();
+
+}
+
 void primUpdListWidget(listWidget_t * lw,int8_t init, int8_t direction){
 
   /**
@@ -136,7 +233,7 @@ void primUpdListWidget(listWidget_t * lw,int8_t init, int8_t direction){
   switch(direction){
     
     case 1:
-      log_info("listWidget going forward item cnt %d dispLineSelected:%d",lw->lstItemCount,lw->dispLineSelected);
+      //log_info("listWidget going forward item cnt %d dispLineSelected:%d",lw->lstItemCount,lw->dispLineSelected);
       if (lw->lstItemCount<=lw->dispMaxNumLine && lw->dispLineSelected==lw->lstItemCount-1){
         lw->dispLineSelected=0;
       }else if (lw->dispLineSelected==(lw->dispMaxNumLine-1))
@@ -147,7 +244,7 @@ void primUpdListWidget(listWidget_t * lw,int8_t init, int8_t direction){
       break;
     
     case -1:
-      log_info("listWidget going backward item cnt %d dispLineSelected:%d",lw->lstItemCount,lw->dispLineSelected);
+      //log_info("listWidget going backward item cnt %d dispLineSelected:%d",lw->lstItemCount,lw->dispLineSelected);
       if (lw->lstItemCount<=lw->dispMaxNumLine && lw->dispLineSelected==0){
         lw->dispLineSelected=lw->lstItemCount-1;
       }else if (lw->dispLineSelected==0)
@@ -169,13 +266,14 @@ void primUpdListWidget(listWidget_t * lw,int8_t init, int8_t direction){
       break;
   }
 
-  log_info("new currentClistPos:%d, dispLineSelected:%d",lw->currentClistPos,lw->dispLineSelected);
-  log_info("lst_count:%d init:%d",lw->lstItemCount,init);
+  //log_info("new currentClistPos:%d, dispLineSelected:%d",lw->currentClistPos,lw->dispLineSelected);
+  //log_info("lst_count:%d init:%d",lw->lstItemCount,init);
 
   if (init!=-1){
     lw->currentClistPos=(init-lw->dispLineSelected)%lw->lstItemCount;
   }
 
+  lw->lstSelectIndx= (lw->currentClistPos+lw->dispLineSelected)%lw->lstItemCount;
   // STEP 2 BUILD THE dispItem Array 
 
   for (int i=0;i<lw->dispMaxNumLine;i++){
@@ -205,17 +303,17 @@ void primUpdListWidget(listWidget_t * lw,int8_t init, int8_t direction){
   }
 
   // Step 3 Render the list on the screen 
-
+  
   for (int i=0;i<SCREEN_MAX_LINE_ITEM;i++){
 
     clearLineStringAtPosition(lw->dispStartLine+1+i,lw->vOffset);
     if (lw->dispItem[i].status!=0){
+      
       listItem_t *itm=lw->dispItem[i].lstItem->val;
-      
+     
       ssd1306_SetColor(White);
-      dispIcon(1,lw->dispStartLine+(1+i)*SCREEN_LINE_HEIGHT+lw->vOffset,itm->icon);
+      dispIcon(1,lw->dispStartLine+(1+i)*SCREEN_LINE_HEIGHT+lw->vOffset,itm->icon);                                                       // TODO AJOUTER UNE PROTECTION SUR OFFSET ICON INVALID
       displayStringAtPosition(1+lw->hOffset,lw->dispStartLine+(1+i)*SCREEN_LINE_HEIGHT+lw->vOffset,itm->title);
-      
       if (itm->type==1){
         if (itm->ival==1)
           dispIcon(118,lw->dispStartLine+(1+i)*SCREEN_LINE_HEIGHT+lw->vOffset,7); // 7 FULL

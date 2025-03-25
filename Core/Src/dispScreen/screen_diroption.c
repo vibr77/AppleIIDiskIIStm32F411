@@ -60,7 +60,7 @@ void initDirOptionScr(uint8_t i){
     mnuItem[0].arg=0;
     mnuItem[0].ival=0;
 
-    sprintf(mnuItem[1].title,"Create disks");
+    sprintf(mnuItem[1].title,"Create disk");
     mnuItem[1].type=1;
     mnuItem[1].icon=10;
     mnuItem[1].triggerfunction=pBtnEntrDirOptionScr;
@@ -125,9 +125,8 @@ static void pBtnEntrDirOptionScr(){
       nextAction=FSDISP;
       break;
 
-    case 1: 
-        initDirOptionNewImageScr(0);                                                
-        log_info("option 1");
+    case 1:                                             
+        switchPage(FSSELECTIMAGE,0);
         break;
 
     case 2:                                                 
@@ -140,134 +139,4 @@ static void pBtnEntrDirOptionScr(){
   return;
 }
 
-listWidget_t newImgLw;
 
-void initDirOptionNewImageScr(uint8_t i){
-
-    newImgLw.lst=list_new();
-    listItem_t * newImageItem;
-        
-    newImageItem=(listItem_t *)malloc(sizeof(listItem_t));
-    if (newImageItem==NULL){
-        log_error("malloc error listItem_t");
-        return;
-    }
-    sprintf(newImageItem->title,"DSK 5.25");
-    newImageItem->type=0;
-    newImageItem->icon=10;
-    newImageItem->triggerfunction=nothing;
-    newImageItem->ival=0;
-    newImageItem->arg=0;
-    list_rpush(newImgLw.lst, list_node_new(newImageItem));
-
-    newImageItem=(listItem_t *)malloc(sizeof(listItem_t));
-    if (newImageItem==NULL){
-        log_error("malloc error listItem_t");
-        return;
-    }
-    sprintf(newImageItem->title,"WOZ2 5.25");
-    newImageItem->type=0;
-    newImageItem->icon=10;
-    newImageItem->triggerfunction=nothing;
-    newImageItem->ival=0;
-    newImageItem->arg=0;
-    list_rpush(newImgLw.lst, list_node_new(newImageItem));
-
-    newImageItem=(listItem_t *)malloc(sizeof(listItem_t));
-    if (newImageItem==NULL){
-        log_error("malloc error listItem_t");
-        return;
-    }
-    sprintf(newImageItem->title,"NIC 5.25");
-    newImageItem->type=0;
-    newImageItem->icon=10;
-    newImageItem->triggerfunction=nothing;
-    newImageItem->ival=0;
-    newImageItem->arg=0;
-    list_rpush(newImgLw.lst, list_node_new(newImageItem));
-
-    newImageItem=(listItem_t *)malloc(sizeof(listItem_t));
-    if (newImageItem==NULL){
-        log_error("malloc error listItem_t");
-        return;
-    }
-    sprintf(newImageItem->title,"PO 5.25");
-    newImageItem->type=0;
-    newImageItem->icon=10;
-    newImageItem->triggerfunction=nothing;
-    newImageItem->ival=0;
-    newImageItem->arg=0;
-    list_rpush(newImgLw.lst, list_node_new(newImageItem));
-
-    newImageItem=(listItem_t *)malloc(sizeof(listItem_t));
-    if (newImageItem==NULL){
-        log_error("malloc error listItem_t");
-        return;
-    }
-    sprintf(newImageItem->title,"2MG 3.5");
-    newImageItem->type=0;
-    newImageItem->icon=10;
-    newImageItem->triggerfunction=nothing;
-    newImageItem->ival=0;
-    newImageItem->arg=0;
-    list_rpush(newImgLw.lst, list_node_new(newImageItem));
-
-    newImageItem=(listItem_t *)malloc(sizeof(listItem_t));
-    if (newImageItem==NULL){
-        log_error("malloc error listItem_t");
-        return;
-    }
-    sprintf(newImageItem->title,"WOZ 3.5");
-    newImageItem->type=0;
-    newImageItem->icon=10;
-    newImageItem->triggerfunction=nothing;
-    newImageItem->ival=0;
-    newImageItem->arg=0;
-    list_rpush(newImgLw.lst, list_node_new(newImageItem));
-
-    newImageItem=(listItem_t *)malloc(sizeof(listItem_t));
-    if (newImageItem==NULL){
-        log_error("malloc error listItem_t");
-        return;
-    }
-    sprintf(newImageItem->title,"PO 3.5 800Ko");
-    newImageItem->type=0;
-    newImageItem->icon=10;
-    newImageItem->triggerfunction=nothing;
-    newImageItem->ival=0;
-    newImageItem->arg=0;
-    list_rpush(newImgLw.lst, list_node_new(newImageItem));
-
-    primPrepNewScreen("new Image");    
-    
-    primUpdListWidget(&newImgLw,-1,0);
-
-    ptrbtnUp=pBtnUpDirOptionNewImageScr;
-    ptrbtnDown=pBtnDownDirOptionNewImageScr;
-    ptrbtnEntr=pBtnEntrDirOptionNewImageScr;
-    ptrbtnRet=pBtnRetDirOptionNewImageScr;
-    currentPage=NEWIMAGE;
-
-}
-
-static void pBtnUpDirOptionNewImageScr(){
-    primUpdListWidget(&newImgLw,-1,-1);
-}
-
-static void pBtnDownDirOptionNewImageScr(){
-    primUpdListWidget(&newImgLw,-1,-1);
-}
-
-static void pBtnRetDirOptionNewImageScr(){
-    switchPage(DIROPTION,0);
-}
-
-static void pBtnEntrDirOptionNewImageScr(){
-    listItem_t *item= newImgLw.currentSelectedItem->val;
-    if (item){
-        log_info("selected:%s ",item->title);
-        item->triggerfunction(item->arg);
-    }else{
-        log_error("item is null");
-    }
-}

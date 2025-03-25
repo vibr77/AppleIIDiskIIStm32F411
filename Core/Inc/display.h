@@ -17,7 +17,7 @@
 #define disp
 
 enum EMUL_CMD{EMUL_READ,EMUL_WRITE,EMUL_STATUS};
-enum page{FS,MOUNT,MENU,DISKIIIMAGE,FAVORITES,SETTINGS,EMULATIONTYPE,IMAGEMENU,SMARTPORT,SMARTPORT_IMAGEOPTION,SMARTPORT_MOUNT,MAKEFS,DIROPTION,NEWIMAGE};
+enum page{FS,MOUNT,MENU,DISKIIIMAGE,FAVORITES,SETTINGS,EMULATIONTYPE,IMAGEMENU,SMARTPORT,SMARTPORT_IMAGEOPTION,SMARTPORT_MOUNT,MAKEFS,DIROPTION,NEWIMAGE,FSLABEL,FSSELECTIMAGE};
 
 
 typedef struct lstItem_s{
@@ -45,6 +45,7 @@ typedef struct listWidget_s{
     uint8_t dispMaxNumLine;                                         // Number of line to be displayed on the screen
     uint8_t dispLineSelected;
     uint8_t currentClistPos;
+    uint8_t lstSelectIndx;
     uint8_t lstItemCount;
     list_t * lst;
     list_node_t * currentSelectedItem;
@@ -52,12 +53,32 @@ typedef struct listWidget_s{
     dispItem_t dispItem[SCREEN_MAX_LINE_ITEM];
 } listWidget_t;
 
+typedef struct rollingWidget_s{
+    char  label[32];
+    uint8_t labelMaxLen;
+    uint8_t index;
+    uint8_t hOffset;                        
+    uint8_t vOffset; 
+    uint8_t dispLine;                                       
+    int8_t currentClistPos;
+    uint8_t lstItemCount;
+    list_t * lst;
+    list_node_t * beforeItem;
+    list_node_t * currentSelectedItem;
+    list_node_t * afterItem;
+
+} rollingWidget_t;
+
+
+
 char * getImageNameFromFullPath(char * fullPathImageName);
 enum STATUS switchPage(enum page newPage,void * arg);
 void updateChainedListDisplay(int init, list_t * lst );
 void nothing();
 
 /*      DISPLAY PRIMITIVES              */
+
+void primUpdRollingLabelListWidget(rollingWidget_t * rw,int8_t init, int8_t direction);
 void primUpdListWidget(listWidget_t *lw,int8_t init, int8_t direction);
 void primPrepNewScreen(char * szTitle);
 void primUpdScreen();

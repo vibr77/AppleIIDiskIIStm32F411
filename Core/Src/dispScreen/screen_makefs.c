@@ -74,7 +74,8 @@ static void pBtnEntrMakeFsScr(){
     switchPage(MENU,NULL);
     toggleMakeFs=1;                               // rearm toggle switch
   }else{
-    nextAction=MAKEFS;                            // Very important this has to be managed by the main thread and not by interrupt TODO PUT ALL ACTION IN MAIN with trigger from emulator
+    //log_info("here");
+    nextAction=MKFS;                            // Very important this has to be managed by the main thread and not by interrupt TODO PUT ALL ACTION IN MAIN with trigger from emulator
   }
 }
 
@@ -104,8 +105,8 @@ void initMakeFsConfirmedScr(){
     log_error("makeSDFS error");
   }
   displayStringAtPosition(0,4*SCREEN_LINE_HEIGHT,"                   ");
-  displayStringAtPosition(0,5*SCREEN_LINE_HEIGHT,"Press [ENTER] to ");
-  displayStringAtPosition(0,6*SCREEN_LINE_HEIGHT,"reboot");
+  displayStringAtPosition(0,5*SCREEN_LINE_HEIGHT,"[ENTER] to reboot");
+
   
   primUpdScreen();
   ptrbtnEntr=pMakeFsSysReset;

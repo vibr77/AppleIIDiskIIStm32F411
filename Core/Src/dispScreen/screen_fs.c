@@ -34,12 +34,20 @@ extern void (*ptrbtnDown)(void *);
 extern void (*ptrbtnEntr)(void *);
 extern void (*ptrbtnRet)(void *);
 
-
-
 static void pBtnUpFsScr();
 static void pBtnDownFsScr();
 static void pBtnEntrFsScr();
 static void pBtnRetFsScr();
+
+static void pBtnUpLabelInputScr();
+static void pBtnDownLabelInputScr();
+static void pBtnRetLabelInputScr();
+static void pBtnEntrLabelInputScr();
+
+static void pBtnUpSelectDiskImageFormatScr();
+static void pBtnDownSelectDiskImageFormatScr();
+static void pBtnEntrSelectDiskImageFormatScr();
+static void pBtnRetSelectDiskImageFormatScr();
 
 
 uint8_t selectedIndx=0;
@@ -61,7 +69,7 @@ typedef struct FSDISPITEM{
 FSDISPITEM_t fsDispItem[SCREEN_MAX_LINE_ITEM];
 
 
-
+uint8_t selectedDiskImageFormat=0;
 
 void initFsScr(char * path){
   
@@ -298,3 +306,158 @@ static void pBtnEntrFsScr(){
   log_debug("result |%s|",currentFullPath);
   
 }
+
+rollingWidget_t labelRw;
+
+void initLabelInputScr(){
+  primPrepNewScreen("Image Name");
+    
+  listItem_t * lblItem;
+  
+  labelRw.lst=list_new();
+
+  labelRw.currentClistPos=0;
+  labelRw.dispLine=3;
+  labelRw.hOffset=1;
+  labelRw.vOffset=1;
+  labelRw.labelMaxLen=10;
+
+  sprintf(labelRw.label,"NewImage");
+
+  const char * lstValues[]={"A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","R","S","T","U","V","W","X","Y","Z","0","1","2","3","4","5","6","7","8","9","[OK]",NULL};
+  
+  uint8_t i=0;
+  while(lstValues[i]!=NULL){
+    
+    lblItem=(listItem_t *)malloc(sizeof(listItem_t));
+    if (lblItem==NULL){
+        log_error("malloc error listItem_t");
+        return;
+    }
+
+    sprintf(lblItem->title,"%s",lstValues[i]);
+    
+    lblItem->type=0;
+    lblItem->triggerfunction=NULL;
+    lblItem->ival=lstValues[i][0];
+
+    list_rpush(labelRw.lst, list_node_new(lblItem));
+    i++;
+  }
+
+  ptrbtnUp=pBtnUpLabelInputScr;
+  ptrbtnDown=pBtnDownLabelInputScr;
+  ptrbtnEntr=pBtnEntrLabelInputScr;
+  ptrbtnRet=pBtnRetLabelInputScr;
+  currentPage=FSLABEL;
+  primUpdRollingLabelListWidget(&labelRw,0,0);
+  primUpdScreen();
+
+}
+
+static void pBtnUpLabelInputScr(){
+  primUpdRollingLabelListWidget(&labelRw,-1,-1);
+}
+
+static void pBtnDownLabelInputScr(){
+  primUpdRollingLabelListWidget(&labelRw,-1,1);
+}
+
+static void pBtnRetLabelInputScr(){
+  uint8_t len=strlen(labelRw.label);
+  if (len!=0){
+    labelRw.label[len-1]=0x0;
+    primUpdRollingLabelListWidget(&labelRw,-1,0); 
+  }else{
+    switchPage(FS,0);
+  }
+}
+
+static void pBtnEntrLabelInputScr(){
+  
+  listItem_t *itm;
+  itm=labelRw.currentSelectedItem->val;
+  
+  if (!strcmp(itm->title,"[OK]")){
+    log_info("labelname:%s selectedImageFormat:%d",labelRw.label, selectedDiskImageFormat);
+    return; 
+  }
+
+  uint8_t len=strlen(labelRw.label);
+  if (len<32-2){
+    sprintf(labelRw.label+len,"%s",itm->title);
+  }
+  primUpdRollingLabelListWidget(&labelRw,-1,0);
+
+}
+
+
+
+listWidget_t diskImageLw;
+
+void initSelectDiskImageFormatScr(){                                                            // TODO MEMORY MGT ON LEAVING SCREEN TO CLEAN UP LST (FOR ALL SCREEN)
+
+  const char * diskImageLabel[]={"DSK 140k","NIB 140k","WOZ 140k","PRODOS 140k","PRODOS 800k","PRODOS 32M","2MG 400k","2MG 800k",NULL};
+  
+  listItem_t * diskItem;
+  
+  diskImageLw.currentClistPos=0;
+  diskImageLw.dispLineSelected=0;
+  diskImageLw.dispMaxNumLine=4;
+  diskImageLw.dispStartLine=0;
+  diskImageLw.hOffset=1;
+  diskImageLw.vOffset=5;
+
+  diskImageLw.lst=list_new();
+  uint8_t i=0;
+  while(diskImageLabel[i]!=NULL){
+    diskItem=(listItem_t *)malloc(sizeof(listItem_t));
+    if (diskItem==NULL){
+        log_error("malloc error listItem_t");
+        return;
+    }
+    
+    sprintf(diskItem->title,"%s",diskImageLabel[i]);
+    diskItem->type=0;
+    diskItem->triggerfunction=NULL;
+    diskItem->ival=i;
+    diskItem->icon=0;
+
+    list_rpush(diskImageLw.lst, list_node_new(diskItem));
+    i++;
+  
+  }
+  
+  primPrepNewScreen("Select format");    
+  primUpdListWidget(&diskImageLw,0,0);
+  
+  primUpdScreen();
+
+  ptrbtnUp=pBtnUpSelectDiskImageFormatScr;
+  ptrbtnDown=pBtnDownSelectDiskImageFormatScr;
+  ptrbtnEntr=pBtnEntrSelectDiskImageFormatScr;
+  ptrbtnRet=pBtnRetSelectDiskImageFormatScr;
+  currentPage=FSSELECTIMAGE;
+  return;
+}
+
+static void pBtnUpSelectDiskImageFormatScr(){
+  primUpdListWidget(&diskImageLw,-1,-1);
+  log_info("select %d",diskImageLw.lstSelectIndx);
+}
+
+static void pBtnDownSelectDiskImageFormatScr(){
+  primUpdListWidget(&diskImageLw,-1,1);
+  log_info("select %d",diskImageLw.lstSelectIndx);
+}
+
+static void pBtnRetSelectDiskImageFormatScr(){
+  switchPage(FS,0);
+}
+
+static void pBtnEntrSelectDiskImageFormatScr(){
+  log_info("select %d",diskImageLw.lstSelectIndx);
+  selectedDiskImageFormat=diskImageLw.lstSelectIndx;
+  switchPage(FSLABEL,0);
+}
+

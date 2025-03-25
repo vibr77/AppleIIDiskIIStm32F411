@@ -65,6 +65,8 @@ void Error_Handler(void);
 /* USER CODE BEGIN EFP */
 enum action{NONE,IMG_MOUNT,SMARTPORT_IMGMOUNT,FSDISP,FSMOUNT,SYSRESET,DUMP_TX,WRITE_TRK,PROCESS_FS_CHANGEDIR,MKFS};
 enum DISK_FORMAT{WOZ,DSK,PO,_2MG,NIB};
+enum DISK_IMAGE{DSK140K,NIB140K,WOZ140K,PO140K,PO800K,PO32M,_2MG400K,_2MG800K};
+
 
 enum FS_STATUS{READY,READING,WRITING,BUSY,DBG};
 enum EMULATION_TYPE{DISKII,  SMARTPORTHD,DISK35 };
@@ -107,7 +109,8 @@ void setDataBlocksBareMetal(long memoryAdr,volatile unsigned char * buffer,int c
 
 void processDiskHeadMoveInterrupt(uint16_t GPIO_Pin);
 char processDeviceEnableInterrupt(uint16_t GPIO_Pin);
-char processSdEject(uint16_t GPIO_PIN);
+void pSdEject();
+
 
 enum STATUS makeSDFS();
 
