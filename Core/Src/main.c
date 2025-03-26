@@ -1,8 +1,8 @@
 /* USER CODE BEGIN Header */
 /*
 __   _____ ___ ___        Author: Vincent BESSON
- \ \ / /_ _| _ ) _ \      Release: 0.80.4
-  \ V / | || _ \   /      Date: 2025.02.27
+ \ \ / /_ _| _ ) _ \      Release: 0.80.7
+  \ V / | || _ \   /      Date: 2025.03.26
    \_/ |___|___/_|_\      Description: Apple Disk II Emulator on STM32F4x
                 2025      Licence: Creative Commons
 ______________________
@@ -108,6 +108,12 @@ UART
 
 // Changelog
 /*
+26.03.25 v0.80.7
+  + Fixing Favorites Screen
+  + Adding Favorites to Smartport HD
+  + Adding option to select boot index directly from Smartport Image
+  + Adding toogle favorites SmartportHD
+  + Display Fav Icon
 26.03.25 v0.80.6
   + [SDEJECT] Disk Creation from Filesystem (PO,DSK,...)
   + [SDEJECT] Fixing SD Eject function for all emulator
@@ -390,7 +396,7 @@ FATFS fs;                                                                       
 long database=0;                                                                                // start of the data segment in FAT
 int csize=0;                                                                                    // Cluster size
 
-const  char ** ptrFileFilter=NULL;
+const char ** ptrFileFilter=NULL;
 unsigned char read_track_data_bloc[RAW_SD_TRACK_SIZE];                  
 volatile unsigned char DMA_BIT_TX_BUFFER[RAW_SD_TRACK_SIZE];                                    // DMA Buffer for READ Track
 

@@ -5,7 +5,7 @@
 #ifndef screen_favorites
 #define screen_favorites
 
-void initFavoritesScr();
+void initFavoritesScr(const char ** extFilter);
 
 
 #endif

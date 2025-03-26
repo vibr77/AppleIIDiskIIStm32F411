@@ -237,10 +237,8 @@ static  void pBtnEntrSmartPortHD(){
       log_info("selected %d",currentSmartPortImageIndex);
       switchPage(SMARTPORT_IMAGEOPTION,0);
     }else{                                                                          // Otherwise display directly the FS screen to select an image
-      nextAction=FSDISP;
-
+      initSmartPortHDImageOption2Scr();
     }
-      
   }
 }
   
@@ -324,7 +322,7 @@ void initSmartPortHDImageOptionScr(){
   
   list_rpush(imageOptionLw.lst, list_node_new(optionItem));
 
-
+  /*
   optionItem=(listItem_t *)malloc(sizeof(listItem_t));
   if (optionItem==NULL){
       log_error("malloc error listItem_t");
@@ -339,15 +337,15 @@ void initSmartPortHDImageOptionScr(){
   optionItem->arg=0;
   
   list_rpush(imageOptionLw.lst, list_node_new(optionItem));
-
+  */
+ 
   primUpdListWidget(&imageOptionLw,0,0);
   
   char * fn=partititionTab[fsHookedPartition];
   if (isFavorite(fn)==0)
     isCurrentImageFavorite=0;
   else
-    isCurrentImageFavorite=0;
-
+    isCurrentImageFavorite=1;
 
   showFavIcon();
 
@@ -399,7 +397,6 @@ static void pBtnEntrSmartPortHDImageOption(){
         break;
       case 1:
         initSmartPortHDImageOption2Scr();
-        log_info("here");
         break;
       break;
       case 2:
@@ -419,8 +416,6 @@ static void pBtnEntrSmartPortHDImageOption(){
         log_error("not managed");
     }
   }
-  
-
 }
 
 
@@ -524,7 +519,7 @@ static void pBtnEntrSmartPortHDImageOption2(){
   if (optionItem){
     switch(optionItem->ival){
       case 0:
-        
+        switchPage(FAVORITES,NULL);
         break;
       case 1:
         nextAction=FSDISP;
@@ -556,11 +551,14 @@ void initSmartportMountImageScr(char * filename){
  
   #pragma GCC diagnostic push
   #pragma GCC diagnostic ignored "-Wformat-truncation"
-  snprintf(tmp,18,"%s",filename);
+  
+  char * fn=getImageNameFromFullPath(filename);
+  
+  snprintf(tmp,18,"%s",fn);
   if (i>20)
-    snprintf(tmp2,23,"%s...",tmp);
+    snprintf(tmp2,23,"%s...",fn);
   else
-    snprintf(tmp2,23,"%s",filename);
+    snprintf(tmp2,23,"%s",fn);
   #pragma GCC diagnostic pop
   
   ssd1306_SetColor(White);

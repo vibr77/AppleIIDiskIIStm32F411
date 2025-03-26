@@ -17,7 +17,7 @@ extern uint8_t SSD1306_Buffer[SSD1306_BUFFER_SIZE];
 
 extern FATFS fs;                                            // fatfs global variable <!> do not remount witihn a function the fatfs otherwise it breaks the rest
 extern volatile enum FS_STATUS fsState; 
-
+extern const char ** ptrFileFilter;
 enum page currentPage;
 
 uint8_t scrI=0;
@@ -85,7 +85,7 @@ enum STATUS switchPage(enum page newPage,void * arg){
       break;
 
     case FAVORITES:
-      initFavoritesScr();
+      initFavoritesScr(ptrFileFilter);
       break;
 
     case FS:
