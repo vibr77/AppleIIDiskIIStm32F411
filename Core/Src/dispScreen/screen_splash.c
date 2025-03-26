@@ -47,9 +47,9 @@ void initSplash(){
   }  
   displayStringAtPosition(1,1*SCREEN_LINE_HEIGHT,"VIBR SmartDisk][");
   displayStringAtPosition(1,6*SCREEN_LINE_HEIGHT,_VERSION);
+ 
   primUpdScreen();
-
-  HAL_Delay(1000);
+  HAL_Delay(500);
   ssd1306_Clear();
 }
 
