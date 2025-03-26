@@ -1002,7 +1002,7 @@ void DiskIIMainLoop(){
                 if (re_bChanged){
                     re_aChanged = false;
                     re_bChanged = false;
-                    debounceBtn(BTN_DOWN_Pin);
+                    debounceBtn(BTN_UP_Pin);
                 }
             }
             rEncoder = HAL_GPIO_ReadPin(RE_B_GPIO_Port, RE_B_Pin);
@@ -1012,7 +1012,7 @@ void DiskIIMainLoop(){
                 if (re_aChanged){
                     re_aChanged = false;
                     re_bChanged = false;
-                    debounceBtn(BTN_UP_Pin);
+                    debounceBtn(BTN_DOWN_Pin);
                 }
             }
 #endif
