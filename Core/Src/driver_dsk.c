@@ -658,7 +658,7 @@ static enum STATUS decodeGcr62(uint8_t * buffer,uint8_t * data_out,uint8_t *chks
     return RET_OK;
 }
 
-enum STATUS createNewEmptyDSK(char * filename){
+enum STATUS createNewDiskDSK(char * filename,int blockNumber){
   
   FIL fil; 		  //File handle
   FRESULT fres; //Result after operations
@@ -674,19 +674,19 @@ enum STATUS createNewEmptyDSK(char * filename){
   }
  
   UINT bytesWrote;
-  UINT totalBytes=0;
+  //UINT totalBytes=0;
   
   char buffer[512];
   memset(buffer,0x0,512);
-  int numBlocks=8*35;               // 256 * 16 * 35 => 280  Block of 512 Bytes
+             // 256 * 16 * 35 => 280  Block of 512 Bytes
 
-  for (int i=0;i<numBlocks;i++){
+    for (int i=0;i<blockNumber;i++){
     fsState=WRITING;
-    fres = f_write(&fil, (unsigned char *)buffer+i*512, 512, &bytesWrote);
+    fres = f_write(&fil, (unsigned char *)buffer, 512, &bytesWrote);
     if(fres == FR_OK) {
-      totalBytes+=bytesWrote;
+      //totalBytes+=bytesWrote;
     }else{
-	    log_error("f_write error (%i)\n",fres);
+	    log_error("f_write error (%i) block:%d\n",fres,i);
       fsState=READY;
       return RET_ERR;
     }
@@ -694,8 +694,6 @@ enum STATUS createNewEmptyDSK(char * filename){
     while(fsState!=READY){};
   }
   f_close(&fil);
-  
+
   return RET_OK;
 }
-
-

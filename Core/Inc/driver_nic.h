@@ -11,5 +11,5 @@ unsigned int getNicTrackSize(int trk);
 long getNicSDAddr(int trk,int block,int csize, long database);
 enum STATUS getNicTrackBitStream(int trk,unsigned char * buffer);
 enum STATUS mountNicFile(char * filename);
-
+enum STATUS createNewDiskNic(char * filename);
 #endif

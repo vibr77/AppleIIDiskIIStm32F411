@@ -24,7 +24,8 @@ extern char currentFullPath[MAX_FULLPATH_LENGTH];
 extern char currentPath[MAX_PATH_LENGTH];
 extern char currentFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];  // fullpath from root image filename
 extern char tmpFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];      // fullpath from root image filename
-
+extern char sTmp[256];
+extern uint8_t iTmp;
 extern enum action nextAction;
 extern uint8_t emulationType;
 
@@ -379,7 +380,14 @@ static void pBtnEntrLabelInputScr(){
   itm=labelRw.currentSelectedItem->val;
   
   if (!strcmp(itm->title,"[OK]")){
-    makeNewDisk(currentFullPath,labelRw.label,selectedDiskImageFormat);
+    
+    sprintf(sTmp,"%s",labelRw.label);
+    iTmp=selectedDiskImageFormat;
+    nextAction=MKIMG;
+
+    primPrepNewScreen("Create disk"); 
+    displayStringAtPosition(5,3*SCREEN_LINE_HEIGHT+1,"Work in progress");
+    primUpdScreen();
     return; 
   }
 

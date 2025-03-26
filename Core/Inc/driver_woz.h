@@ -14,7 +14,7 @@ long getWozSDAddr(int trk,int block,int csize, long database);
 enum STATUS getWozTrackBitStream_fopen(int trk,unsigned char * buffer);
 enum STATUS getWozTrackBitStream(int trk,unsigned char * buffer);
 enum STATUS setWozTrackBitStream(int trk,unsigned char * buffer);
-enum STATUS createBlankWozFile(char * filename, uint8_t version,uint8_t diskFormat,uint8_t head);
+enum STATUS createNewDiskWOZ(char * filename, uint8_t version,uint8_t diskFormat,uint8_t head);
 
 uint32_t getWozCrc32( FIL * fil);
 

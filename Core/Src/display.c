@@ -129,6 +129,21 @@ void nothing(){
   //__NOP();
 }
 
+void primPgBarWidget(pgBarWidget_t * pg){
+  
+  if (pg->vmax==0){
+    log_error("pg vmax can not be 0");
+  }
+
+  clearLineStringAtPosition(pg->dispLine,pg->vOffset);
+  ssd1306_SetColor(White);
+  ssd1306_DrawRect(5,pg->dispLine*9+pg->vOffset,pg->width,9);
+
+  long v=(pg->width*pg->value)/pg->vmax;
+
+  ssd1306_FillRect(5,pg->dispLine*9+pg->vOffset+1,v,7);
+}
+
 void primUpdRollingLabelListWidget(rollingWidget_t * rw,int8_t init, int8_t direction){
   
   uint8_t lstIndx=0;
@@ -189,10 +204,6 @@ void primUpdRollingLabelListWidget(rollingWidget_t * rw,int8_t init, int8_t dire
     lblOffset=len-rw->labelMaxLen;
   }
    
-
-  
-
-
 
   clearLineStringAtPosition(rw->dispLine-1,rw->vOffset);
   clearLineStringAtPosition(rw->dispLine,rw->vOffset);

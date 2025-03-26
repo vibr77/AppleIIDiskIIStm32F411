@@ -86,6 +86,7 @@ char currentFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];                    
 char tmpFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];                                        // fullpath from root image filename
 
 
+
 // --------------------------------------------------------------------
 // Read / Write Interrupt function variables
 // --------------------------------------------------------------------

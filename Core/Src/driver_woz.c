@@ -384,7 +384,7 @@ static uint16_t diskGetLogicalSectorCountFromTrack( uint8_t trackIndex,uint8_t h
   return sector;
 }
 
-enum STATUS createBlankWozFile(char * filename, uint8_t version,uint8_t diskFormat,uint8_t head){
+enum STATUS createNewDiskWOZ(char * filename, uint8_t version,uint8_t diskFormat,uint8_t head){
   
   FRESULT fres; 
   FIL fil;

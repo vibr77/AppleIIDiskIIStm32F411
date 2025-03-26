@@ -16,6 +16,6 @@ enum STATUS getDskTrackBitStream(int trk,unsigned char * buffer);
 enum STATUS setDskTrackBitStream(int trk,unsigned char * buffer);
 enum STATUS mountDskFile(char * filename);
 
-enum STATUS createNewEmptyDSK(char * filename);
+enum STATUS createNewDiskDSK(char * filename,int blockNumber);
 
 #endif 
