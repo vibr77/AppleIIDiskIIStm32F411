@@ -30,11 +30,6 @@ static void pBtnDownDirOptionScr();
 static void pBtnEntrDirOptionScr();
 static void pBtnRetDirOptionScr();
 
-static void pBtnUpDirOptionNewImageScr();
-static void pBtnDownDirOptionNewImageScr();
-static void pBtnRetDirOptionNewImageScr();
-static void pBtnEntrDirOptionNewImageScr();
-
 static uint8_t currentDirOptionItem=0;
 static uint8_t mnuItemCount=0;
 static uint8_t dispSelectedIndx=0;

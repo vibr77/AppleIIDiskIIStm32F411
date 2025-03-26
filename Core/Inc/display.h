@@ -69,6 +69,16 @@ typedef struct rollingWidget_s{
 
 } rollingWidget_t;
 
+typedef struct pgBarWidget_s{
+    uint8_t hOffset;                        
+    uint8_t vOffset; 
+    uint8_t dispLine;
+    uint8_t width;
+    int vmax;
+    int step;
+    int vstart;
+    int value;
+}pgBarWidget_t;
 
 
 char * getImageNameFromFullPath(char * fullPathImageName);
@@ -77,7 +87,7 @@ void updateChainedListDisplay(int init, list_t * lst );
 void nothing();
 
 /*      DISPLAY PRIMITIVES              */
-
+void primPgBarWidget(pgBarWidget_t * pg);
 void primUpdRollingLabelListWidget(rollingWidget_t * rw,int8_t init, int8_t direction);
 void primUpdListWidget(listWidget_t *lw,int8_t init, int8_t direction);
 void primPrepNewScreen(char * szTitle);

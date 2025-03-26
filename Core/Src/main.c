@@ -108,6 +108,13 @@ UART
 
 // Changelog
 /*
+26.03.25 v0.80.6
+  + [SDEJECT] Disk Creation from Filesystem (PO,DSK,...)
+  + [SDEJECT] Fixing SD Eject function for all emulator
+  + [MAINMENU] Making the main menu dynamic according to emulation type
+  + [UNIDISK / HD EDJECT] Manage Eject request from Smartport on update screen on SmartDisk
+  + [SMARTPORT ] checksum and write fix
+  + [SMARTPORT ] deadlock on some read query to Ack not asserted, workaround
 22.03.25 v0.81
   + [SDEJECT] Fixing SD Eject function for all emulator
   + [MAINMENU] Making the main menu dynamic according to emulation type
@@ -293,6 +300,11 @@ UART
 #include "favorites.h"
 #include "log.h"
 
+#include "driver_dsk.h"
+#include "driver_woz.h"
+#include "driver_nic.h"
+#include "driver_2mg.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -386,6 +398,10 @@ extern char currentFullPath[MAX_FULLPATH_LENGTH];                               
 extern char currentPath[MAX_PATH_LENGTH];                                                       // current directory name max 64 char
 extern char currentFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];                             // fullpath from root image filename
 extern char tmpFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];                                 // fullpath from root image filename
+
+
+char sTmp[256];
+uint8_t iTmp=0;
 
 uint8_t flgWeakBit=0;
 uint8_t flgSoundEffect=0;                                                                       // Activate Buzze
@@ -878,6 +894,80 @@ enum STATUS processPath(char *path){
   return RET_OK;
 }
 
+
+
+enum STATUS makeNewDisk(char * location,char * imageName,enum DISK_IMAGE di){
+  log_info("location: %s",location);
+  log_info("imageName: %s",imageName);
+  log_info("DI: %d",di);
+
+  switch(di){
+    
+    case DSK140K:
+      char filename[256];
+      sprintf(filename,"%s/%s.dsk",location,imageName);
+      irqEnableSDIO();
+      createNewDiskDSK(filename,280);
+      irqDisableSDIO();
+      nextAction=FSDISP;
+      break;
+
+    case NIB140K:
+      sprintf(filename,"%s/%s.nic",location,imageName);
+      irqEnableSDIO();
+      createNewDiskNic(filename);
+      irqDisableSDIO();
+      break;
+    
+    case WOZ140K:
+      
+      sprintf(filename,"%s/%s.woz",location,imageName);
+      irqEnableSDIO();
+      createNewDiskWOZ(filename,2,1,1);
+      irqDisableSDIO();
+    
+      break;
+    
+    case PO140K:
+      sprintf(filename,"%s/%s.po",location,imageName);
+      irqEnableSDIO();
+      createNewDiskDSK(filename,280);
+      irqDisableSDIO();
+      break;
+
+    case PO800K:
+      
+      sprintf(filename,"%s/%s.po",location,imageName);
+      irqEnableSDIO();
+      createNewDiskDSK(filename,1600);
+      irqDisableSDIO();
+      break;
+    
+    case PO32M:
+      
+      sprintf(filename,"%s/%s.po",location,imageName);
+      irqEnableSDIO();
+      createNewDiskDSK(filename,65536);
+      irqDisableSDIO();
+      break;
+    
+    case _2MG400K:
+
+      break;
+
+    case _2MG800K:
+      
+      break;
+
+    default:
+      log_error("not managed");
+
+  }
+  log_info("pEnd");
+  return RET_OK;
+}
+
+
 /**
   * @brief Build & sort a new chainedlist of file/dir item based on the current path
   * @param path,
@@ -996,9 +1086,7 @@ void pSdEject(){
       initErrorScr("SD EJECTED");                                                                 // Display the message on screen
       while((SD_EJECT_GPIO_Port->IDR & SD_EJECT_Pin)!=0){};
       NVIC_SystemReset(); 
-    }
-                                                                       // Finally Reset 
-  
+    }                                                          
   return ;
 }
 
@@ -1096,7 +1184,9 @@ enum STATUS execAction(enum action *nextAction){
         initMakeFsConfirmedScr();
         *nextAction=NONE;
         break;
-      
+      case MKIMG:
+        makeNewDisk(currentFullPath,sTmp,iTmp);
+        *nextAction=FSDISP;
       case FSDISP:
         log_info("FSDISP fsState:%d",fsState);
         list_destroy(dirChainedList);
