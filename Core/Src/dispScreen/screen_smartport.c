@@ -9,6 +9,7 @@
 #include "display.h"
 #include "configFile.h"
 #include "emul_smartport.h"
+#include "favorites.h"
 
 /**
  * 
@@ -23,6 +24,7 @@ static uint8_t harvey_ball=0;
 extern enum page currentPage;
 extern char *smartPortHookFilename;
 extern enum action nextAction;
+extern uint8_t bootImageIndex;
 
 /* BTN FUNCTION POINTER CALLED FROM IRQ*/
 extern void (*ptrbtnUp)(void *);                                 
@@ -36,12 +38,20 @@ static void pBtnDownSmartPortHD();
 static void pBtnEntrSmartPortHD();
 
 static void updateSelectSmartPortHD(uint8_t indx);
-static void pBtnToggleOptionSmartPortImage();
-static void toggleSmartPortIO(int i);
+
 static void pBtnEntrSmartPortHDImageOption();
 
 static void pBtnEntrSmartportMountImageScr();
 static void pBtnRetSmartportMountImageScr();
+static void pBtnDownOptionSmartPortImage();
+static void pBtnUpOptionSmartPortImage();
+static void toggleAddToFavorite();
+static void pBtnDownOptionSmartPortImage2();
+static void pBtnUpOptionSmartPortImage2();
+static void pBtnEntrSmartPortHDImageOption2();
+static void processSmartPortImageOptionRetScreen2();
+
+void static showFavIcon();
 static void toggleMountOption(int i);
 static void pBtnToogleOption();
 
@@ -49,6 +59,7 @@ static uint8_t currentSmartPortImageIndex=4;                // the 4 Value enabl
 static uint8_t previousSmartPortImageIndex=4;
 char * partititionTab[MAX_PARTITIONS];
 
+uint8_t isCurrentImageFavorite=0;
 
 uint8_t fsHookedPartition=0x0;                           // Partition Number when navigating the FS to save the index
 char * fsHookedFilename=NULL;
@@ -71,13 +82,13 @@ void initSmartPortHDScr(){
   
   }
 
-static uint8_t bootIndx=0;
+
 void setImageTabSmartPortHD(char * fileTab[4],uint8_t bootImageIndex){
 
   for (uint8_t i=0;i<MAX_PARTITIONS;i++){
     partititionTab[i]=fileTab[i];
   }
-  bootIndx=bootImageIndex;
+
   updateImageSmartPortHD();
 }
 
@@ -117,14 +128,14 @@ void updateImageSmartPortHD(){
   
         filename[0]=toupper(filename[0]);
     
-        if ((i+1)==bootIndx)
+        if ((i+1)==bootImageIndex)
           snprintf(tmp,len+2,"*:%s",filename);
         else
           snprintf(tmp,len+2,"%d:%s",i+1,filename);
       
         displayStringAtPosition(1,(3+i)*SCREEN_LINE_HEIGHT,tmp);
       }else{
-        if ((i+1)==bootIndx)
+        if ((i+1)==bootImageIndex)
             sprintf(tmp,"*:[SELECT]          ");
         else
             sprintf(tmp,"%d:[SELECT]         ",i+1);
@@ -234,69 +245,300 @@ static  void pBtnEntrSmartPortHD(){
 }
   
 /* SMARTPORTHD IMAGE OPTION  */
-  
+
+listWidget_t imageOptionLw;
+
 void initSmartPortHDImageOptionScr(){
 
   primPrepNewScreen("Smartport Image");
 
-  displayStringAtPosition(30,2*SCREEN_LINE_HEIGHT,"Unmount image");
-  displayStringAtPosition(30,3*SCREEN_LINE_HEIGHT,"Select image");
-  displayStringAtPosition(30,4*SCREEN_LINE_HEIGHT,"New image");
 
-  ssd1306_SetColor(Inverse);
-  ssd1306_FillRect(30-5,3*SCREEN_LINE_HEIGHT-1,80,9);
+  listItem_t * optionItem;
+   
+  imageOptionLw.lst=list_new();
+
+  imageOptionLw.currentClistPos=0;
+  imageOptionLw.dispLineSelected=0;
+  imageOptionLw.dispMaxNumLine=4;
+  imageOptionLw.dispStartLine=0;
+  imageOptionLw.hOffset=1;
+  imageOptionLw.vOffset=5;
+
+  optionItem=(listItem_t *)malloc(sizeof(listItem_t));
+  if (optionItem==NULL){
+      log_error("malloc error listItem_t");
+      return;
+  }
+
+  sprintf(optionItem->title,"Unmount image");
+  optionItem->type=0;
+  optionItem->icon=0;
+  optionItem->triggerfunction=NULL;
+  optionItem->ival=0;
+  optionItem->arg=0;
   
-  primUpdScreen();
-  ptrbtnUp=pBtnToggleOptionSmartPortImage;
-  ptrbtnDown=pBtnToggleOptionSmartPortImage;
+  list_rpush(imageOptionLw.lst, list_node_new(optionItem));
+
+  optionItem=(listItem_t *)malloc(sizeof(listItem_t));
+  if (optionItem==NULL){
+      log_error("malloc error listItem_t");
+      return;
+  }
+
+  sprintf(optionItem->title,"Select image");
+  optionItem->type=0;
+  optionItem->icon=0;
+  optionItem->triggerfunction=NULL;
+  optionItem->ival=1;
+  optionItem->arg=0;
+  
+  list_rpush(imageOptionLw.lst, list_node_new(optionItem));
+
+  optionItem=(listItem_t *)malloc(sizeof(listItem_t));
+  if (optionItem==NULL){
+      log_error("malloc error listItem_t");
+      return;
+  }
+
+  sprintf(optionItem->title,"First to boot");
+  optionItem->type=0;
+  optionItem->icon=0;
+  optionItem->triggerfunction=NULL;
+  optionItem->ival=2;
+  optionItem->arg=0;
+  
+  list_rpush(imageOptionLw.lst, list_node_new(optionItem));
+
+  optionItem=(listItem_t *)malloc(sizeof(listItem_t));
+  if (optionItem==NULL){
+      log_error("malloc error listItem_t");
+      return;
+  }
+
+  sprintf(optionItem->title,"Toggle favorite");
+  optionItem->type=0;
+  optionItem->icon=0;
+  optionItem->triggerfunction=NULL;
+  optionItem->ival=3;
+  optionItem->arg=0;
+  
+  list_rpush(imageOptionLw.lst, list_node_new(optionItem));
+
+
+  optionItem=(listItem_t *)malloc(sizeof(listItem_t));
+  if (optionItem==NULL){
+      log_error("malloc error listItem_t");
+      return;
+  }
+
+  sprintf(optionItem->title,"New image");
+  optionItem->type=0;
+  optionItem->icon=0;
+  optionItem->triggerfunction=NULL;
+  optionItem->ival=4;
+  optionItem->arg=0;
+  
+  list_rpush(imageOptionLw.lst, list_node_new(optionItem));
+
+  primUpdListWidget(&imageOptionLw,0,0);
+  
+  char * fn=partititionTab[fsHookedPartition];
+  if (isFavorite(fn)==0)
+    isCurrentImageFavorite=0;
+  else
+    isCurrentImageFavorite=0;
+
+
+  showFavIcon();
+
+  ptrbtnUp=pBtnUpOptionSmartPortImage;
+  ptrbtnDown=pBtnDownOptionSmartPortImage;
   ptrbtnEntr=pBtnEntrSmartPortHDImageOption;
   ptrbtnRet=pBtnRetSmartPortHD;
   currentPage=SMARTPORT_IMAGEOPTION;
 
 }
   
-uint8_t toggleSmartPortImageOption=0;
-
-static void pBtnToggleOptionSmartPortImage(){
+static void pBtnUpOptionSmartPortImage(){
+  primUpdListWidget(&imageOptionLw,-1,-1);
   
-  if (toggleSmartPortImageOption==1){
-    toggleSmartPortImageOption=0;
-    toggleSmartPortIO(0);
-  }else{
-    toggleSmartPortImageOption=1;
-    toggleSmartPortIO(1);
-  }
+  showFavIcon();
 }
-  
-static void toggleSmartPortIO(int i){
-  ssd1306_SetColor(Inverse);
-  ssd1306_FillRect(30-5,2*SCREEN_LINE_HEIGHT-1,80,9);
-  ssd1306_FillRect(30-5,3*SCREEN_LINE_HEIGHT-1,80,9);
+
+static void pBtnDownOptionSmartPortImage(){
+  primUpdListWidget(&imageOptionLw,-1,1);
+  showFavIcon();
+}
+
+void static showFavIcon(){
+  if (isCurrentImageFavorite==1)
+    dispIcon12x12(115,18,0);
+  else
+    dispIcon12x12(115,18,1);
   primUpdScreen();
-
 }
-  
+
 void processSmartPortImageOptionRetScreen(){
   switchPage(SMARTPORT,NULL); 
 }
 
 static void pBtnEntrSmartPortHDImageOption(){
-
-  if (toggleSmartPortImageOption==0)
-    nextAction=FSDISP;
-  else {
-    SmartPortUnMountImageFromIndex(fsHookedPartition);
-    char key[17];
-    sprintf(key,"smartport_vol%02d",fsHookedPartition);
-    setConfigParamStr(key,"");
-    saveConfigFile();
-    switchPage(SMARTPORT,NULL); 
-
-    partititionTab[fsHookedPartition]=NULL;
-    updateImageSmartPortHD();
+  listItem_t * optionItem=imageOptionLw.currentSelectedItem->val;
+  if (optionItem){
+    switch(optionItem->ival){
+      case 0:
+        SmartPortUnMountImageFromIndex(fsHookedPartition);
+        char key[17];
+        sprintf(key,"smartport_vol%02d",fsHookedPartition);
+        setConfigParamStr(key,"");
+        saveConfigFile();
+        switchPage(SMARTPORT,NULL); 
+    
+        partititionTab[fsHookedPartition]=NULL;
+        updateImageSmartPortHD();
+        break;
+      case 1:
+        initSmartPortHDImageOption2Scr();
+        log_info("here");
+        break;
+      break;
+      case 2:
+        setConfigParamInt("bootImageIndex",fsHookedPartition+1);
+        bootImageIndex=fsHookedPartition+1;
+        saveConfigFile();
+        initSmartPortHDScr();
+        updateImageSmartPortHD();
+      break;
+      case 3:
+        toggleAddToFavorite();
+        break;
+      case 4:
+        toggleAddToFavorite();
+        break;
+      default:
+        log_error("not managed");
+    }
   }
+  
 
 }
+
+
+static void toggleAddToFavorite(){
+  char * fn=partititionTab[fsHookedPartition];
+  if (isFavorite(fn)==0){
+      log_info("add from Favorite:%s",fn);
+      if (addToFavorites(fn)==RET_OK)
+      isCurrentImageFavorite=1;
+  }
+  else{
+      log_info("remove from Favorite:%s",fn);
+      if (removeFromFavorites(fn)==RET_OK)
+        isCurrentImageFavorite=0;
+  }
+ 
+  if (isCurrentImageFavorite==1)
+      dispIcon12x12(115,18,0);
+    else
+      dispIcon12x12(115,18,1);
+  
+  primUpdScreen();
+
+  buildLstFromFavorites();
+  saveConfigFile();
+
+  
+}
+
+void initSmartPortHDImageOption2Scr(){
+
+  primPrepNewScreen("Select image from");
+
+  listItem_t * optionItem;
+   
+  imageOptionLw.lst=list_new();
+
+  imageOptionLw.currentClistPos=0;
+  imageOptionLw.dispLineSelected=0;
+  imageOptionLw.dispMaxNumLine=4;
+  imageOptionLw.dispStartLine=0;
+  imageOptionLw.hOffset=1;
+  imageOptionLw.vOffset=5;
+
+  optionItem=(listItem_t *)malloc(sizeof(listItem_t));
+  if (optionItem==NULL){
+      log_error("malloc error listItem_t");
+      return;
+  }
+
+  sprintf(optionItem->title,"Favorites");
+  optionItem->type=0;
+  optionItem->icon=0;
+  optionItem->triggerfunction=NULL;
+  optionItem->ival=0;
+  optionItem->arg=0;
+  
+  list_rpush(imageOptionLw.lst, list_node_new(optionItem));
+  
+  optionItem=(listItem_t *)malloc(sizeof(listItem_t));
+  if (optionItem==NULL){
+      log_error("malloc error listItem_t");
+      return;
+  }
+
+  sprintf(optionItem->title,"File manager");
+  optionItem->type=0;
+  optionItem->icon=0;
+  optionItem->triggerfunction=NULL;
+  optionItem->ival=1;
+  optionItem->arg=0;
+  
+  list_rpush(imageOptionLw.lst, list_node_new(optionItem));
+  primUpdListWidget(&imageOptionLw,0,0);
+  
+  primUpdScreen();
+
+  ptrbtnUp=pBtnUpOptionSmartPortImage2;
+  ptrbtnDown=pBtnDownOptionSmartPortImage2;
+  ptrbtnEntr=pBtnEntrSmartPortHDImageOption2;
+  ptrbtnRet=processSmartPortImageOptionRetScreen2;
+    ;
+  currentPage=SMARTPORT_IMAGEOPTIONLV2;
+}
+
+static void pBtnUpOptionSmartPortImage2(){
+  primUpdListWidget(&imageOptionLw,-1,-1);
+}
+
+static void pBtnDownOptionSmartPortImage2(){
+  primUpdListWidget(&imageOptionLw,-1,1);
+}
+  
+
+void processSmartPortImageOptionRetScreen2(){
+  switchPage(SMARTPORT,NULL); 
+}
+
+static void pBtnEntrSmartPortHDImageOption2(){
+  listItem_t * optionItem=imageOptionLw.currentSelectedItem->val;
+  if (optionItem){
+    switch(optionItem->ival){
+      case 0:
+        
+        break;
+      case 1:
+        nextAction=FSDISP;
+        break;
+
+      default:
+        log_error("not managed");
+    }
+  }
+  
+
+}
+
+
 
 void initSmartportMountImageScr(char * filename){
   

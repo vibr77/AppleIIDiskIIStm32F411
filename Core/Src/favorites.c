@@ -6,6 +6,7 @@
 #include <string.h>
 #include "configFile.h"
 #include "favorites.h"
+#include "display.h"
 
 extern cJSON *json;
 cJSON *favorites = NULL;
@@ -145,10 +146,27 @@ enum STATUS buildLstFromFavorites(){
     if (favoritesChainedList!=NULL)
         list_destroy(favoritesChainedList);
 
+    listItem_t * favItem;
     favoritesChainedList=list_new();
     cJSON_ArrayForEach(item, favorites){
+
+        favItem=(listItem_t *)malloc(sizeof(listItem_t));
+        if (favItem==NULL){
+            log_error("malloc error listItem_t");
+            return RET_ERR;
+        }
         filename = cJSON_GetObjectItemCaseSensitive(item, "filename");
-        list_rpush(favoritesChainedList, list_node_new(filename->valuestring));
+        char * ImageName=getImageNameFromFullPath(filename->valuestring);
+        
+        snprintf(favItem->title,23,"%s",ImageName);
+        favItem->type=0;
+        favItem->icon=10;
+        favItem->triggerfunction=NULL;
+        favItem->ival=0;
+        favItem->arg=0;
+        favItem->cval=filename->valuestring;
+       
+        list_rpush(favoritesChainedList, list_node_new(favItem)); 
     }
 
     return RET_OK;

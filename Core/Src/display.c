@@ -445,6 +445,10 @@ void dispIcon12x12(int x,int y,int indx){
 }
 
 void dispIcon(int x,int y,int indx){
+  if (indx>13){
+    log_error("icon error index outofbound");
+    return;
+  }
   const unsigned char icon_set[]  = {
     0x00, 0x7e, 0x7e, 0x7e, 0x7c, 0x7c, 0x7c, 0x00,   // indx=0   'folderb',      8x8px 
     0x00, 0x7e, 0x42, 0x46, 0x4a, 0x7e, 0x00, 0x00,   // indx=1   'file2',        8x8px

@@ -21,7 +21,6 @@ extern void (*ptrbtnDown)(void *);
 extern void (*ptrbtnEntr)(void *);
 extern void (*ptrbtnRet)(void *);
 
-
 static void pBtnUpFavoritesScr();
 static void pBtnDownFavoritesScr();
 static void pBtnEntrFavoritesScr();
@@ -33,7 +32,6 @@ void initFavoritesScr(){
 
   primPrepNewScreen("Favorites");
     
-
   favoritesLw.lst=favoritesChainedList;
 
   favoritesLw.currentClistPos=0;
@@ -43,8 +41,7 @@ void initFavoritesScr(){
   favoritesLw.hOffset=1;
   favoritesLw.vOffset=5;
 
-  //updateChainedListDisplay(0, favoritesChainedList);
-  primUpdListWidget(&favoritesLw,-1,0);
+  primUpdListWidget(&favoritesLw,0,0);
 
   ptrbtnUp=pBtnUpFavoritesScr;
   ptrbtnDown=pBtnDownFavoritesScr;
@@ -68,21 +65,18 @@ static void pBtnRetFavoritesScr(){
 }
 
 static void pBtnEntrFavoritesScr(){
+
   // Warning Interrupt can not trigger Filesystem action otherwise deadlock can occured !!!
   // to be reworked
-  /*
-  listItem_t *item= settingLw.currentSelectedItem->val;
-    if (item){
-        log_info("selected:%s ",item->title);
-        item->triggerfunction(item->arg);
-    }else{
-        log_error("item is null");
-    }
-  
-  pItem=list_at(favoritesChainedList, selectedIndx);
-  sprintf(tmpFullPathImageFilename,"%s",(char*)pItem->val);
-  char * imageName=getImageNameFromFullPath(tmpFullPathImageFilename);
-  switchPage(MOUNT,imageName);
-  */
+
+  extern char tmpFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH]; 
+  listItem_t *item= favoritesLw.currentSelectedItem->val;
+  if (item){
+    sprintf(tmpFullPathImageFilename,"%s",(char*)item->cval);
+    switchPage(MOUNT,item->title);
+  }else{
+    log_error("item is null");
+  }
+
 }
 

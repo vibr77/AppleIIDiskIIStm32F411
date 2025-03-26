@@ -12,5 +12,6 @@ void updateCommandSmartPortHD(uint8_t imageIndex,uint8_t cmd);
 
 void initSmartPortHDImageOptionScr();
 void initSmartportMountImageScr(char * filename);
+void initSmartPortHDImageOption2Scr();
 #endif 
 
