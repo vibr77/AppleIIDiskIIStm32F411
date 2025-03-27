@@ -19,7 +19,7 @@ extern image_info_t mountImageInfo;
 #define NIBBLE_SECTOR_SIZE 512
 #define ENCODE_525_6_2_RIGHT_BUFFER_SIZE 86
 
-enum BITSTREAM_PARSING_STAGE{N,ADDR_START,ADDR_END,DATA_START,DATA_END};
+static enum BITSTREAM_PARSING_STAGE{N,ADDR_START,ADDR_END,DATA_START,DATA_END};
 
 static enum STATUS nib2dsk(unsigned char * dskData,unsigned char *buffer,uint8_t trk,int byteSize,uint8_t * retError);
 static enum STATUS dsk2Nib(unsigned char *rawByte,unsigned char *buffer,uint8_t trk);
@@ -29,10 +29,10 @@ static enum STATUS decodeGcr62(uint8_t * buffer,uint8_t * data_out,uint8_t *chks
 
 static enum STATUS decodeGcr62b(unsigned char * src,unsigned char * dst);
 
-const unsigned char signatureAddrStart[]	={0xD5,0xAA,0x96};
-const unsigned char signatureDataStart[]	={0xD5,0xAA,0xAD};
+static const unsigned char signatureAddrStart[]	={0xD5,0xAA,0x96};
+static const unsigned char signatureDataStart[]	={0xD5,0xAA,0xAD};
 
-uint8_t sectorCheckArray[32];
+static uint8_t sectorCheckArray[32];
 static  uint8_t  dsk2nibSectorMap[]         = {0, 7, 14, 6, 13, 5, 12, 4, 11, 3, 10, 2, 9, 1, 8, 15};
 static  uint8_t  po2nibSectorMap[]         =  {0, 8,  1, 9, 2, 10, 3, 11, 4, 12, 5, 13, 6, 14, 7, 15};
 

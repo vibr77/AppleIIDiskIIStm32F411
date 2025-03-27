@@ -489,15 +489,14 @@ void SmartPortMainLoop(){
     if (bootImageIndex==0)
         bootImageIndex=1;
 
-    initPartition=bootImageIndex-1;
-    
     while (1) {
 
         
         setWPProtectPort(0);                                                                // Set ack (wrprot) to input to avoid clashing with other devices when sp bus is not enabled 
                                                                                             // read phase lines to check for smartport reset or enable
 
-        //initPartition=bootImageIndex;
+
+        initPartition=bootImageIndex-1;                                                     // Update are enable
 
         switch (phase) {
                                                                                             // phase lines for smartport bus reset
