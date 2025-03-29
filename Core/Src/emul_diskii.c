@@ -985,16 +985,9 @@ void DiskIIMainLoop(){
         }
 
         pSdEject();
-    
-            
-         
-        
-#ifdef A2F_MODE
-            if (HAL_GPIO_ReadPin(SD_EJECT_GPIO_Port, SD_EJECT_Pin)){// SD-Card removed!
-                unlinkImageFile(currentFullPathImageFilename);
-                NVIC_SystemReset();
-            }
 
+
+#ifdef A2F_MODE
             rEncoder = HAL_GPIO_ReadPin(RE_A_GPIO_Port, RE_A_Pin);// handle rotary encoder
             if (rEncoder != re_aState){
                 re_aState = rEncoder;
@@ -1016,7 +1009,6 @@ void DiskIIMainLoop(){
                 }
             }
 #endif
-
         
     }
 }
