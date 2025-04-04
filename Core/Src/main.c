@@ -108,6 +108,8 @@ UART
 
 // Changelog
 /*
+04.04.25 v0.80.9
+  + Fixing instability on SDCard Access (Removing the constraints on DMA & SDIO IRQ)
 26.03.25 v0.80.7
   + Fixing Favorites Screen
   + Adding Favorites to Smartport HD
@@ -596,9 +598,9 @@ void irqEnableSDIO(){
 
 void irqDisableSDIO(){
 
-  HAL_NVIC_DisableIRQ(SDIO_IRQn);
-  HAL_NVIC_DisableIRQ(DMA2_Stream3_IRQn);
-  HAL_NVIC_DisableIRQ(DMA2_Stream6_IRQn);
+  //HAL_NVIC_DisableIRQ(SDIO_IRQn);
+  //HAL_NVIC_DisableIRQ(DMA2_Stream3_IRQn);
+  //HAL_NVIC_DisableIRQ(DMA2_Stream6_IRQn);
 }
 
 void GPIOWritePin(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, GPIO_PinState PinState){

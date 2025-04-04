@@ -794,9 +794,6 @@ void DiskIIMainLoop(){
     while(1){
         
 
-
-
-
         if (flgSelect==1 && flgDeviceEnable==1){                                            // A2 is Powered (Select Line HIGH) & DeviceEnable is active LOW
 
             if (flgWrRequest==1 && pendingWriteTrk==1 && wrLoopFlg==1){                     // Reading Mode, pending track to be written after a full revolution
@@ -979,7 +976,7 @@ void DiskIIMainLoop(){
             cAlive++;
 
             if (cAlive==5000000){                                                           // DEBUG Only
-                printf(".\n");
+                printf(".%d\n",fsState);
                 cAlive=0;
             }
         }
