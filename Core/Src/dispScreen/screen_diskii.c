@@ -65,10 +65,10 @@ void initDiskIIImageScr(char * imageName,int type){
   
     #ifdef A2F_MODE
         inverseStringAtPosition(1,0);
+        ssd1306_SetColor(White);
         displayStringAtPosition(5,3*SCREEN_LINE_HEIGHT,"Track:");
         if (mountImageInfo.type > 3)
         displayStringAtPosition(5,2*SCREEN_LINE_HEIGHT,"type: ERR ");
-        ssd1306_SetColor(White);
         dispIcon32x32(96,37,1);
     #endif
   
