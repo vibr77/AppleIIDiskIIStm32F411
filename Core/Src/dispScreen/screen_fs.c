@@ -164,8 +164,8 @@ void updateChainedListDisplay(int init, list_t * lst ){
   // Render Part
 
 #ifdef A2F_MODE
-  ssd1306_SetColor(Black);
-  ssd1306_DrawLine(0,13,127,13);
+  ssd1306_SetColor(Black); 
+  ssd1306_DrawLine(0,13,127,13); // Delete remaining top line when scrolling up and down again
 #endif
 
   for (int i=0;i<SCREEN_MAX_LINE_ITEM;i++){
