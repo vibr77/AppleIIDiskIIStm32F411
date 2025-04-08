@@ -808,8 +808,11 @@ void getDataBlocksBareMetal(long memoryAdr,volatile unsigned char * buffer,int c
   DWT->CYCCNT = 0; 
   t1 = DWT->CYCCNT;
   uint8_t i=0;
+  HAL_SD_CardStateTypeDef state ;
+  
   while(HAL_SD_ReadBlocks_DMA(&hsd, (uint8_t *)buffer, memoryAdr, count) != HAL_OK && i<2){
-    log_error("Error HAL_SD_ReadBlocks_DMA memoryAdr:%d numBlock:%d error:%d retry:%d",memoryAdr,count,hsd.ErrorCode,i);
+    state = HAL_SD_GetCardState(&hsd);
+    log_error("Error HAL_SD_ReadBlocks_DMA state:%d, memoryAdr:%ld, numBlock:%d, error:%lu, retry:%d",state,memoryAdr,count,hsd.ErrorCode,i);
     i++;
   }
 }

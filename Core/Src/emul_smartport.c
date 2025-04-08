@@ -21,6 +21,7 @@ extern TIM_HandleTypeDef htim1;                             // Timer1 is managin
 extern TIM_HandleTypeDef htim2;                             // Timer2 is handling WR_DATA
 extern TIM_HandleTypeDef htim3;                             // Timer3 is handling RD_DATA
 
+extern SD_HandleTypeDef hsd;
 extern FATFS fs;                                            // fatfs global variable <!> do not remount witihn a function the fatfs otherwise it breaks the rest
 extern long database;                                       // start of the data segment in FAT
 extern int csize;
@@ -47,7 +48,7 @@ int initPartition;
 
 static volatile unsigned char phase=0x0;
 uint16_t messageId=0x0;
-
+static unsigned long cAlive=0;
 // ------------------------------------------------------
 // STATIC FUNCTION DEFINITION
 // ------------------------------------------------------
@@ -787,13 +788,13 @@ void SmartPortMainLoop(){
                                     statusCode=0x27;
                                 }else{
 
-                                    updateCommandSmartPortHD(devices[dev].dispIndex,0);                                    // Pass the rightImageIndex    
+                                    updateCommandSmartPortHD(devices[dev].dispIndex,0);                                     // Pass the rightImageIndex    
                                                                                                                             // block num 1st byte
                                     while(fsState!=READY){};
                                     fsState=BUSY;
                                     FRESULT fres=f_lseek(&devices[dev].fil,devices[dev].dataOffset+blockNumber*512);
                                     if (fres!=FR_OK){
-                                        log_error("Read seek err!, partition:%d, block:%d",dev,blockNumber);
+                                        log_error("Read seek err!, partition:%d, block:%d res:%d",dev,blockNumber,fres);
                                         print_packet ((unsigned char*) packet_buffer,packet_length());
                                         statusCode=0x2D;                                                                    // Invalid Block Number
                                     }else{
@@ -1475,6 +1476,15 @@ void SmartPortMainLoop(){
 
             pSdEject();                                                                          // detect SD card Eject
 
+            cAlive++;
+
+            if (cAlive==5000000){ 
+                HAL_SD_CardStateTypeDef state;
+                state = HAL_SD_GetCardState(&hsd);
+                printf(".%d %lu\n",fsState,state);
+                cAlive=0;
+            }
+  
             if (nextAction!=NONE){
                 switch(nextAction){
                     case SMARTPORT_IMGMOUNT:

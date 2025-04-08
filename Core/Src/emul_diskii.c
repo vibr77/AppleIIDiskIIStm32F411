@@ -16,6 +16,7 @@
 #include "main.h"
 #include "log.h"
 
+extern SD_HandleTypeDef hsd;
 //static unsigned long t1,t2,diff1=0,maxdiff1=0;
 const  char * diskIIImageExt[]={"PO","po","DSK","dsk","NIC","nic","WOZ","woz",NULL};
 
@@ -112,7 +113,7 @@ static volatile int bitSize=0;                                                  
 static volatile int ByteSize=0;                                                                 // Number of Bytes for the current track 
 
 static int wr_attempt=0;                                                                        // DEBUG only temp variable to keep incremental counter of the debug dump to file
-unsigned long cAlive=0;
+static unsigned long cAlive=0;
 
 const uint8_t weakBitTank[]   ={1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0,
                                 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0,
@@ -790,7 +791,7 @@ void DiskIIInit(){
   */
 void DiskIIMainLoop(){
     int trk=0;
-    
+    int zz=0;
     while(1){
         
 
@@ -975,8 +976,19 @@ void DiskIIMainLoop(){
         if (flgWrRequest==1){
             cAlive++;
 
-            if (cAlive==5000000){                                                           // DEBUG Only
-                printf(".%d\n",fsState);
+            if (cAlive==5000000){ 
+                HAL_SD_CardStateTypeDef state;
+                state = HAL_SD_GetCardState(&hsd);
+                /*
+                if (zz==100){
+                    getTrackBitStream(2,read_track_data_bloc);
+                    printf("zz\n");
+                    zz=0;
+                }
+                */
+
+                zz++;                                                  // DEBUG Only
+                printf(".%d %lu\n",fsState,state);
                 cAlive=0;
             }
         }
