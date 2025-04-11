@@ -332,7 +332,7 @@ char * SmartPortFindImage(char * pattern){
     f_closedir(&dir);
     return NULL;
 }
-const  char * smartportImageExt[]={"PO","po","2MG","2mg",NULL};   
+const  char * smartportImageExt[]={"PO","po","2MG","2mg","HDV","hdv",NULL};   
 void SmartPortInit(){
     //log_info("SmartPort init");
 
@@ -2601,8 +2601,11 @@ enum STATUS SmartPortMountImage( prodosPartition_t *d, char * filename ){
             return RET_ERR;
         }
 
-    }else if (!memcmp(filename+(len-3),".po",3) ||                                // Check if PO or po
-              !memcmp(filename+(len-3),".PO",3)){                                 
+    }else if (!memcmp(filename+(len-3),".po",3)  ||                                
+              !memcmp(filename+(len-3),".PO",3)  || 
+              !memcmp(filename+(len-4),".hdv",4) ||                                
+              !memcmp(filename+(len-4),".HDV",4) 
+            ){                                 
         
         while(fsState!=READY){};
         fsState=BUSY;

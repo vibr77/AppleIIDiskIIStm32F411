@@ -197,15 +197,15 @@ void DiskIIPhaseIRQ(){
         
         }else{
         
-        int lastPosition=ph_track_b&7;
-        int move=position2Direction[lastPosition][newPosition];
+            int lastPosition=ph_track_b&7;
+            int move=position2Direction[lastPosition][newPosition];
 
-        ph_track_b+= move;
-        
-        if (ph_track_b<0)
-            ph_track_b=0;
-        else if (ph_track_b>159)                                                                 
-            ph_track_b=159;
+            ph_track_b+= move;
+            
+            if (ph_track_b<0)
+                ph_track_b=0;
+            else if (ph_track_b>159)                                                                 
+                ph_track_b=159;
         }
     }
 
@@ -447,14 +447,16 @@ int DiskIIDeviceEnableIRQ(uint16_t GPIO_Pin){
         HAL_GPIO_Init(WR_PROTECT_GPIO_Port, &GPIO_InitStruct);
 
         if (flgWriteProtected==1)
-            GPIOWritePin(WR_PROTECT_GPIO_Port,WR_PROTECT_Pin,GPIO_PIN_SET);                // WRITE_PROTECT is enable
+            GPIOWritePin(WR_PROTECT_GPIO_Port,WR_PROTECT_Pin,GPIO_PIN_SET);                     // WRITE_PROTECT is enable
         else
             GPIOWritePin(WR_PROTECT_GPIO_Port,WR_PROTECT_Pin,GPIO_PIN_RESET);
     
     }else if (flgDeviceEnable==1 && a==1 ){
 
-        pendingWriteTrk=0;                                                                 // We do that on purpose to avoid writing on extern power
+        pendingWriteTrk=0;                                                                      // We do that on purpose to avoid writing on extern power
         flgDeviceEnable=0;
+        //prevTrk=36;                                                                             // TODO To be tested to check if track overlap is solved 
+                                                                                                // It should force track to be reread next enable request...
 #ifdef A2F_MODE        
         GPIOWritePin(AB_GPIO_Port,AB_Pin,GPIO_PIN_RESET);
 #endif
@@ -647,8 +649,8 @@ enum STATUS DiskIIUnmountImage(){
 enum STATUS DiskIIiniteBeaming(){
 
     if (flgImageMounted!=1){
-    log_error("initeBeaming error imageFile is not mounted");
-    return RET_ERR;
+        log_error("initeBeaming error imageFile is not mounted");
+        return RET_ERR;
     }
 
     flgBeaming=0;
@@ -715,6 +717,7 @@ void DiskIIInit(){
         }
 
     }else if (bootMode==1){
+        walkDir(currentFullPath,ptrFileFilter);
         switchPage(FS,currentFullPath);
     }else if (bootMode==2){
         switchPage(FAVORITES,NULL);
@@ -757,6 +760,7 @@ void DiskIIInit(){
     if (flgBeaming==1){
         switchPage(DISKIIIMAGE,currentFullPathImageFilename);
     }
+
     /*
 
     irqEnableSDIO();
@@ -791,10 +795,9 @@ void DiskIIInit(){
   */
 void DiskIIMainLoop(){
     int trk=0;
-    int zz=0;
+    
     while(1){
         
-
         if (flgSelect==1 && flgDeviceEnable==1){                                            // A2 is Powered (Select Line HIGH) & DeviceEnable is active LOW
 
             if (flgWrRequest==1 && pendingWriteTrk==1 && wrLoopFlg==1){                     // Reading Mode, pending track to be written after a full revolution
@@ -806,7 +809,7 @@ void DiskIIMainLoop(){
                 
                 GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);
                 
-                updateDiskIIImageScr(1,rTrk);
+                // updateDiskIIImageScr(1,rTrk);
                 if (flgSoundEffect==1){
                     TIM1->PSC=1000;
                     HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_2);
@@ -824,11 +827,11 @@ void DiskIIMainLoop(){
                 irqDisableSDIO();
                 GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);
             
-                
-            
             }
 
-            /*if (pendingWriteTrk==1 && flgDeviceEnable==0){
+            /*
+            
+            if (pendingWriteTrk==1 && flgDeviceEnable==0){
                 
                 pendingWriteTrk=0;
                 dumpBuf(DMA_BIT_TX_BUFFER,1,6656);
@@ -838,16 +841,17 @@ void DiskIIMainLoop(){
                     log_error("WR trk:%d KO",prevTrk);
                 }
             }
+            
             */
 
-            if (prevTrk!=intTrk && flgBeaming==1){                            // <!> TO Be tested
+            if (prevTrk!=intTrk && flgBeaming==1){                                                  // <!> TO Be tested
                 trk=intTrk;                                                                         // Track has changed, but avoid new change during the process
                                             
                 cAlive=0;
             
                 if (pendingWriteTrk==1){
                     
-                    updateDiskIIImageScr(1,prevTrk);
+                    //updateDiskIIImageScr(1,prevTrk);
                     if (flgSoundEffect==1){
                         TIM1->PSC=1000;
                         HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_2);
@@ -893,7 +897,7 @@ void DiskIIMainLoop(){
 
                 //memset(&DMA_BIT_TX_BUFFER,0x0,6656);                                              // DEBUG ONLY
                 memcpy((unsigned char *)&DMA_BIT_TX_BUFFER,read_track_data_bloc,RAW_SD_TRACK_SIZE);
-                
+                //printf("RD trk:%d\n",trk);
                 updateDiskIIImageScr(0,trk);                                                        // Put here otherwise Spiradisc is not working
 
                 bitSize=getTrackSize(trk);
@@ -978,17 +982,8 @@ void DiskIIMainLoop(){
 
             if (cAlive==5000000){ 
                 HAL_SD_CardStateTypeDef state;
-                state = HAL_SD_GetCardState(&hsd);
-                /*
-                if (zz==100){
-                    getTrackBitStream(2,read_track_data_bloc);
-                    printf("zz\n");
-                    zz=0;
-                }
-                */
-
-                zz++;                                                  // DEBUG Only
-                printf(".%d %lu\n",fsState,state);
+                state = HAL_SD_GetCardState(&hsd);                                              // To avoid SDCard to sleep and trigger an error
+                printf(".%d %lu\n",fsState,state);                                              // This is ugly but no better way
                 cAlive=0;
             }
         }

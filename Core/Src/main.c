@@ -107,7 +107,13 @@ UART
 */ 
 
 // Changelog
+
 /*
+
+10.04.25 v0.80.11
+  + [Smartport] adding support for hdv file extension
+  + [diskII] fix corrupted track on successive basic file writing
+  + [diskII] fix empty directory when booting last directory
 04.04.25 v0.80.9
   + Fixing instability on SDCard Access (Removing the constraints on DMA & SDIO IRQ)
 26.03.25 v0.80.7
