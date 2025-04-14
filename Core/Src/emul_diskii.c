@@ -797,6 +797,30 @@ void DiskIIMainLoop(){
     int trk=0;
     
     while(1){
+        if (flgSelect==1 && flgDeviceEnable==0){   
+            if (flgWrRequest==1 && pendingWriteTrk==1 ){ 
+                uint8_t rTrk=intTrk;
+                wrLoopStartPtr=0;
+                wrLoopFlg=0;
+                pendingWriteTrk=0;
+                cAlive=0;
+                
+                GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);
+                
+                irqEnableSDIO();
+                #pragma GCC diagnostic push
+                #pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
+                if (setTrackBitStream(rTrk,DMA_BIT_TX_BUFFER)==RET_OK){
+                    log_info("WR trk:%d OK",rTrk);
+                }else{
+                    log_error("WR trk:%d KO",rTrk);
+                }
+                #pragma GCC diagnostic pop
+                irqDisableSDIO();
+                GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);
+            
+            }
+        } 
         
         if (flgSelect==1 && flgDeviceEnable==1){                                            // A2 is Powered (Select Line HIGH) & DeviceEnable is active LOW
 
