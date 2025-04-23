@@ -6,6 +6,10 @@ If you do not want to build yourself a board, you can order direcly a [ready to 
 https://www.ebay.fr/itm/306152710617)
 
 The current board revision is 4
+
+A discord server is available if you need support and discuss the product [discords server](
+https://discord.gg/6y2Zdazy)
+
 The current firmware revision supports the followwing 
 
 ### Supported Emulation:
