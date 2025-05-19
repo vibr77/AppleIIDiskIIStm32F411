@@ -4515,10 +4515,6 @@
 		(uuid "47b59cc1-33e9-43ef-9bca-54857a998e02")
 	)
 	(no_connect
-		(at 222.25 80.01)
-		(uuid "6eb064f0-ab40-401b-aa4c-f9f6de6c16f3")
-	)
-	(no_connect
 		(at 255.27 107.95)
 		(uuid "858d4c3a-143b-46a5-9a4a-3c97b4bdd437")
 	)
@@ -4626,6 +4622,16 @@
 	)
 	(wire
 		(pts
+			(xy 173.355 49.53) (xy 179.07 49.53)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "191d0b56-1d33-479b-801e-6d516fc1ecc7")
+	)
+	(wire
+		(pts
 			(xy 177.8 23.495) (xy 178.435 23.495)
 		)
 		(stroke
@@ -4633,6 +4639,16 @@
 			(type default)
 		)
 		(uuid "1cef2663-b80a-4277-a32c-f30e8affb9b6")
+	)
+	(wire
+		(pts
+			(xy 186.69 49.53) (xy 189.865 49.53)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "1d1cee98-ec1f-4ce4-af1b-828479c91030")
 	)
 	(wire
 		(pts
@@ -5806,6 +5822,16 @@
 	)
 	(wire
 		(pts
+			(xy 219.71 80.01) (xy 222.25 80.01)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e6c16f40-7ea8-43d9-ae6b-59d7a7e242d9")
+	)
+	(wire
+		(pts
 			(xy 177.8 77.47) (xy 184.15 77.47)
 		)
 		(stroke
@@ -6646,6 +6672,28 @@
 					(size 1.27 1.27)
 				)
 				(justify left)
+				(hide yes)
+			)
+		)
+	)
+	(global_label "A2PWR"
+		(shape input)
+		(at 219.71 80.01 180)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "6b2ae698-6674-439f-a3d6-90ed826bec07")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 210.4353 80.01 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
 				(hide yes)
 			)
 		)
@@ -7596,6 +7644,28 @@
 			)
 		)
 	)
+	(global_label "A2PWR"
+		(shape input)
+		(at 173.355 49.53 180)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "fc1eaf2b-e6c2-490b-9920-b520c9e3dea1")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 164.0803 49.53 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+				(hide yes)
+			)
+		)
+	)
 	(global_label "BTN_RET"
 		(shape input)
 		(at 219.71 59.69 180)
@@ -8472,6 +8542,91 @@
 			(project "sdiskII_stm32"
 				(path "/a83c7550-2269-4fd8-90ce-2da165082457"
 					(reference "#PWR015")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Diode:1N4148WT")
+		(at 182.88 49.53 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "3bd32594-8971-42d6-84f5-81acf6180734")
+		(property "Reference" "D3"
+			(at 185.674 50.8 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "1N4148WT"
+			(at 184.15 52.705 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "Diode_SMD:D_0805_2012Metric_Pad1.15x1.40mm_HandSolder"
+			(at 182.88 53.975 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "https://www.diodes.com/assets/Datasheets/ds30396.pdf"
+			(at 182.88 49.53 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "75V 0.15A Fast switching Diode, SOD-123"
+			(at 182.88 49.53 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Sim.Device" "D"
+			(at 182.88 49.53 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Sim.Pins" "1=K 2=A"
+			(at 182.88 49.53 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "5721c230-2aed-4b30-a3b4-e1d9385e3883")
+		)
+		(pin "2"
+			(uuid "7c5dbfac-7ea6-44d0-8a78-415059fc53c7")
+		)
+		(instances
+			(project "sdiskII_stm32"
+				(path "/a83c7550-2269-4fd8-90ce-2da165082457"
+					(reference "D3")
 					(unit 1)
 				)
 			)
@@ -9368,6 +9523,73 @@
 			(project "sdiskII_stm32"
 				(path "/a83c7550-2269-4fd8-90ce-2da165082457"
 					(reference "#PWR017")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:VCC")
+		(at 189.865 49.53 270)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "70f6baf9-3d55-4dc8-99a9-e4013b9be7df")
+		(property "Reference" "#PWR020"
+			(at 186.055 49.53 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "VCC"
+			(at 193.675 49.5299 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 189.865 49.53 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 189.865 49.53 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"VCC\""
+			(at 189.865 49.53 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "21ff071a-2996-455a-a013-e6dd13c8ffec")
+		)
+		(instances
+			(project "sdiskII_stm32"
+				(path "/a83c7550-2269-4fd8-90ce-2da165082457"
+					(reference "#PWR020")
 					(unit 1)
 				)
 			)
