@@ -62,6 +62,7 @@ extern I2C_HandleTypeDef hi2c1;
 extern DMA_HandleTypeDef hdma_sdio_rx;
 extern DMA_HandleTypeDef hdma_sdio_tx;
 extern SD_HandleTypeDef hsd;
+extern TIM_HandleTypeDef htim5;
 /* USER CODE BEGIN EV */
 
 /* USER CODE END EV */
@@ -361,6 +362,8 @@ void SDIO_IRQHandler(void)
 
   /* USER CODE END SDIO_IRQn 1 */
 }
+
+
 
 /**
   * @brief This function handles DMA2 stream3 global interrupt.

@@ -119,7 +119,4 @@ uint8_t FATFS_GetAttachedDriversNbr(void)
   return disk.nbr;
 }
 
-uint8_t FATFS_reInitDisk(const Diskio_drvTypeDef *drv, char *path){
-  return 0;
-  //return disk_reinitialize(drv);
-}
+

@@ -32,6 +32,7 @@ Navigation:
   - wipe config
   
 Lessons learned:
+- IIGS in Fast mode, emulation diskII does not work, suspecting phase signal to be shorted
 - Warning screen update with DMA while SDIO is running can perform SDIO error
 - When SDIO appears one way is to investigate is to disable all interrupt & renable one by one
 - Using a clock divider is also helping, clockDIV by 2 is solving the SDCard issue
@@ -109,7 +110,12 @@ UART
 // Changelog
 
 /*
-
+19.05.25 v0.80.12
+  + [FATFS] changing strfunc in conf
+  + [Smartport] adding ROM03 reinit devicelist
+  + [Smartport] adding break on timeout
+  + [Smartport] adding break on checksum failed
+  + [MAIN] adding TIM5 to manage deadlock
 10.04.25 v0.80.11
   + [Smartport] adding support for hdv file extension
   + [diskII] fix corrupted track on successive basic file writing
@@ -350,6 +356,7 @@ TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
+TIM_HandleTypeDef htim5;
 
 UART_HandleTypeDef huart1;
 
@@ -376,6 +383,7 @@ static void MX_SDIO_SD_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_NVIC_Init(void);
+static void MX_TIM5_Init(void);
 /* USER CODE BEGIN PFP */
 
 /*
@@ -424,6 +432,7 @@ uint8_t emulationType=0;
 uint8_t bootImageIndex=0;
 list_t * dirChainedList;
 
+volatile uint8_t flgBreakLoop=0;
 enum action nextAction=NONE;
 
 #ifdef A2F_MODE
@@ -478,6 +487,13 @@ void debounceBtn(int GPIO){
   TIM4->CNT=0;
   TIM4->CR1 |= TIM_CR1_CEN;
   processBtnInterrupt(GPIO);
+}
+
+
+void TIM5_IRQHandler(void){
+  if (TIM5->SR & TIM_SR_UIF){
+    flgBreakLoop=1;
+  }
 }
 
 /**
@@ -1282,6 +1298,7 @@ int main(void){
   MX_SDIO_SD_Init();
   MX_TIM2_Init();
   MX_TIM1_Init();
+  MX_TIM5_Init();
 
   /* Initialize interrupts */
   MX_NVIC_Init();
@@ -1455,7 +1472,7 @@ int main(void){
       ptrReceiveDataIRQ=SmartPortReceiveDataIRQ;
       ptrSendDataIRQ=SmartPortSendDataIRQ;
       ptrWrReqIRQ=SmartPortWrReqIRQ;
-      //ptrDeviceEnableIRQ=NULL;
+      ptrDeviceEnableIRQ=SmartPortDeviceEnableIRQ;
       ptrMainLoop=SmartPortMainLoop;
       //ptrUnmountImage=NULL;
       //ptrMountImagefile=SmartPortMountImage;
@@ -1752,7 +1769,7 @@ static void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 0;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 32*12-1-2;                                                                // Needs to be investigate -5 otherwise does not work 
+  htim2.Init.Period = (32*11.5)-1-1; // As per Daniel to be tested //32*12-1-2;                                                                // Needs to be investigate -5 otherwise does not work 
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -1905,6 +1922,58 @@ static void MX_TIM4_Init(void)
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   if (HAL_TIM_OC_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM4_Init 2 */
+
+  /* USER CODE END TIM4_Init 2 */
+
+}
+
+/**
+  * @brief TIM4 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM5_Init(void)
+{
+
+  /* USER CODE BEGIN TIM4_Init 0 */
+
+  /* USER CODE END TIM4_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+
+  /* USER CODE BEGIN TIM4_Init 1 */
+
+  /* USER CODE END TIM4_Init 1 */
+  htim5.Instance = TIM5;
+  htim5.Init.Prescaler = 96;
+  htim5.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim5.Init.Period = 1000;
+  htim5.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim5.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_OC_Init(&htim5) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_OnePulse_Init(&htim5, TIM_OPMODE_SINGLE) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim5, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_TIMING;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_OC_ConfigChannel(&htim5, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
   {
     Error_Handler();
   }

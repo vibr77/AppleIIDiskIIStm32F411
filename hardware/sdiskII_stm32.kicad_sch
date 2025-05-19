@@ -2455,6 +2455,173 @@
 			)
 			(embedded_fonts no)
 		)
+		(symbol "Diode:1N4148WT"
+			(pin_numbers
+				(hide yes)
+			)
+			(pin_names
+				(hide yes)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "D"
+				(at 0 2.54 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "1N4148WT"
+				(at 0 -2.54 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" "Diode_SMD:D_SOD-523"
+				(at 0 -4.445 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" "https://www.diodes.com/assets/Datasheets/ds30396.pdf"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Description" "75V 0.15A Fast switching Diode, SOD-523"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Sim.Device" "D"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Sim.Pins" "1=K 2=A"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_keywords" "diode"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_fp_filters" "D*SOD?523*"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "1N4148WT_0_1"
+				(polyline
+					(pts
+						(xy -1.27 1.27) (xy -1.27 -1.27)
+					)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 1.27 1.27) (xy 1.27 -1.27) (xy -1.27 0) (xy 1.27 1.27)
+					)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 1.27 0) (xy -1.27 0)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "1N4148WT_1_1"
+				(pin passive line
+					(at -3.81 0 0)
+					(length 2.54)
+					(name "K"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 3.81 0 180)
+					(length 2.54)
+					(name "A"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
 		(symbol "Jumper:SolderJumper_2_Open"
 			(pin_names
 				(offset 0)
@@ -4286,10 +4453,22 @@
 		(uuid "7a6e441c-43a0-476d-8f54-c32323402b91")
 	)
 	(junction
+		(at 170.18 33.655)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "93bf8184-077b-49cd-a36e-3c891603fb10")
+	)
+	(junction
 		(at 137.16 48.26)
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "b5b95158-0c41-40cc-9afe-133ca9401728")
+	)
+	(junction
+		(at 178.435 33.655)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "b662c9d0-468d-4cd6-bb6e-280bb9989513")
 	)
 	(junction
 		(at 139.7 115.57)
@@ -4447,6 +4626,16 @@
 	)
 	(wire
 		(pts
+			(xy 177.8 23.495) (xy 178.435 23.495)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "1cef2663-b80a-4277-a32c-f30e8affb9b6")
+	)
+	(wire
+		(pts
 			(xy 132.08 82.55) (xy 132.08 85.09)
 		)
 		(stroke
@@ -4517,6 +4706,16 @@
 	)
 	(wire
 		(pts
+			(xy 86.36 78.74) (xy 88.9 78.74)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "35aad998-42d7-4b28-bb32-71a5b813cb33")
+	)
+	(wire
+		(pts
 			(xy 87.63 113.03) (xy 92.71 113.03)
 		)
 		(stroke
@@ -4544,6 +4743,16 @@
 			(type default)
 		)
 		(uuid "39015a2a-9839-465e-8cd0-ac6de3bcbf4b")
+	)
+	(wire
+		(pts
+			(xy 170.18 23.495) (xy 170.18 33.655)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "3e09c9dc-3672-4881-b869-ef059af29fa8")
 	)
 	(wire
 		(pts
@@ -4607,7 +4816,7 @@
 	)
 	(wire
 		(pts
-			(xy 177.8 33.655) (xy 179.705 33.655)
+			(xy 177.8 33.655) (xy 178.435 33.655)
 		)
 		(stroke
 			(width 0)
@@ -4634,6 +4843,16 @@
 			(type default)
 		)
 		(uuid "469da16b-cdb1-4fcc-a083-59b65b830129")
+	)
+	(wire
+		(pts
+			(xy 86.36 68.58) (xy 88.9 68.58)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "49a4916c-f2e0-4668-8202-83d5e28a9d7f")
 	)
 	(wire
 		(pts
@@ -4774,6 +4993,16 @@
 			(type default)
 		)
 		(uuid "600dcc72-1c86-4d11-83ec-0b585c429799")
+	)
+	(wire
+		(pts
+			(xy 96.52 78.74) (xy 99.06 78.74)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "61350a42-0b3f-406b-a70b-94e0ab363427")
 	)
 	(wire
 		(pts
@@ -5017,6 +5246,16 @@
 	)
 	(wire
 		(pts
+			(xy 178.435 23.495) (xy 178.435 33.655)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "8c36fcdb-1000-4ac7-9f53-c55d9cc8b13c")
+	)
+	(wire
+		(pts
 			(xy 255.27 105.41) (xy 259.08 105.41)
 		)
 		(stroke
@@ -5054,6 +5293,16 @@
 			(type default)
 		)
 		(uuid "93810986-0970-44bb-a1ca-67beaf03fcf3")
+	)
+	(wire
+		(pts
+			(xy 96.52 68.58) (xy 99.06 68.58)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "941a70b0-7b9d-4851-8fc6-8b3b18a167d7")
 	)
 	(wire
 		(pts
@@ -5507,6 +5756,16 @@
 	)
 	(wire
 		(pts
+			(xy 178.435 33.655) (xy 179.705 33.655)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "dd2713f5-f442-4108-81c7-63a15886a68f")
+	)
+	(wire
+		(pts
 			(xy 124.46 74.93) (xy 132.08 74.93)
 		)
 		(stroke
@@ -5753,7 +6012,7 @@
 			)
 		)
 	)
-	(global_label "SELECT"
+	(global_label "SELECT_D"
 		(shape input)
 		(at 109.22 113.03 0)
 		(fields_autoplaced yes)
@@ -5765,7 +6024,7 @@
 		)
 		(uuid "08cacaab-b487-4892-8d26-b9647ce223fb")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 118.9784 113.03 0)
+			(at 121.216 113.03 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -6325,6 +6584,28 @@
 			)
 		)
 	)
+	(global_label "3.5DSK"
+		(shape input)
+		(at 99.06 78.74 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "61590171-b1cd-4b70-ba23-c14547255ce5")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 108.8185 78.74 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+	)
 	(global_label "USART1_RX"
 		(shape input)
 		(at 182.88 92.71 0)
@@ -6523,6 +6804,28 @@
 			)
 		)
 	)
+	(global_label "SELECT_D"
+		(shape input)
+		(at 86.36 68.58 180)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "77537a9d-4eda-43c3-8eb4-6e6afbe1f0b0")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 74.364 68.58 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+				(hide yes)
+			)
+		)
+	)
 	(global_label "SDIO_CMD"
 		(shape input)
 		(at 231.14 29.21 180)
@@ -6567,7 +6870,7 @@
 			)
 		)
 	)
-	(global_label "3.5DSK"
+	(global_label "3.5DSK_D"
 		(shape input)
 		(at 83.82 107.95 180)
 		(fields_autoplaced yes)
@@ -6579,7 +6882,7 @@
 		)
 		(uuid "7fabb74d-cd16-4da9-8a55-e2f237b153cd")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 74.0615 107.95 0)
+			(at 71.8239 107.95 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -6624,6 +6927,28 @@
 		(uuid "8b16fcbf-2b97-48a2-9062-56701d34095f")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
 			(at 209.9515 77.47 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+				(hide yes)
+			)
+		)
+	)
+	(global_label "3.5DSK_D"
+		(shape input)
+		(at 86.36 78.74 180)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "8e5664e2-e7ad-4681-96cc-ebc2edcca61e")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 74.3639 78.74 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -6778,6 +7103,28 @@
 		(uuid "a325f84c-01a4-44c3-86b6-01fde57a762d")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
 			(at 271.439 80.01 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+	)
+	(global_label "SELECT"
+		(shape input)
+		(at 99.06 68.58 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "a6151cf8-c826-430f-897d-bec51854c260")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 108.8184 68.58 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -7323,10 +7670,9 @@
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
-		(fields_autoplaced yes)
 		(uuid "0017cd06-5a8a-48b3-b6d5-3f65eb188685")
 		(property "Reference" "D1"
-			(at 173.99 27.94 0)
+			(at 172.72 30.734 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -7334,7 +7680,7 @@
 			)
 		)
 		(property "Value" "1N4148"
-			(at 173.99 30.48 0)
+			(at 174.498 36.322 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -7798,9 +8144,9 @@
 		(lib_id "Device:R")
 		(at 120.65 102.87 0)
 		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
+		(exclude_from_sim yes)
+		(in_bom no)
+		(on_board no)
 		(dnp yes)
 		(fields_autoplaced yes)
 		(uuid "170e62cd-2c7a-4554-9277-68e065f97ac4")
@@ -8264,6 +8610,91 @@
 		)
 	)
 	(symbol
+		(lib_id "Diode:1N4148WT")
+		(at 173.99 23.495 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "42697c47-da64-44d7-96a1-7cf0cb3bc477")
+		(property "Reference" "D2"
+			(at 173.736 20.828 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "1N4148WT"
+			(at 175.26 26.67 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "Diode_SMD:D_0805_2012Metric_Pad1.15x1.40mm_HandSolder"
+			(at 173.99 27.94 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "https://www.diodes.com/assets/Datasheets/ds30396.pdf"
+			(at 173.99 23.495 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "75V 0.15A Fast switching Diode, SOD-123"
+			(at 173.99 23.495 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Sim.Device" "D"
+			(at 173.99 23.495 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Sim.Pins" "1=K 2=A"
+			(at 173.99 23.495 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "b02db0a5-65c1-4192-9f7f-8765fef696fd")
+		)
+		(pin "2"
+			(uuid "7083eadf-84f5-48c1-956f-a57ffd704c61")
+		)
+		(instances
+			(project ""
+				(path "/a83c7550-2269-4fd8-90ce-2da165082457"
+					(reference "D2")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Connector_Generic:Conn_01x04")
 		(at 172.72 72.39 0)
 		(mirror y)
@@ -8400,6 +8831,73 @@
 			(project "sdiskII_stm32"
 				(path "/a83c7550-2269-4fd8-90ce-2da165082457"
 					(reference "#PWR05")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 92.71 78.74 90)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "467b9632-ba93-440b-89d9-f306554ae08b")
+		(property "Reference" "R5"
+			(at 91.186 76.454 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "330"
+			(at 93.726 81.026 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"
+			(at 92.71 80.518 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 92.71 78.74 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Resistor"
+			(at 92.71 78.74 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "6c313347-5b78-4c1c-be47-e35507334d24")
+		)
+		(pin "2"
+			(uuid "96ccced3-1027-4ac6-bfe4-860a0cd78a25")
+		)
+		(instances
+			(project "sdiskII_stm32"
+				(path "/a83c7550-2269-4fd8-90ce-2da165082457"
+					(reference "R5")
 					(unit 1)
 				)
 			)
@@ -8612,9 +9110,9 @@
 		(lib_id "Device:R")
 		(at 139.7 102.87 0)
 		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
+		(exclude_from_sim yes)
+		(in_bom no)
+		(on_board no)
 		(dnp yes)
 		(fields_autoplaced yes)
 		(uuid "60ee2345-c60d-4334-84e2-3e474a66bd68")
@@ -9480,6 +9978,73 @@
 			(project ""
 				(path "/a83c7550-2269-4fd8-90ce-2da165082457"
 					(reference "J3")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 92.71 68.58 90)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "9e5453e5-4db3-45ee-bc4b-93bccef96772")
+		(property "Reference" "R4"
+			(at 91.44 66.548 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "330"
+			(at 93.472 70.866 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"
+			(at 92.71 70.358 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 92.71 68.58 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Resistor"
+			(at 92.71 68.58 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "9b9811e2-5ead-47c5-808a-fe79fc7bde0d")
+		)
+		(pin "2"
+			(uuid "922390b1-d777-40df-9e9c-c358e7f052e9")
+		)
+		(instances
+			(project ""
+				(path "/a83c7550-2269-4fd8-90ce-2da165082457"
+					(reference "R4")
 					(unit 1)
 				)
 			)
@@ -10524,9 +11089,9 @@
 		(lib_id "Device:R")
 		(at 123.19 129.54 0)
 		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
+		(exclude_from_sim yes)
+		(in_bom no)
+		(on_board no)
 		(dnp yes)
 		(fields_autoplaced yes)
 		(uuid "ff693535-7e8a-4806-bc32-a5d0740e596a")

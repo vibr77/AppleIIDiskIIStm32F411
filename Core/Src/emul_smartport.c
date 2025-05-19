@@ -13,6 +13,16 @@
 
 #include "driver_2mg.h"
 
+/*
+    Lessons Learned: 
+    
+
+
+*/
+
+
+
+
 // --------------------------------------------------------------------
 // Extern Declaration
 // --------------------------------------------------------------------
@@ -20,6 +30,7 @@
 extern TIM_HandleTypeDef htim1;                             // Timer1 is managing buzzer pwm
 extern TIM_HandleTypeDef htim2;                             // Timer2 is handling WR_DATA
 extern TIM_HandleTypeDef htim3;                             // Timer3 is handling RD_DATA
+extern TIM_HandleTypeDef htim5;                             // Timer3 is handling RD_DATA
 
 extern SD_HandleTypeDef hsd;
 extern FATFS fs;                                            // fatfs global variable <!> do not remount witihn a function the fatfs otherwise it breaks the rest
@@ -33,6 +44,7 @@ extern enum action nextAction;
 
 extern const  char** ptrFileFilter;
 
+extern volatile uint8_t flgBreakLoop;
 
 prodosPartition_t devices[MAX_PARTITIONS];
 
@@ -70,6 +82,8 @@ static enum STATUS verifyCmdpktChecksum(void);
 static void print_packet (unsigned char* data, int bytes);
 static int packet_length (void);
 
+static enum STATUS SmartportReceivePacket();
+
 /**
   * @brief SmartPortReceiveDataIRQ function is used to manage SmartPort Emulation in TIMER 
   * @param None
@@ -97,9 +111,42 @@ static volatile uint8_t flgPacket=2;
 static volatile int flgdebug=0;
 
 static volatile unsigned int WR_REQ_PHASE=0;
+static volatile unsigned char flgDeviceEnable=0;
 
 static u_int8_t dbgbuf[512];
 
+
+static void startBreakLoopTimer(){
+    flgBreakLoop=0;
+    TIM5->CNT=0;
+    __HAL_TIM_ENABLE_IT(&htim5, TIM_IT_CC1);
+}
+
+static void resetBreakLoopTimer(){
+    flgBreakLoop=0;
+    TIM5->CNT=0;
+}
+
+static void stopBreakLoopTimer(){
+    __HAL_TIM_DISABLE_IT(&htim5, TIM_IT_CC1);
+}
+
+
+int SmartPortDeviceEnableIRQ(uint16_t GPIO_Pin){
+    // The DEVICE_ENABLE signal from the Disk controller is activeLow
+    
+    uint8_t  a=0;
+    if ((GPIOA->IDR & GPIO_Pin)==0)
+        a=0;
+    else
+        a=1;
+
+    if (a==0){                                                                 // <!> TO BE TESTED 24/10
+        flgDeviceEnable=1;
+    }else{
+       flgDeviceEnable=0; 
+    }
+}
 
 void SmartPortWrReqIRQ(){
 
@@ -342,7 +389,10 @@ void SmartPortInit(){
     HAL_TIMEx_PWMN_Stop(&htim1,TIM_CHANNEL_2);
 
     TIM3->ARR=(32*12)-1;
-    TIM2->ARR=(32*12)-1-2-5;
+    TIM2->ARR=(32*12)-1-10;
+    
+    TIM5->CNT=0;                                                                                // Reset the
+    TIM5->ARR=1000;                                                                             // Prescaler is 96 1000-> 1ms
     //TIM3->ARR=(16*12)-1;
     //TIM3->CCR2=32*3;
 
@@ -397,6 +447,7 @@ void SmartPortInit(){
         fileTab[i]=devices[i].filename;                                                         // Display the name of the PO according to the position
     }
     setImageTabSmartPortHD(fileTab,bootImageIndex);
+    SmartPortDeviceEnableIRQ(DEVICE_ENABLE_Pin);
 
 }
 
@@ -436,18 +487,41 @@ void SmartPortSendPacket(unsigned char* buffer){
     return;
 }
 
-void SmartportReceivePacket(){
-    
+static enum STATUS SmartportReceivePacket(){
+    //enum STATUS ret=RET_OK;
     setRddataPort(1);
     flgPacket=0;
     assertAck(); 
-                                                                                            // ACK HIGH, indicates ready to receive
-    while(!(phase & 0x01) );                                                                // WAIT FOR REQ TO GO HIGH
-    while (flgPacket!=1);                                                                   // Receive finish
+    startBreakLoopTimer();                                                                      // ACK HIGH, indicates ready to receive
+    while(!(phase & 0x01)){
+        if (flgBreakLoop==1){
+            log_error("break loop #1");
+            return RET_ERR;
+            //break;
+        }
+    };
+    
+    resetBreakLoopTimer();                                                                       // WAIT FOR REQ TO GO HIGH
+    while (flgPacket!=1){
+        if (flgBreakLoop==1){
+            log_error("break loop #2");
+            return RET_ERR;
+            //break;
+        }
+    }                                                                                           // Receive finish
 
-    deAssertAck();                                                                          // ACK LOW indicates to the host we have received a packer
-    while(phase & 0x01);                                                                    // Wait for REQ to go low
-
+    deAssertAck();                                                                              // ACK LOW indicates to the host we have received a packer
+    resetBreakLoopTimer();
+    while(phase & 0x01){
+        if (flgBreakLoop==1){
+            log_error("break loop #3");
+            return RET_ERR;
+            //break;
+        }
+    }
+    
+    stopBreakLoopTimer();
+    return RET_OK;                                                                                         // Wait for REQ to go low
 }
 
 void assertAck(){
@@ -492,7 +566,22 @@ void SmartPortMainLoop(){
 
     while (1) {
 
-        
+        if (flgDeviceEnable==0){
+            pSdEject();
+            if (nextAction!=NONE){
+                switch(nextAction){
+                    case SMARTPORT_IMGMOUNT:
+                        SmartPortInit();
+                        nextAction=NONE;
+                        break;
+                    default:
+                        execAction(&nextAction);
+                }
+            }
+
+            continue;
+        }
+
         setWPProtectPort(0);                                                                // Set ack (wrprot) to input to avoid clashing with other devices when sp bus is not enabled 
                                                                                             // read phase lines to check for smartport reset or enable
 
@@ -524,10 +613,20 @@ void SmartPortMainLoop(){
                 setWPProtectPort(1);                                                        // Set ack to output, sp bus is enabled
                 assertAck();                                                                // Ready for next request                                           
                 
-                SmartportReceivePacket();                                                   // Receive Packet
-                                                                                            // Verify Packet checksum
-                if (verifyCmdpktChecksum()==RET_ERR  ){
+                if (SmartportReceivePacket()==RET_ERR){                                     // Receive Packet
+                    statusCode=0x06;                                                        // Generic BUS_ERR 0x06 
+                    log_error("SmartportReceivePacket timeout error");
+                    encodeReplyPacket(0x0,0x1 | 0x01 ,0x01,statusCode);
+                    SmartPortSendPacket(packet_buffer);
+                    break;
+                }                                                   
+                                                                                           
+                if (verifyCmdpktChecksum()==RET_ERR  ){                                     // Verify Packet checksum
+                    statusCode=0x06;                                                        // Generic BUS_ERR 0x06 
                     log_error("Incomming command checksum error");
+                    encodeReplyPacket(0x0,0x1 | 0x01 ,0x01,statusCode);
+                    SmartPortSendPacket(packet_buffer);
+                    break;
                 }
                 
                 //---------------------------------------------
@@ -545,8 +644,7 @@ void SmartPortMainLoop(){
                             noid++;
                         } else{
                             break;
-                        }
-                        
+                        }    
                     }
 
                     if (noid == MAX_PARTITIONS){  //not one of our id's
@@ -892,7 +990,6 @@ void SmartPortMainLoop(){
                                         
                                         if(fres != FR_OK){
                                             log_error("Read err!");
-                                            
                                             statusCode=0x27;
                                         }
                                         while(fsState!=READY){};
@@ -969,7 +1066,10 @@ void SmartPortMainLoop(){
                                 blockNumber = blockNumber + (((BN_3B_MID & 0x7f) | (((unsigned short)MSB << 4) & 0x80)) << 8);      // block num second byte, Added (unsigned short) cast to ensure calculated block is not underflowing.
                                 blockNumber = blockNumber + (((BN_3B_HIGH & 0x7f) | (((unsigned short)MSB << 5) & 0x80)) << 16);    // block num third byte, Added (unsigned short) cast to ensure calculated block is not underflowing.
                                                                                                                                     // get write data packet, keep trying until no timeout
-                                SmartportReceivePacket();
+                                if (SmartportReceivePacket()==RET_ERR){
+                                    log_error("write command break on timeout");
+                                }
+                                
                                 if (devices[dev].mounted==0){
                                     statusCode=0x2F;                                                                                // OffLine Device off line or no disk in drive
                                 }else if (devices[dev].writeable==0)
@@ -1064,7 +1164,10 @@ void SmartPortMainLoop(){
                             uint8_t dev=(partition + initPartition) % MAX_PARTITIONS;
                             if (devices[dev].device_id == dest) {                                                                   // Yes it is, then do the write
                                                                                                                                     // get write data packet, keep trying until no timeout
-                                SmartportReceivePacket();
+                                if (SmartportReceivePacket()==RET_ERR){
+                                    log_error("write extended error on timeout");
+                                }
+
                                 if (devices[dev].mounted==0){
                                     statusCode=0x2F;                                                                                // OffLine Device off line or no disk in drive
                                 }else if (devices[dev].writeable==0)
@@ -1167,6 +1270,16 @@ void SmartPortMainLoop(){
                                 numMountedPartition++;
                         }
 
+                        if (number_partitions_initialised >numMountedPartition){                                            // The ROM03 IIGS seems to REINIT the Smartport after Boot, we need to manage this case
+                            number_partitions_initialised=1;
+                            log_warn("Smartport REINIT cmd:%02X, dest:%02X, statusCode:%02X",packet_buffer[SP_COMMAND],dest,statusCode);
+                            
+                            for (partition = 0; partition < MAX_PARTITIONS; partition++) { 
+                                uint8_t dev=(partition + initPartition) % MAX_PARTITIONS;  
+                                devices[dev].device_id = 0;
+                            }    
+                        }
+
                         if (number_partitions_initialised <numMountedPartition)
                             statusCode = 0x00;                          // Not the last one
                         else
@@ -1232,8 +1345,8 @@ void SmartPortMainLoop(){
                             Note:   As per the firmware documentation control code should be below 0x80 and thus Bit 7 (from the MSB shoulg never be set)
                                     Thus it should not be needed to check the Bit7 from the MSB GRP 1, but to make it clean let's do it.
                         
-                        0000: C3 81 80 80 80 80 82 81 80 84 83 A0 80 AA 85 80 - ..����..�...�..�
-                        0010: 80 80 80 AA BF C8                               - ���.............
+                            0000: C3 81 80 80 80 80 82 81 80 84 83 A0 80 AA 85 80 - ..����..�...�..�
+                            0010: 80 80 80 AA BF C8                               - ���.............
                         
                         */
                         
@@ -1705,7 +1818,6 @@ static int decodeDataPacket (void){
 
     int pl= packet_length();
     //log_info("Data Packet Len:%d",pl);
-    
     //print_packet ((unsigned char*) packet_buffer,packet_length());
 
     numodd = packet_buffer[6] & 0x7f;                                                               // Handle arbitrary length packets :) 
