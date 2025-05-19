@@ -69,8 +69,11 @@ Architecture:
 - TIM2 Timer 2 : Use to Manage the WR_DATA, ETR1 Slave Reset mode to resync with the A2 Write Pulse that is 3.958 uS instead of 4uS. Every Rising Edge resync
 - TIM3 Timer 3 : Use to Manage the RD_DATA, 
 - TIM4 Timer 4 : Internal no PWM, debouncer for the control button
+- TIM5 Timer 5 : Deadlock timer check
 
 GPIO
+  - PA12 A2PWR (Check PWR on A2 when external supply, not needed in production)
+  - PA10 DEBUG 
 
 BTN
   - PC13 BTN_DOWN
@@ -87,7 +90,7 @@ STEP
   - PB09 WR_REQ
   - PB02 WR_PROTECT
   - PA04 DEVICE_ENABLE
-  - PA13 SD_EJECT
+  - PB13 SD_EJECT
 
 SDIO
   - PB4 DO
@@ -101,7 +104,7 @@ I2C Screen SSD1306
   - PB06 SCL
   - PB07 SDA
 
-UART
+UART1
   - PA15 TX
   - PB3 RX
 
@@ -114,8 +117,9 @@ UART
   + [FATFS] changing strfunc in conf
   + [Smartport] adding ROM03 reinit devicelist
   + [Smartport] adding break on timeout
-  + [Smartport] adding break on checksum failed
+  + [Smartport] adding break on checksum failed to avoid corruption of sdcard block
   + [MAIN] adding TIM5 to manage deadlock
+  + [PCB v6] beta release of PCB v6
 10.04.25 v0.80.11
   + [Smartport] adding support for hdv file extension
   + [diskII] fix corrupted track on successive basic file writing
