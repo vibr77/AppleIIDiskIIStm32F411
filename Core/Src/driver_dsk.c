@@ -19,7 +19,7 @@ extern image_info_t mountImageInfo;
 #define NIBBLE_SECTOR_SIZE 512
 #define ENCODE_525_6_2_RIGHT_BUFFER_SIZE 86
 
-static enum BITSTREAM_PARSING_STAGE{N,ADDR_START,ADDR_END,DATA_START,DATA_END};
+ enum BITSTREAM_PARSING_STAGE{N,ADDR_START,ADDR_END,DATA_START,DATA_END};
 
 static enum STATUS nib2dsk(unsigned char * dskData,unsigned char *buffer,uint8_t trk,int byteSize,uint8_t * retError);
 static enum STATUS dsk2Nib(unsigned char *rawByte,unsigned char *buffer,uint8_t trk);

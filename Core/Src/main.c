@@ -119,7 +119,7 @@ UART1
   + [Smartport] adding break on timeout
   + [Smartport] adding break on checksum failed to avoid corruption of sdcard block
   + [MAIN] adding TIM5 to manage deadlock
-  + [PCB v6] beta release of PCB v6
+  + [PCB] beta release of PCB v6
 10.04.25 v0.80.11
   + [Smartport] adding support for hdv file extension
   + [diskII] fix corrupted track on successive basic file writing

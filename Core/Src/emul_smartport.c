@@ -146,6 +146,7 @@ int SmartPortDeviceEnableIRQ(uint16_t GPIO_Pin){
     }else{
        flgDeviceEnable=0; 
     }
+    return flgDeviceEnable;
 }
 
 void SmartPortWrReqIRQ(){

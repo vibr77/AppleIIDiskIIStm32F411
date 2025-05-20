@@ -19,7 +19,7 @@ unsigned int fatNicCluster[20];
 #define NIBBLE_SECTOR_SIZE 512
 #define ENCODE_525_6_2_RIGHT_BUFFER_SIZE 86
 
-static enum BITSTREAM_PARSING_STAGE{N,ADDR_START,ADDR_END,DATA_START,DATA_END};
+enum BITSTREAM_PARSING_STAGE{N,ADDR_START,ADDR_END,DATA_START,DATA_END};
 static const unsigned char signatureAddrStart[]	={0xD5,0xAA,0x96};
 static const unsigned char signatureDataStart[]	={0xD5,0xAA,0xAD};
 
