@@ -20,7 +20,7 @@ TARGET = AppleIISDiskII_stm32f411_sdio
 # building variables
 ######################################
 # debug build?
-DEBUG = 1
+DEBUG = 0
 # optimization
 OPT = -Og
 

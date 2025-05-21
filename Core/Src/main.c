@@ -113,6 +113,9 @@ UART1
 // Changelog
 
 /*
+20.05.25 v0.80.13
+  + [SMARTPORT] Fixing deadlock on FS access
+  + [SMARTPORT] Manage Eject of Image and Disk present / not present
 19.05.25 v0.80.12
   + [FATFS] changing strfunc in conf
   + [Smartport] adding ROM03 reinit devicelist
@@ -495,9 +498,14 @@ void debounceBtn(int GPIO){
 
 
 void TIM5_IRQHandler(void){
+
   if (TIM5->SR & TIM_SR_UIF){
+    
+  } if (TIM5->SR & TIM_SR_CC1IF){                     // Pulse compare interrrupt on Channel 1
     flgBreakLoop=1;
-  }
+    TIM5->SR &= ~TIM_SR_CC1IF;                            // Clear the compare interrupt flag
+  }else
+    TIM5->SR = 0;
 }
 
 /**
@@ -1017,6 +1025,7 @@ enum STATUS walkDir(char * path, const  char ** extFilter){
   FRESULT fres;
   FILINFO fno; 
 
+  
   log_info("walkdir() path:%s",path);
   HAL_NVIC_EnableIRQ(SDIO_IRQn);
   HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
@@ -1348,6 +1357,8 @@ int main(void){
   T2_DIER|=TIM_DIER_UIE;
   TIM2->DIER|=T2_DIER;                                                      // Enable Output compare Interrupt
 */  
+
+
   int T4_DIER=0x0;
   T4_DIER|=TIM_DIER_CC2IE;
   T4_DIER|=TIM_DIER_UIE;
@@ -1594,6 +1605,9 @@ static void MX_NVIC_Init(void)
   /* TIM4_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(TIM4_IRQn, 10, 0);
   HAL_NVIC_EnableIRQ(TIM4_IRQn);
+
+   HAL_NVIC_SetPriority(TIM5_IRQn, 10, 0);
+  HAL_NVIC_EnableIRQ(TIM5_IRQn);
 
   /* SDIO_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(SDIO_IRQn, 6, 0);
