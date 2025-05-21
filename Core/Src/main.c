@@ -2128,7 +2128,7 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(SD_EJECT_GPIO_Port, &GPIO_InitStruct);
 
- #ifndef A2F_MODE
+#ifndef A2F_MODE
   /*Configure GPIO pin : SELECT_Pin */
   GPIO_InitStruct.Pin = SELECT_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
