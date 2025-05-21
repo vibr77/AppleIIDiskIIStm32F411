@@ -25,7 +25,7 @@ typedef struct prodosPartition_s{
     unsigned char unidiskRegister_P;
 
 } prodosPartition_t;
-
+int SmartPortDeviceEnableIRQ(uint16_t GPIO_Pin);
 void SmartPortWrReqIRQ();
 void SmartPortPhaseIRQ();
 void SmartPortReceiveDataIRQ();

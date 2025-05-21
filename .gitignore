@@ -15,6 +15,6 @@ CMake*
 STM32F411CEUX_FLASH_bkp*
 .DS_Store
 blink.ino.uf2
-documentation/*
 Core/Src/tmp.c
 scr/*
+doc/wrd/*

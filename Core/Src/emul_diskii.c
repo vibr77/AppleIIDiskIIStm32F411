@@ -176,7 +176,7 @@ void DiskIIPhaseIRQ(){
     
     volatile unsigned char stp=(GPIOA->IDR&0b0000000000001111);
     volatile int newPosition=magnet2Position[stp];
-
+    //printf("ph:%02d\n",ph_track);
     if (newPosition>=0){
 
         if (flgDeviceEnable==1){
@@ -453,10 +453,10 @@ int DiskIIDeviceEnableIRQ(uint16_t GPIO_Pin){
     
     }else if (flgDeviceEnable==1 && a==1 ){
 
-        pendingWriteTrk=0;                                                                      // We do that on purpose to avoid writing on extern power
+        pendingWriteTrk=0;                                                                       // We do that on purpose to avoid writing on extern power
         flgDeviceEnable=0;
         //prevTrk=36;                                                                             // TODO To be tested to check if track overlap is solved 
-                                                                                                // It should force track to be reread next enable request...
+                                                                                                  // It should force track to be reread next enable request...
 #ifdef A2F_MODE        
         GPIOWritePin(AB_GPIO_Port,AB_Pin,GPIO_PIN_RESET);
 #endif
@@ -473,7 +473,7 @@ int DiskIIDeviceEnableIRQ(uint16_t GPIO_Pin){
         HAL_TIM_PWM_Stop_IT(&htim3,TIM_CHANNEL_4);                                               // Stop the Timer
         
     }
-    log_info("flgDeviceEnable==%d",flgDeviceEnable);
+    //log_info("flgDeviceEnable==%d",flgDeviceEnable);
     return flgDeviceEnable;
 }
 
@@ -685,6 +685,14 @@ enum STATUS DiskIIiniteBeaming(){
   */
 void DiskIIInit(){
     
+    
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+    GPIO_InitStruct.Pin = _35DSK_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+    HAL_GPIO_Init(_35DSK_GPIO_Port, &GPIO_InitStruct);
+    HAL_GPIO_WritePin(_35DSK_GPIO_Port,_35DSK_Pin,GPIO_PIN_RESET);
+    
     ph_track=0;
    
     ptrFileFilter=diskIIImageExt;
@@ -693,10 +701,7 @@ void DiskIIInit(){
     mountImageInfo.version=0;
     mountImageInfo.cleaned=0;
     mountImageInfo.type=0;
-
-    //sprintf(tmpFullPathImageFilename,"/WOZ 2.0/DOS 3.3 System Master.woz");
-    //sprintf(tmpFullPathImageFilename,"/blank.dsk");
-   
+ 
     if (bootMode==0){
         if (DiskIIMountImagefile(tmpFullPathImageFilename)==RET_OK){
         
@@ -783,6 +788,7 @@ void DiskIIInit(){
     
     HAL_Delay(10000);
     */
+
    flgBeaming=1;
    DiskIISelectIRQ();                                                                       // Important at the end of Init
    flgSelect=1;
@@ -793,11 +799,14 @@ void DiskIIInit(){
   * @param None
   * @retval None
   */
+
 void DiskIIMainLoop(){
     int trk=0;
     
     while(1){
-        if (flgSelect==1 && flgDeviceEnable==0){   
+
+        if (flgSelect==1 && flgDeviceEnable==0){  
+            
             if (flgWrRequest==1 && pendingWriteTrk==1 ){ 
                 uint8_t rTrk=intTrk;
                 wrLoopStartPtr=0;
@@ -823,7 +832,8 @@ void DiskIIMainLoop(){
         } 
         
         if (flgSelect==1 && flgDeviceEnable==1){                                            // A2 is Powered (Select Line HIGH) & DeviceEnable is active LOW
-
+            
+            
             if (flgWrRequest==1 && pendingWriteTrk==1 && wrLoopFlg==1){                     // Reading Mode, pending track to be written after a full revolution
                 uint8_t rTrk=intTrk;
                 wrLoopStartPtr=0;
@@ -869,8 +879,8 @@ void DiskIIMainLoop(){
             */
 
             if (prevTrk!=intTrk && flgBeaming==1){                                                  // <!> TO Be tested
-                trk=intTrk;                                                                         // Track has changed, but avoid new change during the process
-                                            
+
+                trk=intTrk;                                                                         // Track has changed, but avoid new change during the process                            
                 cAlive=0;
             
                 if (pendingWriteTrk==1){
@@ -919,9 +929,7 @@ void DiskIIMainLoop(){
                 while(fsState!=READY);
                 irqDisableSDIO();
 
-                //memset(&DMA_BIT_TX_BUFFER,0x0,6656);                                              // DEBUG ONLY
                 memcpy((unsigned char *)&DMA_BIT_TX_BUFFER,read_track_data_bloc,RAW_SD_TRACK_SIZE);
-                //printf("RD trk:%d\n",trk);
                 updateDiskIIImageScr(0,trk);                                                        // Put here otherwise Spiradisc is not working
 
                 bitSize=getTrackSize(trk);

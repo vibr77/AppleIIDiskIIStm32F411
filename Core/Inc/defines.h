@@ -1,6 +1,6 @@
 
 
-#define _VERSION "v0.80.11"
+#define _VERSION "v0.80.13"
 
 #define SPLASHSCREEN_DURATION       500                         // Not more than 500 otherwise IIGS will not boot
 

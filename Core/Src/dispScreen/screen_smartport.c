@@ -522,6 +522,7 @@ static void pBtnEntrSmartPortHDImageOption2(){
         switchPage(FAVORITES,NULL);
         break;
       case 1:
+        log_info("h1");
         nextAction=FSDISP;
         break;
 
