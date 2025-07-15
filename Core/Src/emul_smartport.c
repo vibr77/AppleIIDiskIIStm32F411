@@ -580,10 +580,10 @@ void SmartPortMainLoop(){
 
     while (1) {
 
-        if (flgDeviceEnable==0){
+        /*if (flgDeviceEnable==0){                                                          // Remove because Apple IIe & II+ Smartport are not managing Bus DeviceEnable 
             pNextAction();
             continue;
-        }
+        }*/
 
         setWPProtectPort(0);                                                                // Set ack (wrprot) to input to avoid clashing with other devices when sp bus is not enabled 
                                                                                             // read phase lines to check for smartport reset or enable
@@ -623,7 +623,7 @@ void SmartPortMainLoop(){
                     break;
                 }                                                   
                                                                                            
-                if (verifyCmdpktChecksum()==RET_ERR){                                     // Verify Packet checksum
+                if (verifyCmdpktChecksum()==RET_ERR){                                       // Verify Packet checksum
                     statusCode=0x06;                                                        // Generic BUS_ERR 0x06 
                     log_error("Incomming command checksum error");
                     encodeReplyPacket(0x0,0x1 | 0x01 ,0x01,statusCode);
@@ -1583,7 +1583,13 @@ void SmartPortMainLoop(){
                         //print_packet ((unsigned char*) packet_buffer,packet_length());         
                         break;
                 } 
-               
+            
+                break;
+            default:
+                pNextAction();
+                break;
+
+            
             }
             
             HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);                       // set RD_DATA LOW
@@ -1591,7 +1597,7 @@ void SmartPortMainLoop(){
 
             assertAck();
 
-            pSdEject();                                                                          // detect SD card Eject
+            //pSdEject();                                                                          // Manage by pNextAction detect SD card Eject
 
             cAlive++;
 
@@ -1602,7 +1608,7 @@ void SmartPortMainLoop(){
                 cAlive=0;
             }
   
-            if (nextAction!=NONE){
+            /*if (nextAction!=NONE){                                                             // Manage by pNextAction
                 switch(nextAction){
                     case SMARTPORT_IMGMOUNT:
                         //TODO MANAGE THE EJECT OF THE DISK
@@ -1613,7 +1619,7 @@ void SmartPortMainLoop(){
                     default:
                         execAction(&nextAction);
                 }
-            }
+            }*/
         }            
 
     return;
