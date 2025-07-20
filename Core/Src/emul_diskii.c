@@ -8,6 +8,7 @@
 #include "driver_woz.h"
 #include "driver_nic.h"
 #include "driver_dsk.h"
+#include "driver_smartloader.h"
 
 #include "emul_diskii.h"
 #include "display.h"
@@ -85,7 +86,6 @@ char currentFullPath[MAX_FULLPATH_LENGTH];                                      
 char currentPath[MAX_PATH_LENGTH];                                                              // current directory name max 64 char
 char currentFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];                                    // fullpath from root image filename
 char tmpFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];                                        // fullpath from root image filename
-
 
 
 // --------------------------------------------------------------------
@@ -536,7 +536,28 @@ enum STATUS DiskIIMountImagefile(char * filename){
     }
     fsState=READY;
     l=strlen(filename);
-    if (l>4 && 
+    if (!strcmp(filename+i+1,"smartloader.po")){
+       log_info("special mode smartloader");
+
+        getSDAddr=getSmartloaderSDAddr;
+        getTrackBitStream=getSmartloaderTrackBitStream;
+        setTrackBitStream=setSmartloaderTrackBitStream;
+        getTrackFromPh=getSmartloaderTrackFromPh;
+        getTrackSize=getSmartloaderTrackSize;
+        
+             if (mountDskFile(filename)!=RET_OK){
+            fsState=READY;
+            return RET_ERR;
+        }
+    
+        mountImageInfo.optimalBitTiming=32;
+        mountImageInfo.writeProtected=0;
+        mountImageInfo.synced=0;
+        mountImageInfo.version=0;
+        mountImageInfo.cleaned=0;
+        mountImageInfo.type=3; 
+
+    }else if(l>4 && 
         (!memcmp(filename+(l-4),".NIC",4)  ||           // .NIC
         !memcmp(filename+(l-4),".nic",4))){            // .nic
 
@@ -690,8 +711,8 @@ void DiskIIInit(){
     GPIO_InitStruct.Pin = _35DSK_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-    HAL_GPIO_Init(_35DSK_GPIO_Port, &GPIO_InitStruct);
-    HAL_GPIO_WritePin(_35DSK_GPIO_Port,_35DSK_Pin,GPIO_PIN_RESET);
+    //HAL_GPIO_Init(_35DSK_GPIO_Port, &GPIO_InitStruct);
+    //HAL_GPIO_WritePin(_35DSK_GPIO_Port,_35DSK_Pin,GPIO_PIN_RESET);
     
     ph_track=0;
    
@@ -727,6 +748,9 @@ void DiskIIInit(){
     }else if (bootMode==2){
         switchPage(FAVORITES,NULL);
     }
+
+    //irqEnableSDIO();
+    //getTrackBitStream(22,read_track_data_bloc);
      
     //irqReadTrack();
     //createBlankWozFile("/test.woz",2,2,1);

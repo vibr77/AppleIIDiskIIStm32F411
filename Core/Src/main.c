@@ -1244,6 +1244,9 @@ enum STATUS execAction(enum action *nextAction){
         initFsScr(currentPath);
         *nextAction=NONE;
         break;
+      
+        
+
       default:
         log_error("execAction not handled");
         *nextAction=NONE;
@@ -1438,7 +1441,8 @@ int main(void){
       sprintf(tmpFullPathImageFilename,"%s",imgFile);
     }
     //const char * filtr[]={"woz","WOZ"};
-    //walkDir(currentFullPath,ptrFileFilter);
+    
+    //walkDir("/",ptrFileFilter);
 
   
   }else{
