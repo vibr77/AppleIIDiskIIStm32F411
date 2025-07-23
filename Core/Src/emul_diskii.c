@@ -474,12 +474,19 @@ int DiskIIDeviceEnableIRQ(uint16_t GPIO_Pin){
         HAL_TIM_PWM_Stop_IT(&htim3,TIM_CHANNEL_4);                                               // Stop the Timer
         
     }
+
+    /*
+  
+    <!> The Below part is extremly important for the timing of the IIGS  
+  
+    */
     
-    TIM5->CNT=0;                                                                                // to be tested 23/07/25
-    HAL_TIM_Base_Start_IT(&htim5);                                                              // This is extremly important for the IIGS Timing
-    while (TIM5->CNT<500){}                                                                     // Wait 500 us
-    HAL_TIM_Base_Stop_IT(&htim5); 
-    //log_info("this is it");                                                                   // Extremely important from timing perspective otherwise IIGS will not work
+    TIM5->ARR=10000;
+    TIM5->CNT=0;
+    HAL_TIM_Base_Start(&htim5);
+    while(TIM5->CNT<1500){
+    }
+    HAL_TIM_Base_Stop(&htim5);
                                                   
     return flgDeviceEnable;
 }
@@ -760,7 +767,7 @@ void DiskIIInit(){
     }
 
     TIM5->CNT=0;                                                                                // Reset the
-    TIM5->ARR=500;                                                                              // 5000 us  
+    TIM5->ARR=50000;                                                                              // 5000 us  
 
     //irqEnableSDIO();
     //getTrackBitStream(22,read_track_data_bloc);
