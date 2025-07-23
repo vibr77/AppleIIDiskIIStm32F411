@@ -1244,6 +1244,9 @@ enum STATUS execAction(enum action *nextAction){
         initFsScr(currentPath);
         *nextAction=NONE;
         break;
+      
+        
+
       default:
         log_error("execAction not handled");
         *nextAction=NONE;
@@ -1346,7 +1349,7 @@ int main(void){
 
   initSplash();                                                       // I2C Screen init                  
                                             
-  HAL_Delay(SPLASHSCREEN_DURATION);
+  HAL_Delay(500);
 
   EnableTiming();                                                           // Enable WatchDog to get precise CPU Cycle counting
  
@@ -1357,6 +1360,9 @@ int main(void){
   T2_DIER|=TIM_DIER_UIE;
   TIM2->DIER|=T2_DIER;                                                      // Enable Output compare Interrupt
 */  
+
+
+  printf("here\n");
 
 
   int T4_DIER=0x0;
@@ -1438,7 +1444,8 @@ int main(void){
       sprintf(tmpFullPathImageFilename,"%s",imgFile);
     }
     //const char * filtr[]={"woz","WOZ"};
-    //walkDir(currentFullPath,ptrFileFilter);
+    
+    //walkDir("/",ptrFileFilter);
 
   
   }else{
@@ -1988,7 +1995,7 @@ static void MX_TIM5_Init(void)
     Error_Handler();
   }
   sConfigOC.OCMode = TIM_OCMODE_TIMING;
-  sConfigOC.Pulse = 0;
+  sConfigOC.Pulse = 500;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   if (HAL_TIM_OC_ConfigChannel(&htim5, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)

@@ -45,6 +45,4 @@ void setWPProtectPort(uint8_t direction);
 
 enum STATUS mountProdosPartition(char * filename,int partition);
 
-
-
 #endif
