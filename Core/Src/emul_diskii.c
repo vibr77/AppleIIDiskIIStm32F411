@@ -21,7 +21,7 @@ extern SD_HandleTypeDef hsd;
 //static unsigned long t1,t2,diff1=0,maxdiff1=0;
 const  char * diskIIImageExt[]={"PO","po","DSK","dsk","NIC","nic","WOZ","woz",NULL};
 
-volatile int ph_track=0;                                                                        // SDISK Physical track 0 - 139
+volatile int ph_track=80;                                                                        // SDISK Physical track 0 - 139
 volatile int ph_track_b=0;                                                                      // SDISK Physical track 0 - 139 for DISK B 
 
 volatile int intTrk=0;                                                                          // InterruptTrk                            
@@ -539,7 +539,7 @@ enum STATUS DiskIIMountImagefile(char * filename){
     if (!strcmp(filename+i+1,"smartloader.po")){
        log_info("special mode smartloader");
 
-        getSDAddr=getSmartloaderSDAddr;
+        getSDAddr=getDskSDAddr;
         getTrackBitStream=getSmartloaderTrackBitStream;
         setTrackBitStream=setSmartloaderTrackBitStream;
         getTrackFromPh=getSmartloaderTrackFromPh;
@@ -707,12 +707,15 @@ enum STATUS DiskIIiniteBeaming(){
 void DiskIIInit(){
     
     
-    GPIO_InitTypeDef GPIO_InitStruct = {0};
-    GPIO_InitStruct.Pin = _35DSK_Pin;
+    GPIO_InitTypeDef GPIO_InitStruct = {0};                                             // This Pin should be High on IIGS but connected to Ground Disk II 
+    GPIO_InitStruct.Pin = _35DSK_Pin;                                                   // 
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-    //HAL_GPIO_Init(_35DSK_GPIO_Port, &GPIO_InitStruct);
-    //HAL_GPIO_WritePin(_35DSK_GPIO_Port,_35DSK_Pin,GPIO_PIN_RESET);
+    HAL_GPIO_Init(_35DSK_GPIO_Port, &GPIO_InitStruct);
+    
+    HAL_GPIO_WritePin(_35DSK_GPIO_Port,_35DSK_Pin,GPIO_PIN_RESET);
+    HAL_Delay(500);
+    HAL_GPIO_WritePin(_35DSK_GPIO_Port,_35DSK_Pin,GPIO_PIN_SET);
     
     ph_track=0;
    

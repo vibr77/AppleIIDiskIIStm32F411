@@ -5,7 +5,9 @@
 #include <stdlib.h>
 #include "fatfs.h"
 
+#include "driver_smartloader.h"
 #include "driver_dsk.h"
+#include "emul_diskii.h"
 #include "main.h"
 #include "log.h"
 
@@ -48,6 +50,12 @@ static  uint8_t  po2nibSectorMap[]         =  {0, 8,  1, 9, 2, 10, 3, 11, 4, 12,
 
 static  uint8_t  nib2dskSectorMap[]         = {0, 13, 11, 9, 7, 5, 3, 1, 14, 12, 10,8, 6, 4, 2, 15};
 static uint8_t   nib2poSectorMap[]          = {0,  2,  4, 6,  8,10, 12,14,  1, 3,  5, 7, 9, 11,13,15};
+
+
+static uint8_t  smtlCommand=0x0;                        // Command from Smartloader
+static uint8_t  smtlValue=0x0;                          // Param from Smartloader
+static uint8_t  smtlReturnCode=0x0;
+static uint8_t  smtlErrorCode=0x0;
 
 static const uint8_t from_gcr_6_2_byte[128] = {
     0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,     // 0x80-0x87
@@ -123,71 +131,106 @@ long getSmartloaderSDAddr(int trk,int block,int csize, long database){
 
 enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
     
-    unsigned char * tmp=NULL;
-
+    unsigned char * tmp;
+    tmp=(unsigned char *)malloc(4096*sizeof(char));
+    
     if (trk==0x16 /* 22 */){
-        /* THIS IS THE SPECIAL TRACK CONTENT TO SEND THE RESULT OF THE REQUEST*/
-        /* By default is send the content of the current SDcard path content*/
-        
-        list_destroy(dirChainedList);
-        walkDir(currentFullPath,ptrFileFilter);
 
-        tmp=(unsigned char *)malloc(4096*sizeof(char));
-        memset((unsigned char *)tmp,0,sizeof(char)*4096);
-       
+        if (smtlCommand==0x0 || smtlCommand==0x01){ // List current Directory
 
-        /* Block B0 176 is the first block on track 22 0x16 */
-        /* Each entry is 16 Bytes length with a zero ending */
-        /* lets iterate walkdir dirChainedList*/
-        /* each time we need to convert to Apple ASCII +128 compare to regular ASCII*/
-        uint8_t lstCount=dirChainedList->len;
-        if (lstCount>16)
-            lstCount=16;
+            smtlCommand=0x0;
+           
+            memset((unsigned char *)tmp,0,sizeof(char)*4096);
 
-        list_node_t *pItem=NULL;
-        uint8_t ilen=0;
-        char *tmp2;
-        int offset=0;
-        
-        tmp[0]=0x20;                        // Return Code OK
-        tmp[1]=lstCount;                    // Number of item
-
-        for (int i=0;i<lstCount;i++){
-            offset=(i)*16+32;                // we start 32 Bytes after the initial buffer to keep room for return code and ...
+            /* THIS IS THE SPECIAL TRACK CONTENT TO SEND THE RESULT OF THE REQUEST*/
+            /* By default is send the content of the current SDcard path content*/
             
-            pItem=list_at(dirChainedList, i);
-            tmp2=pItem->val;
-            log_info("tmp2:%s",tmp2);
-            ilen=strlen(tmp2);
-            
-            if (ilen>25)                    /* 25= 24-1+2 because we need the 0x0 at the end of the string */
-                ilen=25;
-            
-            if (tmp2[0]=='D')
-                tmp[offset]=1;                  // It is a directory
-            else
-                tmp[offset]=0;
+            list_destroy(dirChainedList);
+            walkDir(currentFullPath,ptrFileFilter);
 
-            for (uint8_t j=2;j<ilen;j++){
-                tmp[offset+1-2+j]=tmp2[j]+128; 
-            }
+            /* Block B0 176 is the first block on track 22 0x16 */
+            /* Each entry is 16 Bytes length with a zero ending */
+            /* lets iterate walkdir dirChainedList*/
+            /* each time we need to convert to Apple ASCII +128 compare to regular ASCII*/
 
-            if (ilen<23){
-                for (uint8_t j=ilen;j<23;j++){
-                   tmp[offset+j]=0x0; 
+            int len=strlen(currentFullPath);
+            currentPath[0]=0x0;
+            for (int i=len-1;i!=-1;i--){
+                if (currentFullPath[i]=='/'){
+                snprintf(currentPath,23,"%s",currentFullPath+i);
+                break;
                 }
             }
-
-            /* we need to convert it to APPLE II ASCII */
             
-            tmp[i*16+23]=0x0;
+            len=strlen(currentPath);
+            if (len>23)
+                len=23;
+            for (uint8_t i=0;i<len;i++){
+                tmp[2+i]=currentPath[i]+128;
+            }
+            tmp[2+len]=0x0;
+
+            uint8_t lstCount=dirChainedList->len;
+            
+            if (lstCount>16)
+                lstCount=16;
+
+            list_node_t *pItem=NULL;
+            uint8_t ilen=0;
+            char *tmp2;
+            int offset=0;
+            if (smtlReturnCode==0x0)
+                smtlReturnCode=0x20;
+
+            tmp[0]=smtlReturnCode;              // Return Code OK
+            tmp[1]=lstCount;                    // Number of item
+            
+            for (int i=0;i<lstCount;i++){
+                offset=(i)*24+32;                // we start 32 Bytes after the initial buffer to keep room for return code and ...
+                
+                pItem=list_at(dirChainedList, i);
+                
+                tmp2=pItem->val;
+                log_info("tmp2:%s",tmp2);
+                ilen=strlen(tmp2);
+                
+                if (ilen>26)                    /* 25= 24-1+2 because we need the 0x0 at the end of the string */
+                    ilen=26;
+                
+                if (tmp2[0]=='D')
+                    tmp[offset]=1;                  // It is a directory
+                else
+                    tmp[offset]=0;
+
+                uint8_t k=0;
+                for (uint8_t j=2;j<ilen;j++){
+                    tmp[offset+1+k]=tmp2[j]+128;
+                    k++;
+                }
+
+                k++;
+                for (k;k<24;k++){
+                    tmp[offset+k]=0x0; 
+                }
+                tmp[offset+24]=0x0; 
+   
+            }
+            
+            dumpBuf(tmp,1,512);
+        }else if (smtlCommand==0x02){
+            smtlCommand=0x0;
+
+            
+            memset((unsigned char *)tmp,0,sizeof(char)*4096);
+            tmp[0]=smtlReturnCode;              // Return Code OK
+
+            if (DiskIIMountImagefile(tmpFullPathImageFilename)==RET_OK){
+                log_info("the new stuff is on the moon");
+            }
         }
-        
-        dumpBuf(tmp,1,512);
 
     }else{
 
-    
         int addr=getDskSDAddr(trk,0,csize,database);
         const unsigned int blockNumber=8; 
 
@@ -196,8 +239,6 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
             return RET_ERR;
         }
 
-        tmp=(unsigned char *)malloc(4096*sizeof(char));
-        
         if (tmp==NULL){
             log_error("unable to allocate tmp for 4096 Bytes");
             return RET_ERR;
@@ -205,16 +246,14 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
 
         getDataBlocksBareMetal(addr,tmp,blockNumber);          // Needs to be improved and to remove the zeros
         while (fsState!=READY){}
-    }   
-
+    }
+    
     if (dsk2Nib(tmp,buffer,trk)==RET_ERR){
         log_error("dsk2nib return an error");
         free(tmp);
         return RET_ERR;
     }
 
-   // if (trk==22)
-   //     dumpBuf(buffer,1,512);
     free(tmp);
     return RET_OK;
     
@@ -256,14 +295,9 @@ static enum STATUS dsk2Nib(unsigned char *rawByte,unsigned char *buffer,uint8_t 
     char dst[512];
     char src[256+2];
     unsigned char * sectorMap;
-    if (mountImageInfo.type==2)
-        sectorMap=dsk2nibSectorMap;
-    else if (mountImageInfo.type==3)
-        sectorMap=po2nibSectorMap;
-    else{
-        log_error("Unable to match sectorMap with mountImageInfo.type");
-        return RET_ERR;
-    }
+   
+    sectorMap=po2nibSectorMap; //it is a PO disk Smartloader always this map
+  
         
     for (i=0; i<0x16; i++) 
         dst[i]=0xff;
@@ -344,8 +378,6 @@ static enum STATUS dsk2Nib(unsigned char *rawByte,unsigned char *buffer,uint8_t 
     return RET_OK;
 }
 
-static uint8_t wr_retry=0;                                                                             // DEBUG ONLY
-
 enum STATUS setSmartloaderTrackBitStream(int trk,unsigned char * buffer){
     
     uint8_t retE=0x0;
@@ -365,21 +397,33 @@ enum STATUS setSmartloaderTrackBitStream(int trk,unsigned char * buffer){
         list_destroy(dirChainedList);
         walkDir(currentFullPath,ptrFileFilter);
 
-        uint8_t cmd=dskData[0];
-        uint8_t value=dskData[1];
+        smtlCommand=dskData[0];
+        smtlValue=dskData[1];
         //dumpBuf(dskData,1,512);
-        log_info("cmd:%d, value:%d",cmd,value);
+        log_info("cmd:%d, value:%d",smtlCommand,smtlValue);
 
         list_node_t *pItem=NULL;
 
         char *tmp;
-        pItem=list_at(dirChainedList, value);
-        tmp=pItem->val;
+        pItem=list_at(dirChainedList, smtlValue);
+        
        
         uint8_t ilen=strlen(currentFullPath);
 
-        if (cmd==0x01){                              // Process Select Item 
-            if (!strcmp(tmp,"D|..")){                // selectedItem is [UpDir];
+        if (smtlCommand==0x01){                                                                 // Process Change Directory
+            
+            pItem=list_at(dirChainedList, smtlValue);                                           // Get the item in the list of value
+            tmp=pItem->val;
+            
+            if (tmp[0]!='D'){
+                smtlReturnCode=0x66;
+                smtlErrorCode=0x01;
+                free(dskData);
+                return RET_ERR;
+            }
+
+            smtlReturnCode=0x20;
+            if (!strcmp(tmp,"D|..")){                                                           // selectedItem is [UpDir];
                 for (int i=ilen-1;i!=-1;i--){
                     if (currentFullPath[i]=='/'){
                         snprintf(currentPath,MAX_PATH_LENGTH,"%s",currentFullPath+i);
@@ -391,7 +435,7 @@ enum STATUS setSmartloaderTrackBitStream(int trk,unsigned char * buffer){
                 }
             }else if (tmp[0]=='D'){
                                         // 0x02 Process item
-                pItem=list_at(dirChainedList, value);
+                pItem=list_at(dirChainedList, smtlValue);
                 tmp=pItem->val;
                 log_info("tmp2:%s %d",tmp,ilen);
 
@@ -400,6 +444,21 @@ enum STATUS setSmartloaderTrackBitStream(int trk,unsigned char * buffer){
             
             list_destroy(dirChainedList);
             walkDir(currentFullPath,ptrFileFilter);
+
+        }else if (smtlCommand==0x2){                                                            // Mount & Launch newImage
+            
+            pItem=list_at(dirChainedList, smtlValue);                                           // Get the item in the list of value
+            tmp=pItem->val;
+
+            if (tmp[0]!='F'){                                                                   // Not a File issue an error
+                smtlReturnCode=0x66;
+                smtlErrorCode=0x02;
+                free(dskData);
+                return RET_ERR;
+            }
+            smtlReturnCode=0x22;
+            sprintf(tmpFullPathImageFilename,"%s/%s",currentFullPath,tmp+2);
+
         }
 
 

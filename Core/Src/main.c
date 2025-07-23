@@ -1349,7 +1349,7 @@ int main(void){
 
   initSplash();                                                       // I2C Screen init                  
                                             
-  HAL_Delay(SPLASHSCREEN_DURATION);
+  HAL_Delay(500);
 
   EnableTiming();                                                           // Enable WatchDog to get precise CPU Cycle counting
  
