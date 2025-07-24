@@ -95,7 +95,13 @@ char tmpFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];                        
 
 
 static volatile uint8_t flgWrRequest=1;                                                         // Important Active LOW so need to be HIGH
+
+#ifdef A2F_MODE
+static volatile uint8_t flgSelect=1;                                                            // Flag for Select line, PB8 High when A2 is power on
+#else
 static volatile uint8_t flgSelect=0;                                                            // Flag for Select line, PB8 High when A2 is power on
+#endif
+
 static volatile unsigned int rdBitCounter=0;                                                    // read Bitcounter index to keep read head position on virtual floppy circle
 static volatile unsigned int wrBitCounter=0;                                                    // write Bitcounter index to keep write  head position on virtual floppy circle
 static volatile unsigned int wrLoopStartPtr=0;                                                  // index position of the start position of write segment
@@ -458,7 +464,7 @@ int DiskIIDeviceEnableIRQ(uint16_t GPIO_Pin){
         flgDeviceEnable=0;
         //prevTrk=36;                                                                             // TODO To be tested to check if track overlap is solved 
                                                                                                   // It should force track to be reread next enable request...
-#ifdef A2F_MODE        
+#ifdef A2F_MODE
         GPIOWritePin(AB_GPIO_Port,AB_Pin,GPIO_PIN_RESET);
 #endif
         GPIO_InitStruct.Pin   = RD_DATA_Pin;

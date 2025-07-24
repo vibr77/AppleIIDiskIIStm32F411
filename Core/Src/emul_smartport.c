@@ -2762,7 +2762,7 @@ enum STATUS SmartPortMountImage( prodosPartition_t *d, char * filename ){
     log_info("Mounted: %s",filename);
     log_info("blockCount %d",d->blocks);
 
-#ifdef A2F_MODE    
+#ifdef A2F_MODE
     HAL_GPIO_WritePin(AB_GPIO_Port,AB_Pin,GPIO_PIN_SET);
 #endif
 

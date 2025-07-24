@@ -40,3 +40,4 @@ https://shop.lcd-module.de/OLED128x64green-COG/W128064-XALE
 12	LED 5 mm
 13	Buchsenleisten 2,54 mm
 14	Flachbandkabel und 20P Pfosten-Steckverbinder
+15	STM32F411 (Black Pill) Board

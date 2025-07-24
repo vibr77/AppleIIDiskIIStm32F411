@@ -2135,12 +2135,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(SD_EJECT_GPIO_Port, &GPIO_InitStruct);
 
+#ifndef A2F_MODE
   /*Configure GPIO pin : SELECT_Pin */
   GPIO_InitStruct.Pin = SELECT_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(SELECT_GPIO_Port, &GPIO_InitStruct);
-
+#endif
 
   /*Configure GPIO pin : _35DSK */
   GPIO_InitStruct.Pin = _35DSK_Pin;
