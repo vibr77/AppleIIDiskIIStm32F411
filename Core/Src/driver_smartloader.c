@@ -4,12 +4,13 @@
 #include <string.h>
 #include <stdlib.h>
 #include "fatfs.h"
-
+#include "configFile.h"
 #include "driver_smartloader.h"
 #include "driver_dsk.h"
 #include "emul_diskii.h"
 #include "main.h"
 #include "log.h"
+
 
 extern long database;                                            // start of the data segment in FAT
 extern int csize;  
@@ -54,6 +55,7 @@ static uint8_t   nib2poSectorMap[]          = {0,  2,  4, 6,  8,10, 12,14,  1, 3
 
 static uint8_t  smtlCommand=0x0;                        // Command from Smartloader
 static uint8_t  smtlValue=0x0;                          // Param from Smartloader
+
 static uint8_t  smtlReturnCode=0x0;
 static uint8_t  smtlErrorCode=0x0;
 
@@ -136,7 +138,7 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
     
     if (trk==0x16 /* 22 */){
 
-        if (smtlCommand==0x0 || smtlCommand==0x01){ // List current Directory
+        if (smtlCommand==0x0 || smtlCommand==0x10 || smtlCommand==0x11){ // List current Directory
 
             smtlCommand=0x0;
            
@@ -152,7 +154,16 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
             /* Each entry is 16 Bytes length with a zero ending */
             /* lets iterate walkdir dirChainedList*/
             /* each time we need to convert to Apple ASCII +128 compare to regular ASCII*/
+                /*
+                            ;    Byte 0  : status code
+                            ;    Byte 1  : Item count in the page
+                            ;    Byte 2  : Current Page
+                            ;    Byte 3  : Max Page
+                            ;    Byte 4  : Current Directory 23 Byte
+                            ;    Bytes 27 : 0x0
+                */
 
+            // Output the current direction to offset +4 Bytes for 23 Bytes finishing with 0
             int len=strlen(currentFullPath);
             currentPath[0]=0x0;
             for (int i=len-1;i!=-1;i--){
@@ -166,32 +177,54 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
             if (len>23)
                 len=23;
             for (uint8_t i=0;i<len;i++){
-                tmp[2+i]=currentPath[i]+128;
+                tmp[4+i]=currentPath[i]+128;
             }
-            tmp[2+len]=0x0;
-
-            uint8_t lstCount=dirChainedList->len;
             
-            if (lstCount>16)
-                lstCount=16;
+            tmp[4+len]=0x0;
+
+            const uint8_t maxItemPerPage=16;
+            uint8_t lstCount=dirChainedList->len;
+            uint8_t maxPage=lstCount/maxItemPerPage;
+            if ((lstCount % maxItemPerPage) !=0){
+                maxPage++;
+                log_info("MaxPage:%d",maxPage);
+            }
+            // Remember Max page Index = Page Count starting from 0 so -1
+            maxPage--;
+
+            uint8_t currentPageItemCount=lstCount-(smtlValue*maxItemPerPage);
+            if (currentPageItemCount>16)
+               currentPageItemCount=16;
+            
+            if (smtlReturnCode==0x0)
+                smtlReturnCode=0x20;
+
+
+            tmp[0]=smtlReturnCode;
+            tmp[1]=currentPageItemCount;
+            tmp[2]=smtlValue;
+            tmp[3]=maxPage;
+
+            log_info("ReturnCode:%d, currentPageItemCount:%d, currentPage:%d, maxPage:%d",tmp[0],tmp[1],tmp[2],tmp[3]);
 
             list_node_t *pItem=NULL;
             uint8_t ilen=0;
             char *tmp2;
             int offset=0;
-            if (smtlReturnCode==0x0)
-                smtlReturnCode=0x20;
-
-            tmp[0]=smtlReturnCode;              // Return Code OK
-            tmp[1]=lstCount;                    // Number of item
             
-            for (int i=0;i<lstCount;i++){
-                offset=(i)*24+32;                // we start 32 Bytes after the initial buffer to keep room for return code and ...
+            uint8_t startIndex=smtlValue*maxItemPerPage;
+            uint8_t endIndex=startIndex+currentPageItemCount;
+            int jj=0;
+
+            log_info("startIndex:%d, endIndex:%d",startIndex,endIndex);
+
+            for (int i=startIndex;i<endIndex;i++){
+                offset=(jj)*24+32;                // we start 32 Bytes after the initial buffer to keep room for return code and ...
                 
                 pItem=list_at(dirChainedList, i);
                 
                 tmp2=pItem->val;
-                log_info("tmp2:%s",tmp2);
+            
                 ilen=strlen(tmp2);
                 
                 if (ilen>26)                    /* 25= 24-1+2 because we need the 0x0 at the end of the string */
@@ -213,14 +246,17 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
                     tmp[offset+k]=0x0; 
                 }
                 tmp[offset+24]=0x0; 
+                jj++;
    
             }
             
+            smtlValue=0x0;
             dumpBuf(tmp,1,512);
+
         }else if (smtlCommand==0x02){
+
             smtlCommand=0x0;
 
-            
             memset((unsigned char *)tmp,0,sizeof(char)*4096);
             tmp[0]=smtlReturnCode;              // Return Code OK
 
@@ -400,7 +436,7 @@ enum STATUS setSmartloaderTrackBitStream(int trk,unsigned char * buffer){
         smtlCommand=dskData[0];
         smtlValue=dskData[1];
         //dumpBuf(dskData,1,512);
-        log_info("cmd:%d, value:%d",smtlCommand,smtlValue);
+        log_info("cmd:%02X, value:%02X",smtlCommand,smtlValue);
 
         list_node_t *pItem=NULL;
 
@@ -410,7 +446,7 @@ enum STATUS setSmartloaderTrackBitStream(int trk,unsigned char * buffer){
        
         uint8_t ilen=strlen(currentFullPath);
 
-        if (smtlCommand==0x01){                                                                 // Process Change Directory
+        if (smtlCommand==0x10){                                                                 // Process Change Directory
             
             pItem=list_at(dirChainedList, smtlValue);                                           // Get the item in the list of value
             tmp=pItem->val;
@@ -440,12 +476,28 @@ enum STATUS setSmartloaderTrackBitStream(int trk,unsigned char * buffer){
                 log_info("tmp2:%s %d",tmp,ilen);
 
                 sprintf(currentFullPath+ilen,"/%s",tmp+2);
+                
+
             }
             
             list_destroy(dirChainedList);
             walkDir(currentFullPath,ptrFileFilter);
+            setConfigParamStr("currentPath",currentFullPath);
+            saveConfigFile();
+            smtlValue=0x0;
 
-        }else if (smtlCommand==0x2){                                                            // Mount & Launch newImage
+        }else if (smtlCommand==0x11){       
+            const uint8_t itemPerPage=16;                                                    // Change Page
+            uint8_t lstcount=dirChainedList->len;
+            if (lstcount>=itemPerPage*smtlValue){
+                smtlReturnCode=0x20;
+            }else{
+                smtlReturnCode=0x66;
+            }
+        }
+        
+        
+        else if (smtlCommand==0x2){                                                            // Mount & Launch newImage
             
             pItem=list_at(dirChainedList, smtlValue);                                           // Get the item in the list of value
             tmp=pItem->val;
@@ -458,6 +510,10 @@ enum STATUS setSmartloaderTrackBitStream(int trk,unsigned char * buffer){
             }
             smtlReturnCode=0x22;
             sprintf(tmpFullPathImageFilename,"%s/%s",currentFullPath,tmp+2);
+
+            if (DiskIIMountImagefile(tmpFullPathImageFilename)==RET_OK){
+                log_info("the new stuff is on the moon");
+            }
 
         }
 

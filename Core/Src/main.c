@@ -113,6 +113,12 @@ UART1
 // Changelog
 
 /*
+27.07.25 v0.80.16
+  + [Smartloader] Add multipage feature, left and right arrow
+  + [Smartloader] Add last folder saved for next reboot
+  + [Smartloader] fix loading of image (sometime it was crashing)
+  + [Smartloader] adding 20ms delay after reading block to avoid dead lock
+  + [Smartloader] move arm track by one to enable easy reread in case of error
 20.05.25 v0.80.13
   + [SMARTPORT] Fixing deadlock on FS access
   + [SMARTPORT] Manage Eject of Image and Disk present / not present
@@ -1360,10 +1366,6 @@ int main(void){
   T2_DIER|=TIM_DIER_UIE;
   TIM2->DIER|=T2_DIER;                                                      // Enable Output compare Interrupt
 */  
-
-
-  printf("here\n");
-
 
   int T4_DIER=0x0;
   T4_DIER|=TIM_DIER_CC2IE;

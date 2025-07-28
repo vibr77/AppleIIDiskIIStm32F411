@@ -556,8 +556,10 @@ enum STATUS DiskIIMountImagefile(char * filename){
     }
     fsState=READY;
     l=strlen(filename);
-    if (!strcmp(filename+i+1,"smartloader.po")){
-       log_info("special mode smartloader");
+    
+    if (!strcasecmp(filename+i+1,"smartloader.po")){
+        
+        log_info("special mode smartloader");
 
         getSDAddr=getDskSDAddr;
         getTrackBitStream=getSmartloaderTrackBitStream;
