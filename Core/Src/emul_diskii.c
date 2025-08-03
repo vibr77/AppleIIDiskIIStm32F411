@@ -65,6 +65,8 @@ extern list_t * dirChainedList;
 extern uint8_t flgSoundEffect;
 extern uint8_t flgWeakBit;
 
+extern uint8_t emulationType;
+
 #ifdef A2F_MODE
 extern uint8_t rEncoder;
 extern uint8_t re_aState;
@@ -748,7 +750,20 @@ void DiskIIInit(){
     mountImageInfo.cleaned=0;
     mountImageInfo.type=0;
  
-    if (bootMode==0){
+    if (emulationType==SMARTLOADER){
+        sprintf(tmpFullPathImageFilename,"/smartloaderp.po");
+        if (DiskIIMountImagefile(tmpFullPathImageFilename)==RET_OK){
+            
+            switchPage(DISKIIIMAGE,currentFullPathImageFilename);
+
+            if (flgImageMounted==1){                                            
+                if (DiskIIiniteBeaming()==RET_OK)
+                    DiskIIDeviceEnableIRQ(DEVICE_ENABLE_Pin);
+            }
+        }
+    }
+
+    else if (bootMode==0){
         if (DiskIIMountImagefile(tmpFullPathImageFilename)==RET_OK){
         
             switchPage(DISKIIIMAGE,currentFullPathImageFilename);

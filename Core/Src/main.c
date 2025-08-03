@@ -113,6 +113,8 @@ UART1
 // Changelog
 
 /*
+03.08.25 v0.80.17
+  + [Emulation] Adding a new setting in emulation type with smartloader to launch smartloader at startup
 27.07.25 v0.80.16
   + [Smartloader] Add multipage feature, left and right arrow
   + [Smartloader] Add last folder saved for next reboot
@@ -1461,6 +1463,8 @@ int main(void){
   //emulationType=SMARTPORTHD;
 
   switch(emulationType){
+    
+    case SMARTLOADER:                                         // Smartloader & DISK II shares the same function it is the driver that is changing
     case DISKII:
       log_info("loading DiskII emulation");
       ptrPhaseIRQ=DiskIIPhaseIRQ;

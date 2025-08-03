@@ -278,22 +278,23 @@ void initSettingsScr(uint8_t i){
         settingItem->ival=1;
     list_rpush(settingLw.lst, list_node_new(settingItem));
 
-    /*
     settingItem=(listItem_t *)malloc(sizeof(listItem_t));
     if (settingItem==NULL){
         log_error("malloc error listItem_t");
         return;
     }
-    sprintf(settingItem->title,"Disk 3.5");
+    sprintf(settingItem->title,"Smartloader");
     settingItem->type=1;
     settingItem->icon=10;
     settingItem->triggerfunction=pBtnEntrSettingEmulationSrc;
     settingItem->ival=0;
-    settingItem->arg=2;
+    settingItem->arg=SMARTLOADER;
     if (emulationType==settingItem->arg)
         settingItem->ival=1;
+    
     list_rpush(settingLw.lst, list_node_new(settingItem));
-    */
+
+
 
     primPrepNewScreen("Emulation type");
     settingLw.dispLineSelected=0;
