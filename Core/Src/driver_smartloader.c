@@ -476,8 +476,7 @@ enum STATUS setSmartloaderTrackBitStream(int trk,unsigned char * buffer){
                 log_info("tmp2:%s %d",tmp,ilen);
 
                 sprintf(currentFullPath+ilen,"/%s",tmp+2);
-                
-
+    
             }
             
             list_destroy(dirChainedList);
