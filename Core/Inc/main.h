@@ -175,10 +175,12 @@ typedef struct image_info_s {
 #define _35DSK_GPIO_Port GPIOA
 #define SELECT_Pin GPIO_PIN_8
 #define SELECT_GPIO_Port GPIOB
+#define SELECT_EXTI_IRQn EXTI9_5_IRQn
 #define WR_REQ_Pin GPIO_PIN_9
 #define WR_REQ_GPIO_Port GPIOB
 #define WR_REQ_EXTI_IRQn EXTI9_5_IRQn
 
+/* USER CODE BEGIN Private defines */
 #define A2PWR_Pin GPIO_PIN_12
 #define A2PWR_Port GPIOA
 
@@ -192,9 +194,6 @@ typedef struct image_info_s {
 #define RE_B_GPIO_Port GPIOA
 #define RE_B_EXTI_IRQn EXTI15_10_IRQn
 #endif
-
-/* USER CODE BEGIN Private defines */
-
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

@@ -119,4 +119,3 @@ uint8_t FATFS_GetAttachedDriversNbr(void)
   return disk.nbr;
 }
 
-

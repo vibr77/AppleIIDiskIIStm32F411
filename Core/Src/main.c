@@ -376,6 +376,7 @@ TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
 TIM_HandleTypeDef htim5;
+TIM_HandleTypeDef htim9;
 
 UART_HandleTypeDef huart1;
 
@@ -401,8 +402,9 @@ static void MX_TIM4_Init(void);
 static void MX_SDIO_SD_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM1_Init(void);
-static void MX_NVIC_Init(void);
 static void MX_TIM5_Init(void);
+static void MX_TIM9_Init(void);
+static void MX_NVIC_Init(void);
 /* USER CODE BEGIN PFP */
 
 /*
@@ -1285,7 +1287,8 @@ enum STATUS execAction(enum action *nextAction){
   * @brief  The application entry point.
   * @retval int
   */
-int main(void){
+int main(void)
+{
 
   /* USER CODE BEGIN 1 */
 
@@ -1335,6 +1338,7 @@ int main(void){
   MX_TIM2_Init();
   MX_TIM1_Init();
   MX_TIM5_Init();
+  MX_TIM9_Init();
 
   /* Initialize interrupts */
   MX_NVIC_Init();
@@ -1625,20 +1629,9 @@ static void MX_NVIC_Init(void)
   /* EXTI4_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(EXTI4_IRQn, 2, 0);
   HAL_NVIC_EnableIRQ(EXTI4_IRQn);
-  
-  /* TIM2_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(TIM2_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(TIM2_IRQn);
   /* TIM3_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(TIM3_IRQn, 2, 0);
   HAL_NVIC_EnableIRQ(TIM3_IRQn);
-  /* TIM4_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(TIM4_IRQn, 10, 0);
-  HAL_NVIC_EnableIRQ(TIM4_IRQn);
-
-   HAL_NVIC_SetPriority(TIM5_IRQn, 10, 0);
-  HAL_NVIC_EnableIRQ(TIM5_IRQn);
-
   /* SDIO_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(SDIO_IRQn, 6, 0);
   HAL_NVIC_EnableIRQ(SDIO_IRQn);
@@ -1648,14 +1641,22 @@ static void MX_NVIC_Init(void)
   /* DMA2_Stream6_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Stream6_IRQn, 6, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
- 
   /* EXTI9_5_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);     // change from 4 to 0
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
   /* EXTI15_10_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(EXTI15_10_IRQn, 13, 0);
   HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
-} 
+  /* TIM2_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(TIM2_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(TIM2_IRQn);
+  /* TIM5_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(TIM5_IRQn, 10, 0);
+  HAL_NVIC_EnableIRQ(TIM5_IRQn);
+  /* TIM4_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(TIM4_IRQn, 10, 0);
+  HAL_NVIC_EnableIRQ(TIM4_IRQn);
+}
 
 /**
   * @brief I2C1 Initialization Function
@@ -1812,12 +1813,15 @@ static void MX_TIM2_Init(void)
   TIM_OC_InitTypeDef sConfigOC = {0};
 
   /* USER CODE BEGIN TIM2_Init 1 */
+  //Note on Period
+      // As per Daniel to be tested //32*12-1-2;     
+      // Needs to be investigate -5 otherwise does not work 
 
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 0;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = (32*11.5)-1-1; // As per Daniel to be tested //32*12-1-2;                                                                // Needs to be investigate -5 otherwise does not work 
+  htim2.Init.Period = (32*11.5)-1-1;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -1888,7 +1892,7 @@ static void MX_TIM3_Init(void)
   htim3.Instance = TIM3;
   htim3.Init.Prescaler = 0;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 32*12-1;              // Changed from 32x12 add -1
+  htim3.Init.Period = 32*12-1;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_OC_Init(&htim3) != HAL_OK)
@@ -1906,7 +1910,7 @@ static void MX_TIM3_Init(void)
     Error_Handler();
   }
   sConfigOC.OCMode = TIM_OCMODE_TIMING;
-  sConfigOC.Pulse =140;
+  sConfigOC.Pulse = 140;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   if (HAL_TIM_OC_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
@@ -1915,7 +1919,6 @@ static void MX_TIM3_Init(void)
   }
   __HAL_TIM_ENABLE_OCxPRELOAD(&htim3, TIM_CHANNEL_1);
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 140;
   if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_4) != HAL_OK)
   {
     Error_Handler();
@@ -1980,23 +1983,23 @@ static void MX_TIM4_Init(void)
 }
 
 /**
-  * @brief TIM4 Initialization Function
+  * @brief TIM5 Initialization Function
   * @param None
   * @retval None
   */
 static void MX_TIM5_Init(void)
 {
 
-  /* USER CODE BEGIN TIM4_Init 0 */
+  /* USER CODE BEGIN TIM5_Init 0 */
 
-  /* USER CODE END TIM4_Init 0 */
+  /* USER CODE END TIM5_Init 0 */
 
   TIM_MasterConfigTypeDef sMasterConfig = {0};
   TIM_OC_InitTypeDef sConfigOC = {0};
 
-  /* USER CODE BEGIN TIM4_Init 1 */
+  /* USER CODE BEGIN TIM5_Init 1 */
 
-  /* USER CODE END TIM4_Init 1 */
+  /* USER CODE END TIM5_Init 1 */
   htim5.Instance = TIM5;
   htim5.Init.Prescaler = 96;
   htim5.Init.CounterMode = TIM_COUNTERMODE_UP;
@@ -2025,9 +2028,50 @@ static void MX_TIM5_Init(void)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN TIM4_Init 2 */
+  /* USER CODE BEGIN TIM5_Init 2 */
 
-  /* USER CODE END TIM4_Init 2 */
+  /* USER CODE END TIM5_Init 2 */
+
+}
+
+/**
+  * @brief TIM9 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM9_Init(void)
+{
+
+  /* USER CODE BEGIN TIM9_Init 0 */
+
+  /* USER CODE END TIM9_Init 0 */
+
+  TIM_OC_InitTypeDef sConfigOC = {0};
+
+  /* USER CODE BEGIN TIM9_Init 1 */
+
+  /* USER CODE END TIM9_Init 1 */
+  htim9.Instance = TIM9;
+  htim9.Init.Prescaler = 24000;
+  htim9.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim9.Init.Period = 65535;
+  htim9.Init.ClockDivision = TIM_CLOCKDIVISION_DIV4;
+  htim9.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_OC_Init(&htim9) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_TIMING;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_OC_ConfigChannel(&htim9, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM9_Init 2 */
+
+  /* USER CODE END TIM9_Init 2 */
 
 }
 
@@ -2047,7 +2091,7 @@ static void MX_USART1_UART_Init(void)
 
   /* USER CODE END USART1_Init 1 */
   huart1.Instance = USART1;
-  huart1.Init.BaudRate = UART_BAUDRATE;// 921600 230400;
+  huart1.Init.BaudRate = UART_BAUDRATE;
   huart1.Init.WordLength = UART_WORDLENGTH_8B;
   huart1.Init.StopBits = UART_STOPBITS_1;
   huart1.Init.Parity = UART_PARITY_NONE;
@@ -2089,8 +2133,8 @@ static void MX_DMA_Init(void)
 static void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
-/* USER CODE BEGIN MX_GPIO_Init_1 */
-/* USER CODE END MX_GPIO_Init_1 */
+  /* USER CODE BEGIN MX_GPIO_Init_1 */
+  /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOC_CLK_ENABLE();
@@ -2100,6 +2144,9 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, RD_DATA_Pin|WR_PROTECT_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : BTN_DOWN_Pin BTN_UP_Pin BTN_ENTR_Pin */
   GPIO_InitStruct.Pin = BTN_DOWN_Pin|BTN_UP_Pin|BTN_ENTR_Pin;
@@ -2119,11 +2166,11 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(DEVICE_ENABLE_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : WR_DATA_Pin */
-  GPIO_InitStruct.Pin = WR_DATA_Pin;
+  /*Configure GPIO pins : WR_DATA_Pin _35DSK_Pin */
+  GPIO_InitStruct.Pin = WR_DATA_Pin|_35DSK_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-  HAL_GPIO_Init(WR_DATA_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pin : RD_DATA_Pin */
   GPIO_InitStruct.Pin = RD_DATA_Pin;
@@ -2131,13 +2178,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
   HAL_GPIO_Init(RD_DATA_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : DEBUG_Pin */
-  GPIO_InitStruct.Pin = DEBUG_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  HAL_GPIO_Init(DEBUG_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : WR_PROTECT_Pin */
   GPIO_InitStruct.Pin = WR_PROTECT_Pin;
@@ -2158,19 +2198,18 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(SD_EJECT_GPIO_Port, &GPIO_InitStruct);
 
-#ifndef A2F_MODE
+  /*Configure GPIO pin : DEBUG_Pin */
+  GPIO_InitStruct.Pin = DEBUG_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  HAL_GPIO_Init(DEBUG_GPIO_Port, &GPIO_InitStruct);
+
   /*Configure GPIO pin : SELECT_Pin */
   GPIO_InitStruct.Pin = SELECT_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
-  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(SELECT_GPIO_Port, &GPIO_InitStruct);
-#endif
-
-  /*Configure GPIO pin : _35DSK */
-  GPIO_InitStruct.Pin = _35DSK_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-  HAL_GPIO_Init(_35DSK_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : WR_REQ_Pin */
   GPIO_InitStruct.Pin = WR_REQ_Pin;
@@ -2178,7 +2217,10 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(WR_REQ_GPIO_Port, &GPIO_InitStruct);
 
-#ifdef A2F_MODE
+  /* USER CODE BEGIN MX_GPIO_Init_2 */
+  
+  #ifdef A2F_MODE
+  
 /*Configure GPIO pin : AB_Pin */
   GPIO_InitStruct.Pin = AB_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -2197,9 +2239,7 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(RE_B_GPIO_Port, &GPIO_InitStruct);
 #endif
-
-/* USER CODE BEGIN MX_GPIO_Init_2 */
-/* USER CODE END MX_GPIO_Init_2 */
+  /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
