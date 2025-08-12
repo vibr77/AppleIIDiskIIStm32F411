@@ -70,9 +70,9 @@ Architecture:
 - TIM3 Timer 3 : Use to Manage the RD_DATA, 
 - TIM4 Timer 4 : Internal no PWM, debouncer for the control button
 - TIM5 Timer 5 : Deadlock timer check
+- TIM9 Timer 9 : Screen Saver timer (if enable)
 
 GPIO
-  - PA12 A2PWR (Check PWR on A2 when external supply, not needed in production)
   - PA10 DEBUG 
 
 BTN
@@ -113,6 +113,10 @@ UART1
 // Changelog
 
 /*
+12.08.25 v0.80.18
+  + [Main] Adding ScreenSaver feature to save the OLED, switch off every 60 min if activated in setting
+  + [Settings] Adding ScreenSaver Option
+  + [SmartLoader] Change of Address range for the new version of smartloas based on RWTS
 03.08.25 v0.80.17
   + [Emulation] Adding a new setting in emulation type with smartloader to launch smartloader at startup
 27.07.25 v0.80.16
@@ -442,6 +446,8 @@ uint8_t iTmp=0;
 
 uint8_t flgWeakBit=0;
 uint8_t flgSoundEffect=0;                                                                       // Activate Buzze
+uint8_t flgScreenSaver=0;
+uint8_t flgDisplaySleep=0;
 uint8_t bootMode=0;
 uint8_t emulationType=0;
 uint8_t bootImageIndex=0;
@@ -497,6 +503,13 @@ void nothingHook(void*){
   * @retval None
   */
 void debounceBtn(int GPIO){
+
+  if (flgDisplaySleep==1){
+    //WakeUp Screen
+    setDisplayONOFF(1);
+    flgDisplaySleep=0;
+    return;
+  }
 
   buttonDebounceState=false;
   TIM4->CNT=0;
@@ -1293,7 +1306,6 @@ int main(void){
 
   /* USER CODE BEGIN SysInit */
 
-
   // --------------------------------------------------------------------
   // ptr declaration needs to be before NVIC init
   // --------------------------------------------------------------------
@@ -1427,6 +1439,11 @@ int main(void){
         log_warn("error getting soundEffect from Config");
       else 
         log_info("soundEffect=%d",flgSoundEffect);
+
+      if (getConfigParamUInt8("screenSaver",&flgScreenSaver)==RET_ERR)
+        log_warn("error getting screenSaver from Config");
+      else 
+        log_info("screenSaver=%d",flgScreenSaver);
       
       if (getConfigParamUInt8("weakBit",&flgWeakBit)==RET_ERR)
         log_warn("error getting weakBit from Config");

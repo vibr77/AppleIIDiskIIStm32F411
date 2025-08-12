@@ -26,6 +26,7 @@ extern void (*ptrbtnRet)(void *);
 extern uint8_t emulationType;
 extern uint8_t bootImageIndex;
 extern uint8_t flgSoundEffect;
+extern uint8_t flgScreenSaver;
 extern uint8_t flgWeakBit;
 
 /*
@@ -45,6 +46,7 @@ static void pBtnEntrSettingEmulationSrc(int arg);
 static void pBootOption(int arg);
 static void pWeakBit();
 static void pSoundEffect();
+static void pScreenSaver();
 static void pClearprefs();
 static void pClearFavorites();
 static void pDispEmulationScreen();
@@ -160,6 +162,19 @@ void initSettingsScr(uint8_t i){
     settingItem->icon=9;
     settingItem->triggerfunction=pSoundEffect;
     settingItem->ival=flgSoundEffect;
+    settingItem->arg=0;
+    list_rpush(settingLw.lst, list_node_new(settingItem));
+
+    settingItem=(listItem_t *)malloc(sizeof(listItem_t));
+    if (settingItem==NULL){
+        log_error("malloc error listItem_t");
+        return;
+    }
+    sprintf(settingItem->title,"Screen saver");
+    settingItem->type=1;
+    settingItem->icon=9;
+    settingItem->triggerfunction=pScreenSaver;
+    settingItem->ival=flgScreenSaver;
     settingItem->arg=0;
     list_rpush(settingLw.lst, list_node_new(settingItem));
 
@@ -427,6 +442,27 @@ static void pSoundEffect(){
     setConfigParamInt("soundEffect",flgSoundEffect);
     saveConfigFile();
     item->ival=flgSoundEffect;
+    
+    primUpdListWidget(&settingLw,-1,0);
+}
+
+static void pScreenSaver(){
+    
+    listItem_t *item= settingLw.currentSelectedItem->val;
+    if (item==NULL){
+        log_error("item is null");
+        return;
+    } 
+    
+    if (item->ival==1){
+      
+      flgScreenSaver=0;
+    }else{
+      flgScreenSaver=1;
+    }
+    setConfigParamInt("screenSaver",flgScreenSaver);
+    saveConfigFile();
+    item->ival=flgScreenSaver;
     
     primUpdListWidget(&settingLw,-1,0);
 }

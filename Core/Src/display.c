@@ -22,7 +22,14 @@ enum page currentPage;
 
 uint8_t scrI=0;
 
+void setDisplayONOFF(uint8_t state){
+  if (state==0){
+    ssd1306_WriteCommand(DISPLAYOFF);
+  }else{
+    ssd1306_WriteCommand(DISPLAYON);
+  }
 
+}
 
 char * getImageNameFromFullPath(char * fullPathImageName){
   

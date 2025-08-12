@@ -81,7 +81,7 @@ typedef struct pgBarWidget_s{
     int value;
 }pgBarWidget_t;
 
-
+void setDisplayONOFF(uint8_t state);
 char * getImageNameFromFullPath(char * fullPathImageName);
 enum STATUS switchPage(enum page newPage,void * arg);
 void updateChainedListDisplay(int init, list_t * lst );
