@@ -29,6 +29,9 @@ extern uint8_t flgSoundEffect;
 extern uint8_t flgScreenSaver;
 extern uint8_t flgWeakBit;
 
+extern enum action nextAction;
+
+
 /*
 *
 * CONFIG MENU SCREEN
@@ -465,6 +468,7 @@ static void pScreenSaver(){
     item->ival=flgScreenSaver;
     
     primUpdListWidget(&settingLw,-1,0);
+    nextAction=TOGGLESCREENSAVER;   
 }
   
 static void pClearprefs(){

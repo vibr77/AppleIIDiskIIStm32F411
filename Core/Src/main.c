@@ -510,6 +510,9 @@ void debounceBtn(int GPIO){
     //WakeUp Screen
     setDisplayONOFF(1);
     flgDisplaySleep=0;
+    if (flgScreenSaver==1){
+      
+    }
     return;
   }
 
@@ -519,6 +522,16 @@ void debounceBtn(int GPIO){
   processBtnInterrupt(GPIO);
 }
 
+void TIM1_BRK_TIM9(void){
+  if (TIM9->SR & TIM_SR_UIF){
+    
+  } if (TIM9->SR & TIM_SR_CC1IF){                     // Pulse compare interrrupt on Channel 1
+    setDisplayONOFF(0);
+    flgDisplaySleep=0;
+    TIM5->SR &= ~TIM_SR_CC1IF;                            // Clear the compare interrupt flag
+  }else
+    TIM9->SR = 0;
+}
 
 void TIM5_IRQHandler(void){
 
@@ -1268,6 +1281,13 @@ enum STATUS execAction(enum action *nextAction){
         *nextAction=NONE;
         break;
       
+      case TOGGLESCREENSAVER:
+        if (flgScreenSaver==1)
+          HAL_TIM_OC_Start_IT(&htim9,TIM_CHANNEL_1);
+        else
+          HAL_TIM_OC_Stop_IT(&htim9,TIM_CHANNEL_1);
+
+      break;
         
 
       default:
@@ -1476,6 +1496,15 @@ int main(void)
   }else{
     log_error("Error mounting sdcard %d",fres);
   }
+
+  // --------------------------------------------------------------------
+  // Manage the case for the OLED Screen Saver
+  // --------------------------------------------------------------------
+
+  if (flgScreenSaver==1){
+    HAL_TIM_OC_Start_IT(&htim9,TIM_CHANNEL_1);
+  }
+
 
   // --------------------------------------------------------------------
   // Prepate emulation mode
