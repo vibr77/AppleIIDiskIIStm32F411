@@ -63,6 +63,8 @@ extern volatile enum FS_STATUS fsState;
 
 extern list_t * dirChainedList;
 extern uint8_t flgSoundEffect;
+extern volatile uint8_t flgScreenOff;
+
 extern uint8_t flgWeakBit;
 
 extern uint8_t emulationType;
@@ -559,7 +561,7 @@ enum STATUS DiskIIMountImagefile(char * filename){
     fsState=READY;
     l=strlen(filename);
     
-    if (!strcasecmp(filename+i+1,"smartloader.po")){
+    if (!strcasecmp(filename+i+1,"smartloader.dsk")){
         
         log_info("special mode smartloader");
 
@@ -579,7 +581,7 @@ enum STATUS DiskIIMountImagefile(char * filename){
         mountImageInfo.synced=0;
         mountImageInfo.version=0;
         mountImageInfo.cleaned=0;
-        mountImageInfo.type=3; 
+        mountImageInfo.type=2; 
 
     }else if(l>4 && 
         (!memcmp(filename+(l-4),".NIC",4)  ||           // .NIC
@@ -1005,6 +1007,10 @@ void DiskIIMainLoop(){
                 prevTrk=trk;
 
             }
+        }
+
+        if (flgScreenOff==1){
+            nextAction=DISPLAY_OFF;
         }
 
         if (nextAction!=NONE){                                                            // Several action can not be done on Interrupt

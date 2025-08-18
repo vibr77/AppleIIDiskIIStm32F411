@@ -448,15 +448,15 @@ uint8_t iTmp=0;
 
 uint8_t flgWeakBit=0;
 uint8_t flgSoundEffect=0;                                                                       // Activate Buzze
-uint8_t flgScreenSaver=0;
-uint8_t flgDisplaySleep=0;
+volatile uint8_t flgScreenSaver=0;
+volatile uint8_t flgDisplaySleep=0;
 uint8_t bootMode=0;
 uint8_t emulationType=0;
 uint8_t bootImageIndex=0;
 list_t * dirChainedList;
 
 volatile uint8_t flgBreakLoop=0;
-enum action nextAction=NONE;
+volatile enum action nextAction=NONE;
 
 #ifdef A2F_MODE
 // rotary encoder state
@@ -507,37 +507,66 @@ void nothingHook(void*){
 void debounceBtn(int GPIO){
 
   if (flgDisplaySleep==1){
-    //WakeUp Screen
-    setDisplayONOFF(1);
+    //nextAction=DISPLAY_WAKEUP;
+    //setDisplayONOFF(1);
     flgDisplaySleep=0;
-    if (flgScreenSaver==1){
-      
-    }
+    //printf("Z1\n");
+  //  TIM9->CNT=0;
     return;
   }
+  //TIM9->CNT=0;
 
   buttonDebounceState=false;
   TIM4->CNT=0;
   TIM4->CR1 |= TIM_CR1_CEN;
   processBtnInterrupt(GPIO);
+  return;
 }
 
-void TIM1_BRK_TIM9(void){
+volatile uint8_t flgScreenOff=0;
+
+void TIM1_BRK_TIM9_IRQHandler(void){
+
+  //TIM1->SR=0;
+  //TIM9->SR=0;
+  //return;
   if (TIM9->SR & TIM_SR_UIF){
+    //TIM9->SR &= ~TIM_SR_UIF;
+    //TIM9->SR=0; 
+    //flgScreenOff=1;  
+    //TIM9->SR=0;
+    //pScreen=1;
+    //printf("H\n");
+    //return;
+    //
     
-  } if (TIM9->SR & TIM_SR_CC1IF){                     // Pulse compare interrrupt on Channel 1
-    setDisplayONOFF(0);
-    flgDisplaySleep=0;
-    TIM5->SR &= ~TIM_SR_CC1IF;                            // Clear the compare interrupt flag
+    //log_info("next action=DISPLAY_OFF");
+    
+        
+  } 
+   if (TIM9->SR & TIM_SR_CC1IF){                     // Pulse compare interrrupt on Channel 1
+    TIM9->SR &= ~TIM_SR_CC1IF;
+    TIM9->SR=0;
+    flgScreenOff=1;
+    printf("H\n");
+    //nextAction=DISPLAY_OFF;
+    return;
+    //pScreen=1; 
+    //setDisplayONOFF(0);
+    //flgDisplaySleep=0;
+    //printf("A\n");
+                               // Clear the compare interrupt flag
   }else
     TIM9->SR = 0;
+
+    return;
 }
 
 void TIM5_IRQHandler(void){
 
   if (TIM5->SR & TIM_SR_UIF){
     
-  } if (TIM5->SR & TIM_SR_CC1IF){                     // Pulse compare interrrupt on Channel 1
+  } if (TIM5->SR & TIM_SR_CC1IF){                         // Pulse compare interrrupt on Channel 1
     flgBreakLoop=1;
     TIM5->SR &= ~TIM_SR_CC1IF;                            // Clear the compare interrupt flag
   }else
@@ -585,7 +614,7 @@ void TIM4_IRQHandler(void){
   * @retval None
   */
 void TIM3_IRQHandler(void){
-
+  //HAL_TIM_IRQHandler(&htim9);
   if (TIM3->SR & TIM_SR_UIF){
     TIM3->SR &= ~TIM_SR_UIF;                              // Clear the overflow interrupt 
     ptrSendDataIRQ();
@@ -1285,10 +1314,22 @@ enum STATUS execAction(enum action *nextAction){
         if (flgScreenSaver==1)
           HAL_TIM_OC_Start_IT(&htim9,TIM_CHANNEL_1);
         else
-          HAL_TIM_OC_Stop_IT(&htim9,TIM_CHANNEL_1);
-
+          HAL_TIM_OC_Stop_IT(&htim9,TIM_CHANNEL_1); 
+        break;
+      
+      case DISPLAY_OFF:
+        setDisplayONOFF(0);
+        flgDisplaySleep=1;
+        HAL_TIM_OC_Stop_IT(&htim9,TIM_CHANNEL_1);
       break;
         
+      case DISPLAY_WAKEUP:
+        setDisplayONOFF(1);
+        flgDisplaySleep=0;
+        TIM9->CNT=0;
+        HAL_TIM_OC_Start_IT(&htim9,TIM_CHANNEL_1);
+          
+      break;
 
       default:
         log_error("execAction not handled");
@@ -1358,7 +1399,7 @@ int main(void)
   MX_TIM2_Init();
   MX_TIM1_Init();
   MX_TIM5_Init();
-  MX_TIM9_Init();
+  //MX_TIM9_Init();
 
   /* Initialize interrupts */
   MX_NVIC_Init();
@@ -1366,9 +1407,6 @@ int main(void)
 
   log_set_level(LOG_INFO);
   
-  //HAL_GPIO_WritePin(GPIOB,GPIO_PIN_8,GPIO_PIN_RESET);                                    // we need to set it High
-  //HAL_GPIO_WritePin(GPIOA,GPIO_PIN_11,GPIO_PIN_RESET);
-
 #ifdef A2F_MODE
   // store rotary encoder state
   re_aState = HAL_GPIO_ReadPin(RE_A_GPIO_Port, RE_A_Pin);
@@ -1384,8 +1422,7 @@ int main(void)
   //log_info("************** BOOTING ****************");                      // Data to send
   log_info("**     This is the sound of sea !    **");
   //log_info("***************************************");
-  
-  
+    
   fres = f_mount(&fs, "", 1);                                       
   
   csize=fs.csize;
@@ -1398,12 +1435,6 @@ int main(void)
   EnableTiming();                                                           // Enable WatchDog to get precise CPU Cycle counting
  
   TIM1->PSC=1000;
-/*
-  int T2_DIER=0x0;
-  T2_DIER|=TIM_DIER_CC2IE;
-  T2_DIER|=TIM_DIER_UIE;
-  TIM2->DIER|=T2_DIER;                                                      // Enable Output compare Interrupt
-*/  
 
   int T4_DIER=0x0;
   T4_DIER|=TIM_DIER_CC2IE;
@@ -1416,8 +1447,7 @@ int main(void)
   TIM3->DIER=dier;
   
   pSdEject();
-
-  
+ 
   ptrDeviceEnableIRQ(DEVICE_ENABLE_Pin);
 
   dirChainedList = list_new();                                              // ChainedList to manage File list in current path                                                     
@@ -1428,6 +1458,7 @@ int main(void)
   // Load configuration variable
   // --------------------------------------------------------------------
 
+  
   if (fres == FR_OK){
 
     if (loadConfigFile()==RET_ERR){
@@ -1685,6 +1716,9 @@ static void MX_NVIC_Init(void)
   /* TIM4_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(TIM4_IRQn, 10, 0);
   HAL_NVIC_EnableIRQ(TIM4_IRQn);
+
+  //HAL_NVIC_SetPriority(TIM1_BRK_TIM9_IRQn, 0, 0);
+  //HAL_NVIC_EnableIRQ(TIM1_BRK_TIM9_IRQn);
 }
 
 /**
@@ -2081,7 +2115,7 @@ static void MX_TIM9_Init(void)
 
   /* USER CODE END TIM9_Init 1 */
   htim9.Instance = TIM9;
-  htim9.Init.Prescaler = 24000;
+  htim9.Init.Prescaler = 6500;
   htim9.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim9.Init.Period = 65535;
   htim9.Init.ClockDivision = TIM_CLOCKDIVISION_DIV4;
@@ -2091,7 +2125,7 @@ static void MX_TIM9_Init(void)
     Error_Handler();
   }
   sConfigOC.OCMode = TIM_OCMODE_TIMING;
-  sConfigOC.Pulse = 0;
+  sConfigOC.Pulse = 65535;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   if (HAL_TIM_OC_ConfigChannel(&htim9, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
