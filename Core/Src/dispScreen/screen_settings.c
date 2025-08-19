@@ -458,7 +458,6 @@ static void pScreenSaver(){
     } 
     
     if (item->ival==1){
-      
       flgScreenSaver=0;
     }else{
       flgScreenSaver=1;

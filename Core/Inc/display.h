@@ -95,6 +95,7 @@ void primPrepNewScreen(char * szTitle);
 void primUpdScreen();
 
 void clearScreen();
+
 void dispIcon32x32(int x,int y,uint8_t indx);
 void dispIcon24x24(int x,int y,uint8_t indx);
 void dispIcon12x12(int x,int y,int indx);
@@ -105,5 +106,10 @@ void inverseStringAtPosition(int lineNumber,int offset);
 void clearLineStringAtPosition(int lineNumber,int offset);
 
 enum STATUS makeScreenShot(uint8_t screenShotIndex);
+
+
+
+
+
 
 #endif

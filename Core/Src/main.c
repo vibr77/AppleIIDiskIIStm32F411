@@ -1415,16 +1415,10 @@ int main(void)
   csize=fs.csize;
   database=fs.database;
 #include "ssd1306.h"
-  initSplash();                                                       // I2C Screen init                  
-                                            
+  initSplash(); 
+                                  
   HAL_Delay(500);
-  /*HAL_Delay(1000);
-  ssd1306_WriteCommand(0xAE);
-  HAL_Delay(1500);
-  ssd1306_WriteCommand(0xAF);
-  printf("here back\n");
-  HAL_Delay(1500);
- */
+ 
   EnableTiming();                                                           // Enable WatchDog to get precise CPU Cycle counting
  
   TIM1->PSC=1000;
