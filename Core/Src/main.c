@@ -42,6 +42,8 @@ Lessons learned:
 - Bitstream output is made via DMA SPI (best accurate option), do not use baremetal bitbanging with assemnbly (my first attempt) it is not accurate in ARM with internal interrupt,
 - Use Interrupt for head move on Rising & Falling Edge => Capturing 1/4 moves
 - Warning Bootloader might take too much time to load and thus missing the headsync procedure,
+- When there is a filesystem issue at start up it is sometime due to f_stat file to take long and generate an error for an image in config that does not exists on the filesystem
+
 
 Current status: READ PARTIALLY WORKING / WRITE Experimental
 + Woz file support : in progress first images are working
