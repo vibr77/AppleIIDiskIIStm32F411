@@ -26,7 +26,8 @@ void setDisplayONOFF(uint8_t state){
   if (state==0){
     ssd1306_WriteCommand(DISPLAYOFF);
   }else{
-    ssd1306_WriteCommand(DISPLAYON);
+    ssd1306_WriteCommand(0xAF);
+    HAL_Delay(250);                                       // Delay is important for DMA SSD 
   }
 
 }

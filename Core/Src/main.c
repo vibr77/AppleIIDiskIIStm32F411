@@ -507,14 +507,9 @@ void nothingHook(void*){
 void debounceBtn(int GPIO){
 
   if (flgDisplaySleep==1){
-    //nextAction=DISPLAY_WAKEUP;
-    //setDisplayONOFF(1);
-    flgDisplaySleep=0;
-    //printf("Z1\n");
-  //  TIM9->CNT=0;
+    nextAction=DISPLAY_WAKEUP;
     return;
   }
-  //TIM9->CNT=0;
 
   buttonDebounceState=false;
   TIM4->CNT=0;
@@ -523,42 +518,23 @@ void debounceBtn(int GPIO){
   return;
 }
 
-volatile uint8_t flgScreenOff=0;
+
 
 void TIM1_BRK_TIM9_IRQHandler(void){
 
-  //TIM1->SR=0;
-  //TIM9->SR=0;
-  //return;
   if (TIM9->SR & TIM_SR_UIF){
-    //TIM9->SR &= ~TIM_SR_UIF;
-    //TIM9->SR=0; 
-    //flgScreenOff=1;  
-    //TIM9->SR=0;
-    //pScreen=1;
-    //printf("H\n");
-    //return;
-    //
-    
-    //log_info("next action=DISPLAY_OFF");
-    
-        
+    TIM9->SR &= ~TIM_SR_UIF;        
   } 
-   if (TIM9->SR & TIM_SR_CC1IF){                     // Pulse compare interrrupt on Channel 1
+  
+  else if (TIM9->SR & TIM_SR_CC1IF){                     // Pulse compare interrrupt on Channel 1
     TIM9->SR &= ~TIM_SR_CC1IF;
     TIM9->SR=0;
-    flgScreenOff=1;
-    printf("H\n");
-    //nextAction=DISPLAY_OFF;
+    if (flgScreenSaver==1)
+      nextAction=DISPLAY_OFF;
     return;
-    //pScreen=1; 
-    //setDisplayONOFF(0);
-    //flgDisplaySleep=0;
-    //printf("A\n");
-                               // Clear the compare interrupt flag
+                                   // Clear the compare interrupt flag
   }else
     TIM9->SR = 0;
-
     return;
 }
 
@@ -1295,9 +1271,11 @@ enum STATUS execAction(enum action *nextAction){
         initMakeFsConfirmedScr();
         *nextAction=NONE;
         break;
+
       case MKIMG:
         makeNewDisk(currentFullPath,sTmp,iTmp);
         *nextAction=FSDISP;
+      
       case FSDISP:
         log_info("FSDISP fsState:%d",fsState);
         list_destroy(dirChainedList);
@@ -1321,14 +1299,20 @@ enum STATUS execAction(enum action *nextAction){
         setDisplayONOFF(0);
         flgDisplaySleep=1;
         HAL_TIM_OC_Stop_IT(&htim9,TIM_CHANNEL_1);
-      break;
+        *nextAction=NONE;
+        break;
         
       case DISPLAY_WAKEUP:
+        log_info("disp wakeup");
         setDisplayONOFF(1);
         flgDisplaySleep=0;
-        TIM9->CNT=0;
-        HAL_TIM_OC_Start_IT(&htim9,TIM_CHANNEL_1);
-          
+        
+        if (flgScreenSaver==1){
+          TIM9->CNT=0;
+          HAL_TIM_OC_Start_IT(&htim9,TIM_CHANNEL_1);
+        }
+
+        *nextAction=NONE;
       break;
 
       default:
@@ -1399,7 +1383,7 @@ int main(void)
   MX_TIM2_Init();
   MX_TIM1_Init();
   MX_TIM5_Init();
-  //MX_TIM9_Init();
+  MX_TIM9_Init();
 
   /* Initialize interrupts */
   MX_NVIC_Init();
@@ -1423,15 +1407,24 @@ int main(void)
   log_info("**     This is the sound of sea !    **");
   //log_info("***************************************");
     
-  fres = f_mount(&fs, "", 1);                                       
+  fres = f_mount(&fs, "", 0);                                                 // changing to 0 to be tested                                       
   
+  if (fres!=FR_OK){
+    log_error("not able to mount filesystem");
+  }
   csize=fs.csize;
   database=fs.database;
-
+#include "ssd1306.h"
   initSplash();                                                       // I2C Screen init                  
                                             
   HAL_Delay(500);
-
+  /*HAL_Delay(1000);
+  ssd1306_WriteCommand(0xAE);
+  HAL_Delay(1500);
+  ssd1306_WriteCommand(0xAF);
+  printf("here back\n");
+  HAL_Delay(1500);
+ */
   EnableTiming();                                                           // Enable WatchDog to get precise CPU Cycle counting
  
   TIM1->PSC=1000;
@@ -1533,6 +1526,7 @@ int main(void)
   // --------------------------------------------------------------------
 
   if (flgScreenSaver==1){
+    log_info("Starting ScreenSaver timer");
     HAL_TIM_OC_Start_IT(&htim9,TIM_CHANNEL_1);
   }
 
@@ -1716,9 +1710,6 @@ static void MX_NVIC_Init(void)
   /* TIM4_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(TIM4_IRQn, 10, 0);
   HAL_NVIC_EnableIRQ(TIM4_IRQn);
-
-  //HAL_NVIC_SetPriority(TIM1_BRK_TIM9_IRQn, 0, 0);
-  //HAL_NVIC_EnableIRQ(TIM1_BRK_TIM9_IRQn);
 }
 
 /**
@@ -1774,7 +1765,7 @@ static void MX_SDIO_SD_Init(void)
   hsd.Init.ClockEdge = SDIO_CLOCK_EDGE_RISING;
   hsd.Init.ClockBypass = SDIO_CLOCK_BYPASS_DISABLE;
   hsd.Init.ClockPowerSave = SDIO_CLOCK_POWER_SAVE_DISABLE;
-  hsd.Init.BusWide = SDIO_BUS_WIDE_4B;
+  hsd.Init.BusWide = SDIO_BUS_WIDE_1B;
   hsd.Init.HardwareFlowControl = SDIO_HARDWARE_FLOW_CONTROL_DISABLE;
   hsd.Init.ClockDiv = 1;
   /* USER CODE BEGIN SDIO_Init 2 */
@@ -2115,7 +2106,7 @@ static void MX_TIM9_Init(void)
 
   /* USER CODE END TIM9_Init 1 */
   htim9.Instance = TIM9;
-  htim9.Init.Prescaler = 6500;
+  htim9.Init.Prescaler = 48000;
   htim9.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim9.Init.Period = 65535;
   htim9.Init.ClockDivision = TIM_CLOCKDIVISION_DIV4;
@@ -2128,6 +2119,11 @@ static void MX_TIM9_Init(void)
   sConfigOC.Pulse = 65535;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_OnePulse_Init(&htim4, TIM_OPMODE_SINGLE) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
   if (HAL_TIM_OC_ConfigChannel(&htim9, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
   {
     Error_Handler();
@@ -2380,8 +2376,7 @@ void Error_Handler(void)
   }
   /* USER CODE END Error_Handler_Debug */
 }
-
-#ifdef  USE_FULL_ASSERT
+#ifdef USE_FULL_ASSERT
 /**
   * @brief  Reports the name of the source file and the source line number
   *         where the assert_param error has occurred.

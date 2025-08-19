@@ -351,7 +351,7 @@ void HAL_TIM_PWM_MspInit(TIM_HandleTypeDef* htim_pwm)
     /* Peripheral clock enable */
     __HAL_RCC_TIM1_CLK_ENABLE();
     /* TIM1 interrupt Init */
-    HAL_NVIC_SetPriority(TIM1_BRK_TIM9_IRQn, 0, 0);
+    HAL_NVIC_SetPriority(TIM1_BRK_TIM9_IRQn, 15, 0);
     HAL_NVIC_EnableIRQ(TIM1_BRK_TIM9_IRQn);
     /* USER CODE BEGIN TIM1_MspInit 1 */
 
@@ -423,9 +423,6 @@ void HAL_TIM_OC_MspInit(TIM_HandleTypeDef* htim_oc)
     /* USER CODE END TIM4_MspInit 0 */
     /* Peripheral clock enable */
     __HAL_RCC_TIM4_CLK_ENABLE();
-    /* TIM4 interrupt Init */
-    HAL_NVIC_SetPriority(TIM4_IRQn, 12, 0);
-    HAL_NVIC_EnableIRQ(TIM4_IRQn);
     /* USER CODE BEGIN TIM4_MspInit 1 */
 
     /* USER CODE END TIM4_MspInit 1 */

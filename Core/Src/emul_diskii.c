@@ -543,18 +543,22 @@ enum STATUS DiskIIMountImagefile(char * filename){
     fsState=BUSY;
 
     fr = f_stat(filename, &fno);
+    log_info("fr stat %d",fr);
     switch (fr) {
         case FR_OK:
             log_info("mount file size: %lu", fno.fsize);
             break;
         case FR_NO_FILE:
+            log_error("\"%s\" does not exist.", filename);
+            fsState=READY;
+            return RET_ERR;
         case FR_NO_PATH:
             log_error("\"%s\" does not exist.", filename);
             fsState=READY;
             return RET_ERR;
             break;
         default:
-            log_error("An error occured. (%d)", fr);
+            log_error("f_stat An error occured. (%d)", fr);
             fsState=READY;
             return RET_ERR;
     }
@@ -1007,10 +1011,6 @@ void DiskIIMainLoop(){
                 prevTrk=trk;
 
             }
-        }
-
-        if (flgScreenOff==1){
-            nextAction=DISPLAY_OFF;
         }
 
         if (nextAction!=NONE){                                                            // Several action can not be done on Interrupt

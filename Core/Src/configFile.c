@@ -26,9 +26,13 @@ enum STATUS loadConfigFile(){
     HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
     HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
     
-    while(fsState!=READY){};
+    while(fsState!=READY){
+
+    };
+
     fsState=BUSY;
     fres = f_open(&fil, CONFIGFILE_NAME, FA_READ );
+    printf("2");
     if(fres != FR_OK) {
         log_error("f_open error (%i)\n", fres);
         fsState=READY;
