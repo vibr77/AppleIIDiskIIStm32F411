@@ -1441,7 +1441,7 @@ int main(void)
 
   initSplash(); 
                                   
-  HAL_Delay(500);
+  //HAL_Delay(500);
  
   EnableTiming();                                                           // Enable WatchDog to get precise CPU Cycle counting
  
