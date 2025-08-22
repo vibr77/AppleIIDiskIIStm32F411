@@ -1409,7 +1409,7 @@ int main(void)
   log_info("**     This is the sound of sea !    **");
   //log_info("***************************************");
     
-  fres = f_mount(&fs, "", 0);                                                 // changing to 0 to be tested                                       
+  fres = f_mount(&fs, "", 1);                                                 // <!> Warning Mount opt 1 very important or it does not work                                     
   
   if (fres!=FR_OK){
     log_error("not able to mount filesystem");
