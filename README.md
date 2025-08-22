@@ -1,11 +1,31 @@
 # SmartDisk II for Apple II
 
-The SmartDisk II is an Apple II+ // IIe // IIc // IIGs floppy disk emulator based on the STM32F411.
+The SmartDisk II is an Apple II floppy disk emulator based on the STM32F411.
+
+
+<img src="https://github.com/vibr77/AppleIIDiskIIStm32F411/blob/main/resources/readmeMainPhoto.png?raw=true" width="400px" />
+
+The following Apple II are supported:
+
+| Apple II | Emulation  |
+|:----------|:----------|
+| II+       | Disk II    |
+| II Europlus       | Disk II    |
+| IIe 	    | Disk II    |
+| IIc      |  Disk II  & Smartport (Rom 4)   |
+| IIGS	    | Disk II & Smartport    |
+
+
+In this repository, all information are available to enable DIY build (Kicad PCB, Gerber, 3D case, file, firmware release and source code). Please pay attention to the licence of this project.
 
 If you do not want to build yourself a board, you can order direcly a [ready to use prebuild and flashed board on eBay](
 https://www.ebay.fr/itm/306152710617)
 
-The current board revision is 4
+The current production board revision is 4, 
+the beta revision is 7, It has not yet been fully tested. If you decide to build it yourself, it is higly recommanded to use production revision.
+
+
+
 
 A discord server is available if you need support and discuss the product [discords server](
 https://discord.gg/6y2Zdazy)

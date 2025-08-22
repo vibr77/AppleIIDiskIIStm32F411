@@ -89,6 +89,12 @@ enum STATUS saveConfigFile(){
     HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
     HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
 
+    HAL_NVIC_DisableIRQ(TIM1_BRK_TIM9_IRQn);
+    HAL_NVIC_DisableIRQ(EXTI9_5_IRQn);
+    HAL_NVIC_DisableIRQ(TIM4_IRQn);
+    HAL_NVIC_DisableIRQ(TIM5_IRQn);
+
+
     while(fsState!=READY){};
 
     fsState=BUSY;

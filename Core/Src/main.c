@@ -1414,9 +1414,31 @@ int main(void)
   if (fres!=FR_OK){
     log_error("not able to mount filesystem");
   }
+
+  /*
+  FIL  fp;
+  FRESULT fr;
+  log_info("before f_stat");
+   while(fsState!=READY){};
+ fr= f_open(&fp,"toto/belle/oeil.dsk",FA_READ);
+ log_info("fr stat %d",fr);
+ f_close(&fp);
+ while(fsState!=READY){};
+ disk_initialize(0);
+ *//*
+  FILINFO fno;
+
+  fr = f_stat("/test/llll/lljjj/pipo.dsk", &fno);
+  
+  log_info("fr stat %d",fr);
+
+  log_info("after fstat");
+  fsState=READY;
+  fres = f_mount(&fs, "", 0);  
+  */
   csize=fs.csize;
   database=fs.database;
-#include "ssd1306.h"
+
   initSplash(); 
                                   
   HAL_Delay(500);
