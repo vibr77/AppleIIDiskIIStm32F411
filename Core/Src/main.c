@@ -1415,33 +1415,12 @@ int main(void)
     log_error("not able to mount filesystem");
   }
 
-  /*
-  FIL  fp;
-  FRESULT fr;
-  log_info("before f_stat");
-   while(fsState!=READY){};
- fr= f_open(&fp,"toto/belle/oeil.dsk",FA_READ);
- log_info("fr stat %d",fr);
- f_close(&fp);
- while(fsState!=READY){};
- disk_initialize(0);
- *//*
-  FILINFO fno;
-
-  fr = f_stat("/test/llll/lljjj/pipo.dsk", &fno);
-  
-  log_info("fr stat %d",fr);
-
-  log_info("after fstat");
-  fsState=READY;
-  fres = f_mount(&fs, "", 0);  
-  */
   csize=fs.csize;
   database=fs.database;
 
   initSplash(); 
                                   
-  //HAL_Delay(500);
+  HAL_Delay(100);
  
   EnableTiming();                                                           // Enable WatchDog to get precise CPU Cycle counting
  
@@ -1530,10 +1509,6 @@ int main(void)
       log_info("lastFile:%s",imgFile);
       sprintf(tmpFullPathImageFilename,"%s",imgFile);
     }
-    //const char * filtr[]={"woz","WOZ"};
-    
-    //walkDir("/",ptrFileFilter);
-
   
   }else{
     log_error("Error mounting sdcard %d",fres);
