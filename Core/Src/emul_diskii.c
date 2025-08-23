@@ -569,13 +569,21 @@ enum STATUS DiskIIMountImagefile(char * filename){
         
         log_info("special mode smartloader");
 
-        getSDAddr=getDskSDAddr;
+        getSDAddr=getSmartloaderSDAddr;
         getTrackBitStream=getSmartloaderTrackBitStream;
         setTrackBitStream=setSmartloaderTrackBitStream;
         getTrackFromPh=getSmartloaderTrackFromPh;
         getTrackSize=getSmartloaderTrackSize;
         
-             if (mountDskFile(filename)!=RET_OK){
+        /*
+        getSDAddr=getSmartloaderSDAddr;
+        getTrackBitStream=getDskTrackBitStream;
+        setTrackBitStream=setDskTrackBitStream;
+        getTrackFromPh=getDskTrackFromPh;
+        getTrackSize=getDskTrackSize;
+        */
+
+        if (mountSmartloaderFile(filename)!=RET_OK){
             fsState=READY;
             return RET_ERR;
         }
@@ -755,7 +763,7 @@ void DiskIIInit(){
     mountImageInfo.version=0;
     mountImageInfo.cleaned=0;
     mountImageInfo.type=0;
- 
+    /*
     if (emulationType==SMARTLOADER){
         sprintf(tmpFullPathImageFilename,"/smartloaderp.po");
         if (DiskIIMountImagefile(tmpFullPathImageFilename)==RET_OK){
@@ -769,7 +777,7 @@ void DiskIIInit(){
         }
     }
 
-    else if (bootMode==0){
+    else */ if (bootMode==0){
         if (DiskIIMountImagefile(tmpFullPathImageFilename)==RET_OK){
         
             switchPage(DISKIIIMAGE,currentFullPathImageFilename);
