@@ -8,6 +8,8 @@
 #include "driver_dsk.h"
 #include "main.h"
 #include "log.h"
+#include "emul_diskii.h"
+#include "display.h"
 
 extern long database;                                            // start of the data segment in FAT
 extern int csize;  
@@ -151,6 +153,8 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
         char item[16][24];
 
         switch (smtlCommand){
+            
+            case 0x10:
             case 0x00:                                              // Listing
             
             if (smtlCurrentCategory==CAT_ROOT){
@@ -187,7 +191,7 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
 
                 //favoritesChainedList;
                 
-                header[0]=smtlReturnCode;                           // Byte [1]+0: Return code
+                header[0]=0x20;                           // Byte [1]+0: Return code
             //  header[1]=0x05;                                     // Byte [1]+1: Number of Item in the current page
             //  header[2]=smtlValue;                                // Byte [1]+2: Value
                 header[3]=0x0;                                      // Byte [1]+3: Max Page
@@ -214,15 +218,13 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
                 header[2]=smtlCurrentPage;                          // Current Page (smtValue)
                 header[3]=maxPage;                                  // Max number of Page
 
-
-                list_node_t *pItem=NULL;
+               list_node_t *pItem=NULL;
                 int offset=0;
                 
                 uint8_t startIndex=smtlCurrentPage*maxItemPerPage;
                 uint8_t endIndex=startIndex+currentPageItemCount;
                 int jj=0;
 
-                
                 memcpy(tmp,header,32);
 
                 for (int i=startIndex;i<endIndex;i++){
@@ -230,7 +232,8 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
                 
                     pItem=list_at(favoritesChainedList, i);
                     if (pItem!=NULL && pItem->val!=NULL){
-                        snprintf(tmp+offset,23,"F%s",pItem->val);
+                        listItem_t * li=pItem->val;
+                        snprintf(tmp+offset,23,"F%s",li->title);
                     }else{
                         snprintf(tmp+offset,23,"(NULL)");
                     }   
@@ -242,7 +245,7 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
                 walkDir(currentFullPath,ptrFileFilter);             // Build new File chained List
 
 
-                header[0]=smtlReturnCode;                           // Byte [1]+0: Return code
+                header[0]=0x20;                           // Byte [1]+0: Return code
 
                 int len=strlen(currentFullPath);
                 currentPath[0]=0x0;
@@ -264,7 +267,7 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
                 // Remember Max page Index = Page Count starting from 0 so -1
                 maxPage--;
 
-                uint8_t currentPageItemCount=lstCount-(smtlValue*maxItemPerPage);
+                uint8_t currentPageItemCount=lstCount-(smtlCurrentPage*maxItemPerPage);
                 if (currentPageItemCount>16)
                     currentPageItemCount=16;
             
@@ -293,9 +296,11 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
                         char * val=pItem->val;
                         tmp[offset]=val[0];
                         snprintf(tmp+offset+1,23,"%s",val+2);
+                        log_info("val:%s",val);
                     }
+                    jj++;
                 }
-                
+                //dumpBuf(tmp,1,512);
             }else if (smtlCurrentCategory==CAT_SETTINGS){
 
             }
@@ -336,7 +341,7 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
 enum STATUS setSmartloaderTrackBitStream(int trk,unsigned char * buffer){
     
     uint8_t retE=0x0;
-
+    log_info("wr ok %d",trk);
     unsigned char * dskData=(unsigned char *)malloc(4096*sizeof(unsigned char)); 
     if (nib2dsk(dskData,buffer,trk,16*416,&retE)==RET_ERR){
         log_error("nib2dsk error:%d",retE);
@@ -344,14 +349,81 @@ enum STATUS setSmartloaderTrackBitStream(int trk,unsigned char * buffer){
         return RET_ERR;
     }
     
-    int addr=getSmartloaderSDAddr(trk,0,csize,database);
-    setDataBlocksBareMetal(addr,dskData,8); 
-    
-    while (fsState!=READY){};
-    free(dskData);  
-    
-    return RET_OK;
+    if (trk==0x3){
+      
+        /* Sector 0 & 1*/
+        /* assuming we will process only 256 bytes corresponding of 1st sector*/
 
+        smtlCommand=dskData[0];
+        smtlValue=dskData[1];
+        //dumpBuf(dskData,1,512);
+        log_info("cmd:%d, value:%d",smtlCommand,smtlValue);
+
+        list_node_t *pItem=NULL;
+        char *tmp;
+
+        if (smtlCurrentCategory==CAT_ROOT){
+            if (smtlCommand==0x10 && smtlValue==2){             // We go to File Listing
+                log_info("getting root file");
+                smtlCurrentCategory=CAT_FILE;
+                sprintf(currentFullPath,"");
+            }else if (smtlCommand==0x10 && smtlValue==1){
+                smtlCurrentCategory=CAT_FAVORITE;
+            }
+        }else if  (smtlCurrentCategory==CAT_FAVORITE && smtlCommand==0x10){
+            
+            pItem=list_at(favoritesChainedList, smtlValue);
+            if (pItem && pItem->val!=NULL){
+                listItem_t * pFavItem=pItem->val;
+                DiskIIMountImagefile(tmpFullPathImageFilename);
+            
+                free(dskData);
+                return RET_OK;
+            }else{
+                log_error("pItem is null Argh# !");
+                free(dskData);
+                return RET_ERR;
+            } 
+        }else if  (smtlCurrentCategory==CAT_FILE && smtlCommand==0x10){
+            
+            uint8_t ilen=strlen(currentFullPath);
+            pItem=list_at(dirChainedList, smtlValue);                                           // Get the item in the list of value
+            tmp=pItem->val;
+            log_info("tmp:%s",tmp);
+            
+            smtlReturnCode=0x20;
+            if (!strcmp(tmp,"D|..")){                                                           // selectedItem is [UpDir];
+                for (int i=ilen-1;i!=-1;i--){
+                    if (currentFullPath[i]=='/'){
+                        snprintf(currentPath,MAX_PATH_LENGTH,"%s",currentFullPath+i);
+                        currentFullPath[i]=0x0;
+                        break;
+                    }
+                    if (i==0)
+                        currentFullPath[0]=0x0;
+                }
+            }else if (tmp[0]=='D'){
+                                        // 0x02 Process item
+                pItem=list_at(dirChainedList, smtlValue);
+                tmp=pItem->val;
+                log_info("tmp2:%s %d",tmp,ilen);
+
+                sprintf(currentFullPath+ilen,"/%s",tmp+2);
+            
+                list_destroy(dirChainedList);
+                walkDir(currentFullPath,ptrFileFilter);
+            }else if (tmp[0]=='F'){
+
+                sprintf(tmpFullPathImageFilename,"%s/%s",currentFullPath,tmp+2);                                                              // Not a File issue an error
+                DiskIIMountImagefile(tmpFullPathImageFilename);
+                free(dskData);
+                return RET_OK;
+            }
+        }
+    }
+        
+    free(dskData);  
+    return RET_OK;
 }
 
 enum STATUS mountSmartloaderFile(char * filename){
