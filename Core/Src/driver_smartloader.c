@@ -16,6 +16,7 @@ extern int csize;
 extern volatile enum FS_STATUS fsState;
 unsigned int fatSmartloaderCluster[20];
 extern image_info_t mountImageInfo;
+extern char smartloader_bin[];
 
 #define NIBBLE_BLOCK_SIZE  416 // 400 51 200
 #define NIBBLE_SECTOR_SIZE 512
@@ -145,194 +146,194 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
         return RET_ERR;
     }
 
-    if (trk==0x02) {
+    switch(trk){
+        case 0:
+            memcpy(tmp,smartloader_bin,4096);
+            break;
+        case 1:
+            memcpy(tmp,smartloader_bin+4096,4096);
+            break;
+    
+        case 0x02: 
         
-        memset((unsigned char *)tmp,0,sizeof(char)*4096);
-        
-        char header[32];
-        char item[16][24];
-
-        switch (smtlCommand){
+            memset((unsigned char *)tmp,0,sizeof(char)*4096);
             
-            case 0x10:
-            case 0x00:                                              // Listing
-            
-            if (smtlCurrentCategory==CAT_ROOT){
-                                                                    // HEADER
-                                                                    // ---------------------------------------------------
-                header[0]=0x20;                           // Byte [1]+0: Return code
-                header[1]=0x05;                                     // Byte [1]+1: Number of Item in the page
-                header[2]=smtlValue;                                // Byte [1]+2: Value
-                header[3]=0x0;                                      // Byte [1]+3: Max Page
-                header[4]=0x0;                                      // Byte [1]+4: Reserved
-                                                                    // Byte [1]+5: Reserved
-                                                                    // Byte [23]+6: Current Path
-                                                                    // Byte [3]+30: Reserved
-                sprintf(header+6,"MAIN MENU");
-                                                                    // Item prefix
-                                                                    // ---------------------------------------------------
-                                                                    // D - Directory
-                                                                    // F - File
-                                                                    // T - PAGE TITLE
-                                                                    // M - MENU ITEM
-                                                                    // E - EMPTY
-                sprintf(item[0],"TMAIN MENU");
-                sprintf(item[1],"MFAVORITES");
-                sprintf(item[2],"MFILE MANAGER");
-                sprintf(item[3],"MSETTINGS");
-                sprintf(item[4],"MABOUT");
-               
-                memcpy(tmp,header,32);
-                for (uint8_t i=0;i<5;i++){
-                    memcpy(tmp+32+i*24,item[i],24);
-                }
+            char header[32];
+            char item[16][24];
 
-            }else if (smtlCurrentCategory==CAT_FAVORITE){
-
-                //favoritesChainedList;
+            switch (smtlCommand){
                 
-                header[0]=0x20;                           // Byte [1]+0: Return code
-            //  header[1]=0x05;                                     // Byte [1]+1: Number of Item in the current page
-            //  header[2]=smtlValue;                                // Byte [1]+2: Value
-                header[3]=0x0;                                      // Byte [1]+3: Max Page
-                header[4]=0x0;                                      // Byte [1]+4: Reserved
-                                                                    // Byte [1]+5: Reserved
-                                                                    // Byte [23]+6: Current Path
-                                                                    // Byte [3]+30: Reserved
-                sprintf(header+6,"FAVORITES");
+                case 0x10:
+                case 0x00:                                              // Listing
                 
-                const uint8_t maxItemPerPage=16;
-                uint8_t lstCount=favoritesChainedList->len;
-                uint8_t maxPage=lstCount/maxItemPerPage;
-                if ((lstCount % maxItemPerPage) !=0){
-                    maxPage++;
-                    log_info("Favorites MaxPage:%d",maxPage);
-                }
-                maxPage--;
-
-                uint8_t currentPageItemCount=lstCount-(smtlCurrentPage*maxItemPerPage);
-                if (currentPageItemCount>16)
-                    currentPageItemCount=16;
+                if (smtlCurrentCategory==CAT_ROOT){
+                                                                        // HEADER
+                                                                        // ---------------------------------------------------
+                    header[0]=0x20;                           // Byte [1]+0: Return code
+                    header[1]=0x05;                                     // Byte [1]+1: Number of Item in the page
+                    header[2]=smtlValue;                                // Byte [1]+2: Value
+                    header[3]=0x0;                                      // Byte [1]+3: Max Page
+                    header[4]=0x0;                                      // Byte [1]+4: Reserved
+                                                                        // Byte [1]+5: Reserved
+                                                                        // Byte [23]+6: Current Path
+                                                                        // Byte [3]+30: Reserved
+                    sprintf(header+6,"MAIN MENU");
+                                                                        // Item prefix
+                                                                        // ---------------------------------------------------
+                                                                        // D - Directory
+                                                                        // F - File
+                                                                        // T - PAGE TITLE
+                                                                        // M - MENU ITEM
+                                                                        // E - EMPTY
+                    sprintf(item[0],"TMAIN MENU");
+                    sprintf(item[1],"MFAVORITES");
+                    sprintf(item[2],"MFILE MANAGER");
+                    sprintf(item[3],"MSETTINGS");
+                    sprintf(item[4],"MABOUT");
                 
-                header[1]=currentPageItemCount;                     // Number of Items in the current page
-                header[2]=smtlCurrentPage;                          // Current Page (smtValue)
-                header[3]=maxPage;                                  // Max number of Page
-
-               list_node_t *pItem=NULL;
-                int offset=0;
-                
-                uint8_t startIndex=smtlCurrentPage*maxItemPerPage;
-                uint8_t endIndex=startIndex+currentPageItemCount;
-                int jj=0;
-
-                memcpy(tmp,header,32);
-
-                for (int i=startIndex;i<endIndex;i++){
-                    offset=(jj)*24+32;                              // we start 32 Bytes after the initial buffer to keep room for return code and ...
-                
-                    pItem=list_at(favoritesChainedList, i);
-                    if (pItem!=NULL && pItem->val!=NULL){
-                        listItem_t * li=pItem->val;
-                        snprintf(tmp+offset,23,"F%s",li->title);
-                    }else{
-                        snprintf(tmp+offset,23,"(NULL)");
-                    }   
-                }
-
-            }else if (smtlCurrentCategory==CAT_FILE){
-
-                list_destroy(dirChainedList);                       // First free existing chainedlist if exists
-                walkDir(currentFullPath,ptrFileFilter);             // Build new File chained List
-
-
-                header[0]=0x20;                           // Byte [1]+0: Return code
-
-                int len=strlen(currentFullPath);
-                currentPath[0]=0x0;
-                for (int i=len-1;i!=-1;i--){
-                    if (currentFullPath[i]=='/'){
-                        snprintf(currentPath,23,"%s",currentFullPath+i);
-                        break;
+                    memcpy(tmp,header,32);
+                    for (uint8_t i=0;i<5;i++){
+                        memcpy(tmp+32+i*24,item[i],24);
                     }
-                }
-                snprintf(header+6,23,"%s",currentPath);
 
-                const uint8_t maxItemPerPage=16;
-                uint8_t lstCount=dirChainedList->len;
-                uint8_t maxPage=lstCount/maxItemPerPage;
-                if ((lstCount % maxItemPerPage) !=0){
-                    maxPage++;
-                    log_info("MaxPage:%d",maxPage);
-                }
-                // Remember Max page Index = Page Count starting from 0 so -1
-                maxPage--;
+                }else if (smtlCurrentCategory==CAT_FAVORITE){
 
-                uint8_t currentPageItemCount=lstCount-(smtlCurrentPage*maxItemPerPage);
-                if (currentPageItemCount>16)
-                    currentPageItemCount=16;
-            
-                if (smtlReturnCode==0x0)
-                    smtlReturnCode=0x20;
-                
-                header[1]=currentPageItemCount;                     // Number of Items in the current page
-                header[2]=smtlCurrentPage;                          // Current Page (smtValue)
-                header[3]=maxPage;                                  // Max number of Page
+                    //favoritesChainedList;
+                    
+                    header[0]=0x20;                           // Byte [1]+0: Return code
+                //  header[1]=0x05;                                     // Byte [1]+1: Number of Item in the current page
+                //  header[2]=smtlValue;                                // Byte [1]+2: Value
+                    header[3]=0x0;                                      // Byte [1]+3: Max Page
+                    header[4]=0x0;                                      // Byte [1]+4: Reserved
+                                                                        // Byte [1]+5: Reserved
+                                                                        // Byte [23]+6: Current Path
+                                                                        // Byte [3]+30: Reserved
+                    sprintf(header+6,"FAVORITES");
+                    
+                    const uint8_t maxItemPerPage=16;
+                    uint8_t lstCount=favoritesChainedList->len;
+                    uint8_t maxPage=lstCount/maxItemPerPage;
+                    if ((lstCount % maxItemPerPage) !=0){
+                        maxPage++;
+                        log_info("Favorites MaxPage:%d",maxPage);
+                    }
+                    maxPage--;
+
+                    uint8_t currentPageItemCount=lstCount-(smtlCurrentPage*maxItemPerPage);
+                    if (currentPageItemCount>16)
+                        currentPageItemCount=16;
+                    
+                    header[1]=currentPageItemCount;                     // Number of Items in the current page
+                    header[2]=smtlCurrentPage;                          // Current Page (smtValue)
+                    header[3]=maxPage;                                  // Max number of Page
 
                 list_node_t *pItem=NULL;
-                int offset=0;
-                
-                uint8_t startIndex=smtlCurrentPage*maxItemPerPage;
-                uint8_t endIndex=startIndex+currentPageItemCount;
-                int jj=0;
+                    int offset=0;
+                    
+                    uint8_t startIndex=smtlCurrentPage*maxItemPerPage;
+                    uint8_t endIndex=startIndex+currentPageItemCount;
+                    int jj=0;
 
-                log_info("File startIndex:%d, endIndex:%d",startIndex,endIndex);
-                
-                memcpy(tmp,header,32);
+                    memcpy(tmp,header,32);
 
-                for (int i=startIndex;i<endIndex;i++){
-                    offset=(jj)*24+32;                              // we start 32 Bytes after the initial buffer to keep room for return code and ...
-                    pItem=list_at(dirChainedList, i);
-                    if (pItem!=NULL && pItem->val!=NULL){
-                        char * val=pItem->val;
-                        tmp[offset]=val[0];
-                        snprintf(tmp+offset+1,23,"%s",val+2);
-                        log_info("val:%s",val);
+                    for (int i=startIndex;i<endIndex;i++){
+                        offset=(jj)*24+32;                              // we start 32 Bytes after the initial buffer to keep room for return code and ...
+                    
+                        pItem=list_at(favoritesChainedList, i);
+                        if (pItem!=NULL && pItem->val!=NULL){
+                            listItem_t * li=pItem->val;
+                            snprintf(tmp+offset,23,"F%s",li->title);
+                        }else{
+                            snprintf(tmp+offset,23,"(NULL)");
+                        }   
                     }
-                    jj++;
+
+                }else if (smtlCurrentCategory==CAT_FILE){
+
+                    list_destroy(dirChainedList);                       // First free existing chainedlist if exists
+                    walkDir(currentFullPath,ptrFileFilter);             // Build new File chained List
+
+
+                    header[0]=0x20;                           // Byte [1]+0: Return code
+
+                    int len=strlen(currentFullPath);
+                    currentPath[0]=0x0;
+                    for (int i=len-1;i!=-1;i--){
+                        if (currentFullPath[i]=='/'){
+                            snprintf(currentPath,23,"%s",currentFullPath+i);
+                            break;
+                        }
+                    }
+                    snprintf(header+6,23,"%s",currentPath);
+
+                    const uint8_t maxItemPerPage=16;
+                    uint8_t lstCount=dirChainedList->len;
+                    uint8_t maxPage=lstCount/maxItemPerPage;
+                    if ((lstCount % maxItemPerPage) !=0){
+                        maxPage++;
+                        //log_info("MaxPage:%d",maxPage);
+                    }
+                    // Remember Max page Index = Page Count starting from 0 so -1
+                    maxPage--;
+
+                    uint8_t currentPageItemCount=lstCount-(smtlCurrentPage*maxItemPerPage);
+                    if (currentPageItemCount>16)
+                        currentPageItemCount=16;
+                
+                    if (smtlReturnCode==0x0)
+                        smtlReturnCode=0x20;
+                    
+                    header[1]=currentPageItemCount;                     // Number of Items in the current page
+                    header[2]=smtlCurrentPage;                          // Current Page (smtValue)
+                    header[3]=maxPage;                                  // Max number of Page
+
+                    list_node_t *pItem=NULL;
+                    int offset=0;
+                    
+                    uint8_t startIndex=smtlCurrentPage*maxItemPerPage;
+                    uint8_t endIndex=startIndex+currentPageItemCount;
+                    int jj=0;
+
+                    //log_info("File startIndex:%d, endIndex:%d",startIndex,endIndex);
+                    
+                    memcpy(tmp,header,32);
+
+                    for (int i=startIndex;i<endIndex;i++){
+                        offset=(jj)*24+32;                              // we start 32 Bytes after the initial buffer to keep room for return code and ...
+                        pItem=list_at(dirChainedList, i);
+                        if (pItem!=NULL && pItem->val!=NULL){
+                            char * val=pItem->val;
+                            tmp[offset]=val[0];
+                            snprintf(tmp+offset+1,23,"%s",val+2);
+                            //log_info("val:%s",val);
+                        }
+                        jj++;
+                    }
+                    //dumpBuf(tmp,1,512);
+                }else if (smtlCurrentCategory==CAT_SETTINGS){
+
                 }
-                //dumpBuf(tmp,1,512);
-            }else if (smtlCurrentCategory==CAT_SETTINGS){
 
+                break;
+                case 0x01:                                              // Change Page
+                
+                break;
+                
+                case 0x02:                                              // Select  item
+                break;
+                                                        
             }
-
             break;
-            case 0x01:                                              // Change Page
-            
-            break;
-            
-            case 0x02:                                              // Select  item
-            break;
-                                                    
-        }
-    }else{
-
-        int addr=getSmartloaderSDAddr(trk,0,csize,database);
-        const unsigned int blockNumber=8; 
-
-        if (addr==-1){
-            log_error("Error getting SDCard Address for DSK\n");
-            return RET_ERR;
-        }
-
-        getDataBlocksBareMetal(addr,tmp,blockNumber);          // Needs to be improved and to remove the zeros
-        while (fsState!=READY){}
+        default:
+            memset(tmp,0x0,4096);    
+        break;
     }
         
-        if (dsk2Nib(tmp,buffer,trk)==RET_ERR){
-            log_error("dsk2nib return an error");
-            free(tmp);
-            return RET_ERR;
-        }
+    if (dsk2Nib(tmp,buffer,trk)==RET_ERR){
+        log_error("dsk2nib return an error");
+        free(tmp);
+        return RET_ERR;
+    }
 
     free(tmp);
     return RET_OK;
@@ -375,7 +376,7 @@ enum STATUS setSmartloaderTrackBitStream(int trk,unsigned char * buffer){
             pItem=list_at(favoritesChainedList, smtlValue);
             if (pItem && pItem->val!=NULL){
                 listItem_t * pFavItem=pItem->val;
-                DiskIIMountImagefile(tmpFullPathImageFilename);
+                DiskIIMountImagefile(pFavItem->cval);
             
                 free(dskData);
                 return RET_OK;
@@ -416,6 +417,7 @@ enum STATUS setSmartloaderTrackBitStream(int trk,unsigned char * buffer){
 
                 sprintf(tmpFullPathImageFilename,"%s/%s",currentFullPath,tmp+2);                                                              // Not a File issue an error
                 DiskIIMountImagefile(tmpFullPathImageFilename);
+                switchPage(DISKIIIMAGE,tmpFullPathImageFilename);
                 free(dskData);
                 return RET_OK;
             }
@@ -462,14 +464,14 @@ static enum STATUS dsk2Nib(unsigned char *rawByte,unsigned char *buffer,uint8_t 
     char dst[512];
     char src[256+2];
     unsigned char * sectorMap;
-    if (mountImageInfo.type==2)
+    //if (mountImageInfo.type==2)
         sectorMap=dsk2nibSectorMap;
-    else if (mountImageInfo.type==3)
-        sectorMap=po2nibSectorMap;
-    else{
-        log_error("Unable to match sectorMap with mountImageInfo.type");
-        return RET_ERR;
-    }
+   // else if (mountImageInfo.type==3)
+   //     sectorMap=po2nibSectorMap;
+   // else{
+   //     log_error("Unable to match sectorMap with mountImageInfo.type");
+   //     return RET_ERR;
+   // }
         
     for (i=0; i<0x16; i++) 
         dst[i]=0xff;
@@ -579,14 +581,14 @@ static enum STATUS nib2dsk(unsigned char * dskData,unsigned char *buffer,uint8_t
     t1 = DWT->CYCCNT;
     */
     unsigned char * sectorMap;                                                                  // Sector skewing from nibble to DSK or PO 
-    if (mountImageInfo.type==2)
+    //if (mountImageInfo.type==2)
        sectorMap=nib2dskSectorMap;
-    else if (mountImageInfo.type==3)
-       sectorMap=nib2poSectorMap;
-    else{
-       log_error("Unable to match sectorMap with mountImageInfo.type");
-       return RET_ERR;
-    }
+    //else if (mountImageInfo.type==3)
+    //   sectorMap=nib2poSectorMap;
+    //else{
+    //   log_error("Unable to match sectorMap with mountImageInfo.type");
+    //   return RET_ERR;
+    //}
 
     const uint8_t checkSignatureLength=3;                                                       // length of the prologue to check changed it to const
     enum BITSTREAM_PARSING_STAGE stage=ADDR_START;                                              // Current stage of the processing to find the right data signature                                                            

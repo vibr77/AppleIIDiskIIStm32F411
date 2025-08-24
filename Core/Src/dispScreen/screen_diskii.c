@@ -81,6 +81,8 @@ void initDiskIIImageScr(char * imageName,int type){
         displayStringAtPosition(5,2*SCREEN_LINE_HEIGHT,"type: DSK");
         else if (mountImageInfo.type==3)
         displayStringAtPosition(5,2*SCREEN_LINE_HEIGHT,"type: PO ");
+        else if (mountImageInfo.type==99)
+        displayStringAtPosition(5,2*SCREEN_LINE_HEIGHT,"Internal ROM ");
         else
         displayStringAtPosition(5,2*SCREEN_LINE_HEIGHT,"type: ERR ");
     

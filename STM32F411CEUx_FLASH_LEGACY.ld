@@ -36,10 +36,10 @@ _Min_Stack_Size = 0x1000 ;	/* required amount of stack */
 /* Memories definition */
 MEMORY
 {
-  RAM    (xrw)    : ORIGIN = 0x20000000,   LENGTH = 128K
-  BOOT_FLASH    (rx)    : ORIGIN = 0x8000000,   LENGTH = 16K
-  EEPROM_EMUL(xrw)      : ORIGIN = 0x8004000,   LENGTH = 16K
-  FLASH    (rx)    : ORIGIN = 0x8008000,   LENGTH = 512K - 16K - 16K
+  RAM    (xrw)          : ORIGIN = 0x20000000,   LENGTH = 128K
+  BOOT_FLASH    (rx)    : ORIGIN =  0x8000000,   LENGTH = 16K
+  EEPROM_EMUL(xrw)      : ORIGIN =  0x8004000,   LENGTH = 16K
+  FLASH    (rx)         : ORIGIN =  0x8008000,   LENGTH = 512K - 16K - 16K
 }
 
 _EEPROM_Emul_Start = ORIGIN(EEPROM_EMUL);

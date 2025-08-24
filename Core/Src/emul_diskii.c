@@ -763,21 +763,39 @@ void DiskIIInit(){
     mountImageInfo.version=0;
     mountImageInfo.cleaned=0;
     mountImageInfo.type=0;
-    /*
+    
     if (emulationType==SMARTLOADER){
-        sprintf(tmpFullPathImageFilename,"/smartloaderp.po");
-        if (DiskIIMountImagefile(tmpFullPathImageFilename)==RET_OK){
-            
-            switchPage(DISKIIIMAGE,currentFullPathImageFilename);
 
-            if (flgImageMounted==1){                                            
-                if (DiskIIiniteBeaming()==RET_OK)
-                    DiskIIDeviceEnableIRQ(DEVICE_ENABLE_Pin);
-            }
-        }
+        log_info("special mode smartloader");
+
+        getSDAddr=getSmartloaderSDAddr;
+        getTrackBitStream=getSmartloaderTrackBitStream;
+        setTrackBitStream=setSmartloaderTrackBitStream;
+        getTrackFromPh=getSmartloaderTrackFromPh;
+        getTrackSize=getSmartloaderTrackSize;
+            
+        mountImageInfo.optimalBitTiming=32;
+        mountImageInfo.writeProtected=0;
+        mountImageInfo.synced=0;
+        mountImageInfo.version=0;
+        mountImageInfo.cleaned=0;
+        mountImageInfo.type=99; 
+
+        sprintf(mountImageInfo.title,"SMARTLOADER");
+        flgImageMounted=1;
+        flgBeaming=1;
+
+        //sprintf(tmpFullPathImageFilename,"SmartLoader");
+        //sprintf(currentFullPathImageFilename,"SmartLoader");
+                    
+        switchPage(DISKIIIMAGE,tmpFullPathImageFilename);
+                                         
+        if (DiskIIiniteBeaming()==RET_OK)
+            DiskIIDeviceEnableIRQ(DEVICE_ENABLE_Pin);
+    
     }
 
-    else */ if (bootMode==0){
+    else if (bootMode==0){
         if (DiskIIMountImagefile(tmpFullPathImageFilename)==RET_OK){
         
             switchPage(DISKIIIMAGE,currentFullPathImageFilename);

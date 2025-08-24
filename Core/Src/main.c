@@ -445,6 +445,10 @@ extern char currentFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];             
 extern char tmpFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];                                 // fullpath from root image filename
 
 
+
+extern char smartloader_bin[];
+
+
 char sTmp[256];
 uint8_t iTmp=0;
 
@@ -1409,6 +1413,8 @@ int main(void)
   log_info("**     This is the sound of sea !    **");
   //log_info("***************************************");
     
+  printf("%02X",smartloader_bin[1]);
+
   fres = f_mount(&fs, "", 1);                                                 // <!> Warning Mount opt 1 very important or it does not work                                     
   
   if (fres!=FR_OK){
