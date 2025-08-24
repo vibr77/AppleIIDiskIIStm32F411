@@ -65,6 +65,7 @@ Core/Src/dispScreen/screen_fs.c \
 Core/Src/dispScreen/screen_diroption.c \
 Core/Src/dispScreen/screen_diskii.c \
 Core/Src/dispScreen/screen_error.c \
+smartloader.c \
 FATFS/App/fatfs.c \
 Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_rcc.c \
 Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_rcc_ex.c \
@@ -102,6 +103,7 @@ FATFS/Target/fatfs_platform.c \
 Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_sdmmc.c \
 Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_sd.c \
 Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_mmc.c \
+
 
 
 
@@ -217,8 +219,13 @@ LDFLAGS = $(MCU)  -specs=nano.specs -T$(LDSCRIPT) $(LIBDIR) $(LIBS) -Wl,-Map=$(B
 
 OPENOCD ?= openocd
 
+
+
 # default action: build all
-all: $(BUILD_DIR)/$(TARGET).elf $(BUILD_DIR)/$(TARGET).hex $(BUILD_DIR)/$(TARGET).bin
+all: pre-build $(BUILD_DIR)/$(TARGET).elf $(BUILD_DIR)/$(TARGET).hex $(BUILD_DIR)/$(TARGET).bin
+
+pre-build: 
+	xxd -i smartloader.bin smartloader.c
 
 ifdef USE_BOOTLOADER
 	python uf2conv/uf2conv.py -b 0x08010000 -f STM32F4 -o $(BUILD_DIR)/$(TARGET).uf2 $(BUILD_DIR)/$(TARGET).bin
