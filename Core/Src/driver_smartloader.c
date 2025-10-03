@@ -198,8 +198,7 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
 
                 }else if (smtlCurrentCategory==CAT_FAVORITE){
 
-                    //favoritesChainedList;
-                    
+
                     header[0]=0x20;                           // Byte [1]+0: Return code
                 //  header[1]=0x05;                                     // Byte [1]+1: Number of Item in the current page
                 //  header[2]=smtlValue;                                // Byte [1]+2: Value
@@ -227,7 +226,7 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
                     header[2]=smtlCurrentPage;                          // Current Page (smtValue)
                     header[3]=maxPage;                                  // Max number of Page
 
-                list_node_t *pItem=NULL;
+                    list_node_t *pItem=NULL;
                     int offset=0;
                     
                     uint8_t startIndex=smtlCurrentPage*maxItemPerPage;
@@ -245,8 +244,10 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
                             snprintf(tmp+offset,23,"F%s",li->title);
                         }else{
                             snprintf(tmp+offset,23,"(NULL)");
-                        }   
+                        }
+                        jj++;  
                     }
+                    //dumpBuf(tmp,1,512);
 
                 }else if (smtlCurrentCategory==CAT_FILE){
 

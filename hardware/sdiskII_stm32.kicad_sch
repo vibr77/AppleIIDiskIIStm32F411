@@ -9798,7 +9798,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Diode_SMD:D_0805_2012Metric_Pad1.15x1.40mm_HandSolder"
+		(property "Footprint" "Diode_SMD:D_SOD-123"
 			(at 36.83 151.13 0)
 			(effects
 				(font
@@ -12159,7 +12159,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "cbfaaf40-0ee4-4a33-a41a-99470868fd6b")
-		(property "Reference" "BPF"
+		(property "Reference" "BPF1"
 			(at 52.07 140.97 0)
 			(effects
 				(font
@@ -12211,7 +12211,7 @@
 		(instances
 			(project "sdiskII_stm32"
 				(path "/a83c7550-2269-4fd8-90ce-2da165082457"
-					(reference "BPF")
+					(reference "BPF1")
 					(unit 1)
 				)
 			)

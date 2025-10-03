@@ -227,9 +227,7 @@ all: pre-build $(BUILD_DIR)/$(TARGET).elf $(BUILD_DIR)/$(TARGET).hex $(BUILD_DIR
 pre-build: 
 	xxd -i smartloader.bin smartloader.c
 
-ifdef USE_BOOTLOADER
-	python uf2conv/uf2conv.py -b 0x08010000 -f STM32F4 -o $(BUILD_DIR)/$(TARGET).uf2 $(BUILD_DIR)/$(TARGET).bin
-endif
+
 
 #######################################
 # build the application
@@ -263,6 +261,8 @@ $(BUILD_DIR)/%.bin: $(BUILD_DIR)/%.elf | $(BUILD_DIR)
 	
 $(BUILD_DIR):
 	mkdir $@		
+
+
 
 #######################################
 # clean up

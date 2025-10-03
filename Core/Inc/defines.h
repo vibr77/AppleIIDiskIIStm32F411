@@ -1,6 +1,6 @@
 
 
-#define _VERSION "v0.80.18"
+#define _VERSION "v0.80.20"
 #define UART_BAUDRATE               460800
 #define SPLASHSCREEN_DURATION       500                         // Not more than 500 otherwise IIGS will not boot"
 

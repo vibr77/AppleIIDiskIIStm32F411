@@ -136,7 +136,7 @@ void initSplash(){
     ssd1306_Clear();
     ssd1306_DrawBitmap(1,i,128,65-i,splashLogo128x64);
     ssd1306_UpdateScreen();
-    HAL_Delay(75);
+    HAL_Delay(50);
   }  
 
   

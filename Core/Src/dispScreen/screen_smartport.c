@@ -132,6 +132,14 @@ void updateImageSmartPortHD(){
           snprintf(tmp,len+2,"*:%s",filename);
         else
           snprintf(tmp,len+2,"%d:%s",i+1,filename);
+
+        uint8_t len2=strlen(tmp);
+        if (len2<16){
+          for (uint8_t ii=len2;ii<16;ii++){
+            tmp[ii]=' ';
+          }
+          tmp[16]=0;
+        }
       
         displayStringAtPosition(1,(3+i)*SCREEN_LINE_HEIGHT,tmp);
       }else{
