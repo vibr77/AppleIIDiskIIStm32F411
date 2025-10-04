@@ -400,7 +400,7 @@ char * SmartPortFindImage(char * pattern){
 }
 const  char * smartportImageExt[]={"PO","po","2MG","2mg","HDV","hdv",NULL};   
 void SmartPortInit(){
-    
+
 
 
     HAL_TIM_PWM_Stop_IT(&htim2,TIM_CHANNEL_3);
@@ -423,7 +423,7 @@ void SmartPortInit(){
         sprintf(key,"smartport_vol%02d",i);
         
         szFile=(char *)getConfigParamStr(key);
-       
+
         if (szFile==NULL || !strcmp(szFile,"")){
             devices[i].filename=NULL;
             devices[i].mounted=0;
@@ -471,7 +471,7 @@ void SmartPortSendPacket(unsigned char* buffer){
     setRddataPort(1);
     setWPProtectPort(1);                                                                        // Set ACK Port to output
     assertAck();                                                                                // Set ACK high to signal we are ready to send
-               
+    
     while (!(phase & 0x1)){
        pNextAction();
     }; 
@@ -510,7 +510,7 @@ static enum STATUS SmartportReceivePacket(){
     setRddataPort(1);
     flgPacket=0;
     assertAck(); 
-                                                                                                // ACK HIGH, indicates ready to receive
+                                                                                            // ACK HIGH, indicates ready to receive
     while(!(phase & 0x01)){
         pNextAction();
     };
@@ -584,7 +584,7 @@ void SmartPortMainLoop(){
             pNextAction();
             continue;
         }*/
-
+        
         setWPProtectPort(0);                                                                // Set ack (wrprot) to input to avoid clashing with other devices when sp bus is not enabled 
                                                                                             // read phase lines to check for smartport reset or enable
 
@@ -614,15 +614,23 @@ void SmartPortMainLoop(){
                 
                 setWPProtectPort(1);                                                        // Set ack to output, sp bus is enabled
                 assertAck();                                                                // Ready for next request                                           
-                
+
+                SmartportReceivePacket();
+                /* THIS CODE IS NOT WORKING ON IIC & IIE
                 if (SmartportReceivePacket()==RET_ERR){                                     // Receive Packet
                     statusCode=0x06;                                                        // Generic BUS_ERR 0x06 
                     log_error("SmartportReceivePacket timeout error");
                     encodeReplyPacket(0x0,0x1 | 0x01 ,0x01,statusCode);
                     SmartPortSendPacket(packet_buffer);
                     break;
-                }                                                   
-                                                                                           
+                }
+                    */                                                       // Receive Packet
+                                                                                            // Verify Packet checksum
+                if (verifyCmdpktChecksum()==RET_ERR  ){
+                    log_error("Incomming command checksum error");
+                }
+
+                /*
                 if (verifyCmdpktChecksum()==RET_ERR){                                       // Verify Packet checksum
                     statusCode=0x06;                                                        // Generic BUS_ERR 0x06 
                     log_error("Incomming command checksum error");
@@ -630,6 +638,7 @@ void SmartPortMainLoop(){
                     SmartPortSendPacket(packet_buffer);
                     break;
                 }
+                    */
                 
                 //---------------------------------------------
                 // STEP 1 CHECK IF INIT PACKET 
@@ -646,7 +655,7 @@ void SmartPortMainLoop(){
                             noid++;
                         } else{
                             break;
-                        }    
+                        }
                     }
 
                     if (noid == MAX_PARTITIONS){  //not one of our id's
@@ -1269,20 +1278,11 @@ void SmartPortMainLoop(){
                         
                         uint8_t numMountedPartition=0;
                         for (partition = 0; partition < MAX_PARTITIONS; partition++) { 
-                            //uint8_t dev=(partition + initPartition) % MAX_PARTITIONS;
-                            //if (devices[dev].mounted==1)
+                            uint8_t dev=(partition + initPartition) % MAX_PARTITIONS;
+                            if (devices[dev].mounted==1)
                                 numMountedPartition++;
                         }
-
-                        if (number_partitions_initialised >numMountedPartition){                                            // The ROM03 IIGS seems to REINIT the Smartport after Boot, we need to manage this case
-                            number_partitions_initialised=1;
-                            log_warn("Smartport REINIT cmd:%02X, dest:%02X, statusCode:%02X",packet_buffer[SP_COMMAND],dest,statusCode);
-                            
-                            for (partition = 0; partition < MAX_PARTITIONS; partition++) { 
-                                uint8_t dev=(partition + initPartition) % MAX_PARTITIONS;  
-                                devices[dev].device_id = 0;
-                            }    
-                        }
+                        // REVIEW REINIT CODE NOT WORKING ON IIe & IIC
 
                         if (number_partitions_initialised <numMountedPartition)
                             statusCode = 0x00;                          // Not the last one
@@ -1291,11 +1291,11 @@ void SmartPortMainLoop(){
 
                         for (partition = 0; partition < MAX_PARTITIONS; partition++) { 
                             uint8_t dev=(partition + initPartition) % MAX_PARTITIONS;  
-                            if (/*devices[dev].mounted==1 &&*/ devices[dev].device_id == dest){
+                            if (devices[dev].mounted==1 && devices[dev].device_id == dest){
                                 number_partitions_initialised++;
                                 break;
                             }
-                            else if (/*devices[dev].mounted==1 && */devices[dev].device_id == 0){
+                            else if (devices[dev].mounted==1 && devices[dev].device_id == 0){
                                 devices[dev].device_id=dest;
                                 number_partitions_initialised++;
                                 break;
@@ -1349,8 +1349,8 @@ void SmartPortMainLoop(){
                             Note:   As per the firmware documentation control code should be below 0x80 and thus Bit 7 (from the MSB shoulg never be set)
                                     Thus it should not be needed to check the Bit7 from the MSB GRP 1, but to make it clean let's do it.
                         
-                            0000: C3 81 80 80 80 80 82 81 80 84 83 A0 80 AA 85 80 - ..����..�...�..�
-                            0010: 80 80 80 AA BF C8                               - ���.............
+                        0000: C3 81 80 80 80 80 82 81 80 84 83 A0 80 AA 85 80 - ..����..�...�..�
+                        0010: 80 80 80 AA BF C8                               - ���.............
                         
                         */
                         
@@ -1583,13 +1583,7 @@ void SmartPortMainLoop(){
                         //print_packet ((unsigned char*) packet_buffer,packet_length());         
                         break;
                 } 
-            
-                break;
-            default:
-                pNextAction();
-                break;
-
-            
+               
             }
             
             HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);                       // set RD_DATA LOW
@@ -2762,7 +2756,7 @@ enum STATUS SmartPortMountImage( prodosPartition_t *d, char * filename ){
     log_info("Mounted: %s",filename);
     log_info("blockCount %d",d->blocks);
 
-#ifdef A2F_MODE
+#ifdef A2F_MODE    
     HAL_GPIO_WritePin(AB_GPIO_Port,AB_Pin,GPIO_PIN_SET);
 #endif
 
