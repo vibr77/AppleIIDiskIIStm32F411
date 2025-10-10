@@ -16,7 +16,10 @@
 /*
     Lessons Learned: 
     
-
+    IIe SPCard, IIc ROM4x are not managing DEVICE_ENABLE Signal on Smartport,
+    Timing on IIc is very sensible and different from IIe & IIGS (need adjustement)
+    IIc No packet retry on error or checksum
+    IIc no drive remounting -> not working
 
 */
 
@@ -410,7 +413,7 @@ void SmartPortInit(){
     TIM2->ARR=(32*12)-1-10;
     
     TIM5->CNT=0;                                                                                // Reset the
-    TIM5->ARR=700000;                                                                             // Prescaler is 96 1000-> 1ms
+    TIM5->ARR=700000;                                                                           // Prescaler is 96 1000-> 1ms
     //TIM3->ARR=(16*12)-1;
     //TIM3->CCR2=32*3;
 
@@ -510,7 +513,7 @@ static enum STATUS SmartportReceivePacket(){
     setRddataPort(1);
     flgPacket=0;
     assertAck(); 
-                                                                                            // ACK HIGH, indicates ready to receive
+                                                                                                // ACK HIGH, indicates ready to receive
     while(!(phase & 0x01)){
         pNextAction();
     };
@@ -624,7 +627,7 @@ void SmartPortMainLoop(){
                     SmartPortSendPacket(packet_buffer);
                     break;
                 }
-                    */                                                       // Receive Packet
+                */                                                                          // Receive Packet
                                                                                             // Verify Packet checksum
                 if (verifyCmdpktChecksum()==RET_ERR  ){
                     log_error("Incomming command checksum error");
@@ -638,7 +641,7 @@ void SmartPortMainLoop(){
                     SmartPortSendPacket(packet_buffer);
                     break;
                 }
-                    */
+                */
                 
                 //---------------------------------------------
                 // STEP 1 CHECK IF INIT PACKET 
@@ -1586,23 +1589,21 @@ void SmartPortMainLoop(){
                
             }
             
-            HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);                       // set RD_DATA LOW
+            //HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);                       // set RD_DATA LOW
             packet_buffer[0]=0x0;
 
             assertAck();
 
-            //pSdEject();                                                                          // Manage by pNextAction detect SD card Eject
-
             cAlive++;
-
             if (cAlive==5000000){ 
                 HAL_SD_CardStateTypeDef state;
                 state = HAL_SD_GetCardState(&hsd);
                 printf(".%d %lu\n",fsState,state);
                 cAlive=0;
             }
-  
-            /*if (nextAction!=NONE){                                                             // Manage by pNextAction
+            
+            pSdEject();
+            if (nextAction!=NONE){                                                             // Manage by pNextAction
                 switch(nextAction){
                     case SMARTPORT_IMGMOUNT:
                         //TODO MANAGE THE EJECT OF THE DISK
@@ -1613,7 +1614,8 @@ void SmartPortMainLoop(){
                     default:
                         execAction(&nextAction);
                 }
-            }*/
+            }
+            
         }            
 
     return;

@@ -1574,7 +1574,7 @@ int main(void)
       ptrReceiveDataIRQ=SmartPortReceiveDataIRQ;
       ptrSendDataIRQ=SmartPortSendDataIRQ;
       ptrWrReqIRQ=SmartPortWrReqIRQ;
-      ptrDeviceEnableIRQ=SmartPortDeviceEnableIRQ;
+      //ptrDeviceEnableIRQ=SmartPortDeviceEnableIRQ;
       ptrMainLoop=SmartPortMainLoop;
       //ptrUnmountImage=NULL;
       //ptrMountImagefile=SmartPortMountImage;
