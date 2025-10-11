@@ -163,13 +163,14 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
 
             switch (smtlCommand){
                 
+                case 0x09:                                              // MAnaging back to Main
                 case 0x10:
                 case 0x00:                                              // Listing
                 
                 if (smtlCurrentCategory==CAT_ROOT){
                                                                         // HEADER
                                                                         // ---------------------------------------------------
-                    header[0]=0x20;                           // Byte [1]+0: Return code
+                    header[0]=0x20;                                     // Byte [1]+0: Return code
                     header[1]=0x05;                                     // Byte [1]+1: Number of Item in the page
                     header[2]=smtlValue;                                // Byte [1]+2: Value
                     header[3]=0x0;                                      // Byte [1]+3: Max Page
@@ -254,8 +255,7 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
                     list_destroy(dirChainedList);                       // First free existing chainedlist if exists
                     walkDir(currentFullPath,ptrFileFilter);             // Build new File chained List
 
-
-                    header[0]=0x20;                           // Byte [1]+0: Return code
+                    header[0]=0x20;                                     // Byte [1]+0: Return code
 
                     int len=strlen(currentFullPath);
                     currentPath[0]=0x0;
@@ -364,7 +364,13 @@ enum STATUS setSmartloaderTrackBitStream(int trk,unsigned char * buffer){
         list_node_t *pItem=NULL;
         char *tmp;
 
-        if (smtlCurrentCategory==CAT_ROOT){
+        if (smtlCommand==0x09){
+            log_info("hereA");
+            smtlCurrentCategory=CAT_ROOT;
+            smtlReturnCode=0x20;
+            //return RET_OK;
+        }                                                       // We go to Main Menu
+        else if (smtlCurrentCategory==CAT_ROOT){
             if (smtlCommand==0x10 && smtlValue==2){             // We go to File Listing
                 log_info("getting root file");
                 smtlCurrentCategory=CAT_FILE;
@@ -389,23 +395,26 @@ enum STATUS setSmartloaderTrackBitStream(int trk,unsigned char * buffer){
         }else if  (smtlCurrentCategory==CAT_FILE && smtlCommand==0x10){
             
             uint8_t ilen=strlen(currentFullPath);
-            pItem=list_at(dirChainedList, smtlValue);                                           // Get the item in the list of value
+            pItem=list_at(dirChainedList, smtlValue);                                                           // Get the item in the list of value
             tmp=pItem->val;
             log_info("tmp:%s",tmp);
             
             smtlReturnCode=0x20;
-            if (!strcmp(tmp,"D|..")){                                                           // selectedItem is [UpDir];
+
+            if (!strcmp(tmp,"D|..")){   
+                log_info("updir %s",currentFullPath);                                                                        // selectedItem is [UpDir];
                 for (int i=ilen-1;i!=-1;i--){
                     if (currentFullPath[i]=='/'){
                         snprintf(currentPath,MAX_PATH_LENGTH,"%s",currentFullPath+i);
                         currentFullPath[i]=0x0;
+                        log_info("updir new: %s",currentFullPath);
                         break;
                     }
                     if (i==0)
                         currentFullPath[0]=0x0;
                 }
             }else if (tmp[0]=='D'){
-                                        // 0x02 Process item
+                                                                                                                // 0x02 Process item
                 pItem=list_at(dirChainedList, smtlValue);
                 tmp=pItem->val;
                 log_info("tmp2:%s %d",tmp,ilen);

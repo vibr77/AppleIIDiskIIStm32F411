@@ -115,6 +115,10 @@ UART1
 // Changelog
 
 /*
+11.10.25 v0.80.23
+  + [SmartLoader] fixing updir navigation
+  + [SmartLoader] back to main with M (Uppercase)@
+
 12.08.25 v0.80.18
   + [Main] Adding ScreenSaver feature to save the OLED, switch off every 60 min if activated in setting
   + [Settings] Adding ScreenSaver Option
