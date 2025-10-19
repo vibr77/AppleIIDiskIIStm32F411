@@ -32,7 +32,7 @@ enum STATUS loadConfigFile(){
 
     fsState=BUSY;
     fres = f_open(&fil, CONFIGFILE_NAME, FA_READ );
-    printf("2");
+
     if(fres != FR_OK) {
         log_error("f_open error (%i)\n", fres);
         fsState=READY;
@@ -59,7 +59,10 @@ enum STATUS loadConfigFile(){
         
         json = cJSON_Parse("{}");
         saveConfigFile();
+        return RET_ERR;
+
     }
+
     log_debug("Config JSON:%s\n",jsonBuffer);
     
     free(jsonBuffer);

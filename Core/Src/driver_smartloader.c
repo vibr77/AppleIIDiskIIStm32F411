@@ -163,7 +163,7 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
 
             switch (smtlCommand){
                 
-                case 0x09:                                              // MAnaging back to Main
+                case 0x09:                                              // Managing back to Main
                 case 0x10:
                 case 0x00:                                              // Listing
                 
@@ -200,7 +200,7 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
                 }else if (smtlCurrentCategory==CAT_FAVORITE){
 
 
-                    header[0]=0x20;                           // Byte [1]+0: Return code
+                    header[0]=0x20;                                     // Byte [1]+0: Return code
                 //  header[1]=0x05;                                     // Byte [1]+1: Number of Item in the current page
                 //  header[2]=smtlValue;                                // Byte [1]+2: Value
                     header[3]=0x0;                                      // Byte [1]+3: Max Page
@@ -276,6 +276,12 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
                     }
                     // Remember Max page Index = Page Count starting from 0 so -1
                     maxPage--;
+
+                    if (smtlCurrentPage>maxPage)
+                        smtlCurrentPage=maxPage;
+                    
+                    if (smtlCurrentPage<0)
+                        smtlCurrentPage=0;
 
                     uint8_t currentPageItemCount=lstCount-(smtlCurrentPage*maxItemPerPage);
                     if (currentPageItemCount>16)
@@ -365,7 +371,7 @@ enum STATUS setSmartloaderTrackBitStream(int trk,unsigned char * buffer){
         char *tmp;
 
         if (smtlCommand==0x09){
-            log_info("hereA");
+            //log_info("hereA");
             smtlCurrentCategory=CAT_ROOT;
             smtlReturnCode=0x20;
             //return RET_OK;
@@ -431,7 +437,11 @@ enum STATUS setSmartloaderTrackBitStream(int trk,unsigned char * buffer){
                 free(dskData);
                 return RET_OK;
             }
+        }else if  (smtlCurrentCategory==CAT_FILE && smtlCommand==0x11){
+            smtlCurrentPage=smtlValue;
+            smtlCommand=0x10;
         }
+        
     }
         
     free(dskData);  

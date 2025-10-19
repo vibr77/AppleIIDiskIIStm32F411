@@ -115,6 +115,11 @@ UART1
 // Changelog
 
 /*
+19.10.25
+  + [Configuration] detecting corrupted json, with default
+  + [Smartloader] fixing display glitch
+  + [Smartloader] adding page + page - management
+  + [Smartloader] fixing M key code
 11.10.25 v0.80.23
   + [SmartLoader] fixing updir navigation
   + [SmartLoader] back to main with M (Uppercase)@
