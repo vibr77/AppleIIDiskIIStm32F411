@@ -618,8 +618,9 @@ void SmartPortMainLoop(){
                 setWPProtectPort(1);                                                        // Set ack to output, sp bus is enabled
                 assertAck();                                                                // Ready for next request                                           
 
-                SmartportReceivePacket();
-                /* THIS CODE IS NOT WORKING ON IIC & IIE
+                //SmartportReceivePacket();
+                
+                // The Below code now works for IIc & IIe 
                 if (SmartportReceivePacket()==RET_ERR){                                     // Receive Packet
                     statusCode=0x06;                                                        // Generic BUS_ERR 0x06 
                     log_error("SmartportReceivePacket timeout error");
@@ -627,13 +628,13 @@ void SmartPortMainLoop(){
                     SmartPortSendPacket(packet_buffer);
                     break;
                 }
-                */                                                                          // Receive Packet
+                                                                                          // Receive Packet
                                                                                             // Verify Packet checksum
-                if (verifyCmdpktChecksum()==RET_ERR  ){
+                /*if (verifyCmdpktChecksum()==RET_ERR  ){
                     log_error("Incomming command checksum error");
-                }
+                }*/
 
-                /*
+                
                 if (verifyCmdpktChecksum()==RET_ERR){                                       // Verify Packet checksum
                     statusCode=0x06;                                                        // Generic BUS_ERR 0x06 
                     log_error("Incomming command checksum error");
@@ -641,7 +642,7 @@ void SmartPortMainLoop(){
                     SmartPortSendPacket(packet_buffer);
                     break;
                 }
-                */
+                
                 
                 //---------------------------------------------
                 // STEP 1 CHECK IF INIT PACKET 
@@ -2555,6 +2556,13 @@ static enum STATUS verifyCmdpktChecksum(void){
     unsigned char pkt_checksum;
 
     length = packet_length();
+    uint8_t offset=0;
+    if(packet_buffer[length-1]!=0xC8){                                          // This is ultra weired but on the IIc & IIe 
+                                                                                // There is no trailing C8 (as per the spec)
+                                                                                // We need to adjust in that case
+        //printf("Oups :%02X!\n",packet_buffer[length-1]);
+        offset=1;
+    }
 /*
 C3              PBEGIN    MARKS BEGINNING OF PACKET             32 micro Sec.       6   0
 81              DEST      DESTINATION UNIT NUMBER               32 micro Sec.       7   1
@@ -2572,6 +2580,15 @@ C3              PBEGIN    MARKS BEGINNING OF PACKET             32 micro Sec.   
 
 0000: C3 81 80 80 80 80 82 81 80 81 83 82 80 88 80 80 - ..80808080..80...80.8080
 0010: 80 FF 80 FF BB C8
+
+
+0000: C3 81 80 80 80 80 82 81 80 81 83 80 80 BE B4 A1 - ..����..�..��...
+0010: 80 88 80 AB FB                                  - �.�.............
+.
+23:59:59 INFO  Core/Src/emul_smartport.c:2606: packet_buffer[length - 2]:AB
+23:59:59 INFO  Core/Src/emul_smartport.c:2607: packet_buffer[length - 3]:80
+23:59:59 INFO  Core/Src/emul_smartport.c:2608: pkt_chksum:02!=calc_chksum:A3
+23:59:59 ERROR Core/Src/emul_smartport.c:633: Incomming command checksum error
 
 */
 
@@ -2594,8 +2611,8 @@ C3              PBEGIN    MARKS BEGINNING OF PACKET             32 micro Sec.   
     for (count = 1; count < 8; count++) // start from first id byte
         calc_checksum ^= packet_buffer[count];
 
-    oddbits = (packet_buffer[length - 2] & 0x55 )<< 1 ;
-    evenbits = packet_buffer[length - 3] & 0x55;
+    oddbits = (packet_buffer[length - 2+offset] & 0x55 )<< 1 ;
+    evenbits = packet_buffer[length - 3+offset] & 0x55;
     
     pkt_checksum = oddbits | evenbits;
 
