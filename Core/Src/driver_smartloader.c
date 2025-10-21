@@ -113,9 +113,8 @@ static uint8_t  smtlValue=0x0;                          // Param from Smartloade
 static uint8_t  smtlCurrentCategory=0x0;                // See list below
 static uint8_t  smtlCurrentPage=0x0;                    // a page is a list of 16 (0x0F) items, Page 01 => Item from 17 -> 32                
 
-static enum SMTL_CATEGORY{CAT_ROOT,CAT_FAVORITE,CAT_FILE,CAT_SETTINGS};
+static enum SMTL_CATEGORY{CAT_ROOT,CAT_FAVORITE,CAT_FILE,CAT_SETTINGS,CAT_HELP};
 static uint8_t  smtlLevel=0x0;
-
 
 static uint8_t  smtlReturnCode=0x0;
 static uint8_t  smtlErrorCode=0x0;
@@ -190,14 +189,53 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
                     sprintf(item[1],"MFAVORITES");
                     sprintf(item[2],"MFILE MANAGER");
                     sprintf(item[3],"MSETTINGS");
-                    sprintf(item[4],"MABOUT");
+                    sprintf(item[4],"MHELP");
                 
                     memcpy(tmp,header,32);
                     for (uint8_t i=0;i<5;i++){
                         memcpy(tmp+32+i*24,item[i],24);
                     }
 
-                }else if (smtlCurrentCategory==CAT_FAVORITE){
+                }else if (smtlCurrentCategory==CAT_HELP){
+                                                                        // ---------------------------------------------------
+                    header[0]=0x20;                                     // Byte [1]+0: Return code
+                    header[1]=0x0E;                                     // Byte [1]+1: Number of Item in the page
+                    header[2]=0x0;                                      // Byte [1]+2: Value
+                    header[3]=0x0;                                      // Byte [1]+3: Max Page
+                    header[4]=0x0;                                      // Byte [1]+4: Reserved
+
+                    sprintf(header+6,"HELP");
+                                                                        // Item prefix
+                                                                        // ---------------------------------------------------
+                                                                        // D - Directory
+                                                                        // F - File
+                                                                        // T - PAGE TITLE
+                                                                        // M - MENU ITEM
+                                                                        // E - EMPTY
+                    sprintf(item[0],"THELP");
+                    sprintf(item[1],"X");
+                    sprintf(item[2],"XKEY:");
+                    sprintf(item[3],"X");
+                    sprintf(item[4],"X[UP]    PREV ITEM");
+                    sprintf(item[5],"X[DOWN]  NEXT ITEM");
+                    sprintf(item[6],"X[RIGHT] NEXT PAGE");
+                    sprintf(item[7],"X[LEFT]  PREV PAGEpage");
+                    sprintf(item[8],"X[ENTER] SELECT ITEM");
+                    sprintf(item[9],"X[M]     BACK TO MAIN");
+                    sprintf(item[10],"X[R]     REFRESH PAGE");
+                    sprintf(item[11],"X[B]     BOOT");
+                    sprintf(item[12],"X");
+                    sprintf(item[13],"M<- BACK TO MAIN");
+                    
+                    memcpy(tmp,header,32);
+                    
+                    for (uint8_t i=0;i<14;i++){
+                        memcpy(tmp+32+i*24,item[i],24);
+                    }
+
+
+                }
+                else if (smtlCurrentCategory==CAT_FAVORITE){
 
 
                     header[0]=0x20;                                     // Byte [1]+0: Return code
@@ -375,8 +413,18 @@ enum STATUS setSmartloaderTrackBitStream(int trk,unsigned char * buffer){
             smtlCurrentCategory=CAT_ROOT;
             smtlReturnCode=0x20;
             //return RET_OK;
+        }
+        else if (smtlCurrentCategory==CAT_HELP){                // Selection in Help menu lead to MAIN
+            smtlCommand=0x09;
+            smtlCurrentCategory=CAT_ROOT;
+            smtlReturnCode=0x20;
         }                                                       // We go to Main Menu
         else if (smtlCurrentCategory==CAT_ROOT){
+            if (smtlCommand==0x10 && smtlValue==4){
+                log_info("getting help text");
+                smtlCurrentCategory=CAT_HELP;
+                sprintf(currentFullPath,"HELP");
+            }
             if (smtlCommand==0x10 && smtlValue==2){             // We go to File Listing
                 log_info("getting root file");
                 smtlCurrentCategory=CAT_FILE;
