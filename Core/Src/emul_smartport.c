@@ -128,39 +128,9 @@ static void sendDebugPin(uint8_t pulse){
         }
     }
 }
-/*
-static void startBreakLoopTimer(){
-    flgBreakLoop=0;
-    TIM5->CNT=0;
-    HAL_TIM_Base_Start_IT(&htim5);
-}
 
-static void resetBreakLoopTimer(){
-    flgBreakLoop=0;
-    TIM5->CNT=0;
-}
-
-static void stopBreakLoopTimer(){
-    HAL_TIM_Base_Stop_IT(&htim5);
-    flgBreakLoop=0;
-}
-*/
-
-int SmartPortDeviceEnableIRQ(uint16_t GPIO_Pin){
-    // The DEVICE_ENABLE signal from the Disk controller is activeLow
-    
-    uint8_t  a=0;
-    if ((GPIOA->IDR & GPIO_Pin)==0)
-        a=0;
-    else
-        a=1;
-
-    if (a==0){                                                                 // <!> TO BE TESTED 24/10
-        flgDeviceEnable=1;
-    }else{
-       flgDeviceEnable=0; 
-    }
-    return flgDeviceEnable;
+int SmartPortDeviceEnableIRQ(uint16_t GPIO_Pin){                                                        // DEVICE ENABLE is not used on Smartport
+    __NOP();
 }
 
 void SmartPortWrReqIRQ(){
@@ -423,19 +393,12 @@ const  char * smartportImageExt[]={"PO","po","2MG","2mg","HDV","hdv",NULL};
 void SmartPortInit(){
 
 
-
     HAL_TIM_PWM_Stop_IT(&htim2,TIM_CHANNEL_3);
     HAL_TIMEx_PWMN_Stop(&htim1,TIM_CHANNEL_2);
 
     TIM3->ARR=(32*12)-1;
     TIM2->ARR=(32*12)-5;
     
-    //TIM5->CNT=0;                                                                                // Reset the
-    //TIM5->ARR=700000;                                                                           // Prescaler is 96 1000-> 1ms
-    //TIM3->ARR=(16*12)-1;
-    //TIM3->CCR4=140;
-
-    // TODO TO BE TESTED
     ptrFileFilter=smartportImageExt;
 
     char * szFile;
@@ -469,11 +432,6 @@ void SmartPortInit(){
     switchPage(SMARTPORT,NULL);                                                                 // Display the Frame of the screen
     char * fileTab[4];
 
-    //devices[0].device_id=1;
-    //encodeUnidiskStatReplyPacket(devices[0]);
-    //print_packet ((unsigned char*) packet_buffer,packet_length());
- 
-
     for (uint8_t i=0;i<MAX_PARTITIONS;i++){
         devices[i].dispIndex=i;
         fileTab[i]=devices[i].filename;                                                         // Display the name of the PO according to the position
@@ -486,8 +444,7 @@ void SmartPortInit(){
 
 void SmartPortSendPacket(volatile unsigned char* buffer){
     
-    flgPacket=0;                                                                                // Reset the flag before sending
-
+                                                                                                // Reset the flag before sending
     bitCounter=0;
     bitPtr=0;
     bytePtr=0;
@@ -500,10 +457,9 @@ void SmartPortSendPacket(volatile unsigned char* buffer){
     while (!(phase & 0x1)){
        pNextAction();
     }; 
-
-                                                                                                // Wait Req to be HIGH, HOST is ready to receive
+                                                                                           // Wait Req to be HIGH, HOST is ready to receive
     HAL_TIM_PWM_Start_IT(&htim3,TIM_CHANNEL_4);
-    
+    flgPacket=0;                                                                                // This line need to be here <!>
     while (flgPacket!=1){
     }; 
 
@@ -511,20 +467,10 @@ void SmartPortSendPacket(volatile unsigned char* buffer){
     HAL_GPIO_WritePin(RD_DATA_GPIO_Port, RD_DATA_Pin,GPIO_PIN_RESET);    
     
     deAssertAck();                                                                              // set ACK(BSY) low to signal we have sent the pkt
-    
-    //startBreakLoopTimer();  
+
     while (phase & 0x01){
-        
-        /*if (flgBreakLoop==1){
-            log_warn("Break loop Smartport stalled, resending assert");            stopBreakLoopTimer();
-        
-            assertAck();
-            deAssertAck(); 
-            
-            break;
-        }*/
+    
     }
-    //stopBreakLoopTimer();
 
     return;
 }
@@ -536,45 +482,29 @@ static enum STATUS SmartportReceivePacket(){
     setWPProtectPort(1); 
     assertAck(); 
 
-    GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);                                                                                           // ACK HIGH, indicates ready to receive
+    GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);                                    // ACK HIGH, indicates ready to receive
     while(!(phase & 0x01)){
         pNextAction();
     };
-    //startBreakLoopTimer();   
-    //GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);                                                                                            // WAIT FOR REQ TO GO HIGH
-    flgPacket=0;                                                                                                                                        // <!> This position is important
+                                                                                                // WAIT FOR REQ TO GO HIGH
+    flgPacket=0;                                                                                // <!> This position is important
     while (flgPacket!=1){
-        /*if (flgBreakLoop==1){
-            sendDebugPin(2);
-            log_error("break loop #2");
-            stopBreakLoopTimer();
-            return RET_ERR;
-        }*/
+
     }                                                                                           // Receive finish
-    GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);
+
     deAssertAck();                                                                              // ACK LOW indicates to the host we have received a packer
-    //resetBreakLoopTimer();
-    while(phase & 0x01){
-        /*if (flgBreakLoop==1){
-            sendDebugPin(3);
-            log_error("break loop #3");
-            stopBreakLoopTimer();
-            return RET_ERR;
-        }*/
-    }
-    GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);
     
-    // stopBreakLoopTimer();
-    //sendDebugPin(2);
+    while(phase & 0x01){
+    }
+
+
     return RET_OK;                                                                              // Wait for REQ to go low
 }
 
 void assertAck(){
-    //GPIOWritePin(WR_PROTECT_GPIO_Port, WR_PROTECT_Pin,GPIO_PIN_SET);
     WR_PROTECT_GPIO_Port->BSRR=WR_PROTECT_Pin;               
 }
 void deAssertAck(){
-    //GPIOWritePin(WR_PROTECT_GPIO_Port, WR_PROTECT_Pin,GPIO_PIN_RESET);
     WR_PROTECT_GPIO_Port->BSRR=WR_PROTECT_Pin << 16U;             
 }
 
@@ -582,7 +512,6 @@ void SmartPortMainLoop(){
 
 
     /*
-    
     Function    PH3     PH2     PH1     PH0     Binary
     Bus ENABLE   1       X       1       X        0b1010 0b1011 0b1110 Ob1111 
     Bus Reset    0       1       0       1
@@ -596,8 +525,6 @@ void SmartPortMainLoop(){
     0b1111  1+2+4+8=15  0x0F
     
     */
-
-    //HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);
 
     log_info("SmartPortMainLoop entering loop");
     unsigned long blockNumber;
@@ -630,11 +557,8 @@ void SmartPortMainLoop(){
     if (bootImageIndex==0)
         bootImageIndex=1;
 
-    //int packetId=0;
-    while (1) {
 
-                                                                                            // Set ack (wrprot) to input to avoid clashing with other devices when sp bus is not enabled 
-                                                                                            // read phase lines to check for smartport reset or enable
+    while (1) {
 
         initPartition=bootImageIndex-1;                                                     // Update are enable
 
@@ -644,8 +568,7 @@ void SmartPortMainLoop(){
             case 0x01:
             case 0x04:
 
-                //HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);
-                setWPProtectPort(0);
+                setWPProtectPort(0);                                                        // Set ack (wrprot) to input to avoid clashing with other devices when sp bus is not enabled 
                 break;                                                                      // ph3=0 ph2=1 ph1=0 ph0=1
 
             case 0x05:
@@ -666,11 +589,6 @@ void SmartPortMainLoop(){
             case 0x0e:
             case 0x0f:
 
-                //setWPProtectPort(1);                                                        // Set ack to output, sp bus is enabled
-                //assertAck();                                                                // Ready for next request                                           
-
-                //SmartportReceivePacket();                                                 // Non blocking receive
-                
                 if (SmartportReceivePacket()==RET_ERR){                                     // Receive Packet
                     statusCode=0x06;                                                        // Generic BUS_ERR 0x06 
                     log_error("SmartportReceivePacket timeout error");
@@ -679,12 +597,6 @@ void SmartPortMainLoop(){
                     break;
                 }
                                                                                                                                                                   
-                /*
-                if (verifyCmdpktChecksum()==RET_ERR  ){                                     // Non blocking check of the checksum 
-                    log_error("Incomming command checksum error");
-                }
-                */
-
                 if (verifyCmdpktChecksum()==RET_ERR){                                       // Verify Packet checksum
                     statusCode=0x06;                                                        // Generic BUS_ERR 0x06 
                     log_error("Incomming command checksum error");
@@ -693,8 +605,7 @@ void SmartPortMainLoop(){
                     break;
                 }
                 
-                //printf("RP:%d\n",packetId);
-                //packetId++;
+
                 //---------------------------------------------
                 // STEP 1 CHECK IF INIT PACKET 
                 //---------------------------------------------
@@ -721,8 +632,6 @@ void SmartPortMainLoop(){
                         
                         while (phase & 0x08);
                         
-                        //print_packet ((unsigned char*) packet_buffer, packet_length());
-
                                                                                             // Assume its a cmd packet, cmd code is in byte 14
                                                                                             // Now we need to work out what type of packet and stay out of the way
                         switch (packet_buffer[SP_COMMAND]) {
@@ -767,9 +676,6 @@ void SmartPortMainLoop(){
                 MSB  =  packet_buffer[SP_GRP7MSB];
                 AUX  =  packet_buffer[SP_AUX] & 0x7f;                                                                          
                 
-                //if(packet_buffer[SP_COMMAND]!=0x81)
-                //    print_packet ((unsigned char*) packet_buffer, packet_length());
-
                 switch (packet_buffer[SP_COMMAND]) {
 
                     case 0x80:                                                                                          //is a status cmd
@@ -1333,11 +1239,18 @@ void SmartPortMainLoop(){
                         
                         uint8_t numMountedPartition=0;
                         for (partition = 0; partition < MAX_PARTITIONS; partition++) { 
-                            uint8_t dev=(partition + initPartition) % MAX_PARTITIONS;
-                            if (devices[dev].mounted==1)
                                 numMountedPartition++;
                         }
-                        // REVIEW REINIT CODE NOT WORKING ON IIe & IIC
+
+                        if (number_partitions_initialised >numMountedPartition){                                            // The ROM03 IIGS seems to REINIT the Smartport after Boot, we need to manage this case
+                            number_partitions_initialised=1;
+                            log_warn("Smartport REINIT cmd:%02X, dest:%02X, statusCode:%02X",packet_buffer[SP_COMMAND],dest,statusCode);
+                            
+                            for (partition = 0; partition < MAX_PARTITIONS; partition++) { 
+                                uint8_t dev=(partition + initPartition) % MAX_PARTITIONS;  
+                                devices[dev].device_id = 0;
+                            }    
+                        }
 
                         if (number_partitions_initialised <numMountedPartition)
                             statusCode = 0x00;                          // Not the last one
@@ -1346,21 +1259,20 @@ void SmartPortMainLoop(){
 
                         for (partition = 0; partition < MAX_PARTITIONS; partition++) { 
                             uint8_t dev=(partition + initPartition) % MAX_PARTITIONS;  
-                            if (devices[dev].mounted==1 && devices[dev].device_id == dest){
+                            if (devices[dev].device_id == dest){
                                 number_partitions_initialised++;
                                 break;
                             }
-                            else if (devices[dev].mounted==1 && devices[dev].device_id == 0){
+                            else if (devices[dev].device_id == 0){
                                 devices[dev].device_id=dest;
                                 number_partitions_initialised++;
                                 break;
                             }
-                        
                         }
-            
-                        /*if (statusCode!=0x0){
+                        
+                        if (statusCode!=0x0){
                             log_warn("Smartport LAST INIT cmd:%02X, dest:%02X, statusCode:%02X",packet_buffer[SP_COMMAND],dest,statusCode);
-                        }*/
+                        }
                         
                         encodeReplyPacket(dest,0x0,AUX,statusCode);
                         SmartPortSendPacket(packet_buffer);
