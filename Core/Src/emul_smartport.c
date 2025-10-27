@@ -184,7 +184,7 @@ void printbits(){
     for (int i=0;i<wrBitCounter;i++){
         bitw<<=1;
         bitw|=dbgbuf[i];
-        //printf("%d",dbgbuf[i]);
+;
         if (bitw & 0x80){
             j++;
             if (j%16==0)
@@ -218,9 +218,7 @@ static void pNextAction(){
   */
 void SmartPortReceiveDataIRQ(){
     
-    // ADD WR_REQ IRQ TO MANAGE START & STOP OF THE TIMER
-   
-    for (int i=0;i<10;i++);                                                  // Adding timing for IIc
+    for (int i=0;i<10;i++);                                                  // <!> Important: adding timing for IIc
     
     if ((GPIOA->IDR & WR_DATA_Pin)==0)                                       // get WR_DATA DO NOT USE THE HAL function creating an overhead
         wrData=0;
