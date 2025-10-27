@@ -607,11 +607,13 @@ void TIM4_IRQHandler(void){
 void TIM3_IRQHandler(void){
   //HAL_TIM_IRQHandler(&htim9);
   if (TIM3->SR & TIM_SR_UIF){
+    //HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);
     TIM3->SR &= ~TIM_SR_UIF;                              // Clear the overflow interrupt 
     ptrSendDataIRQ();
   }else if (TIM3->SR & TIM_SR_CC1IF){                     // Pulse compare interrrupt on Channel 1
     RD_DATA_GPIO_Port->BSRR=1U <<16;                      // Reset the RD_DATA GPIO
     TIM3->SR &= ~TIM_SR_CC1IF;                            // Clear the compare interrupt flag
+    //HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);
   }else
     TIM3->SR = 0;
 }
@@ -688,9 +690,9 @@ void irqEnableSDIO(){
 
 void irqDisableSDIO(){
 
-  //HAL_NVIC_DisableIRQ(SDIO_IRQn);
-  //HAL_NVIC_DisableIRQ(DMA2_Stream3_IRQn);
-  //HAL_NVIC_DisableIRQ(DMA2_Stream6_IRQn);
+  HAL_NVIC_DisableIRQ(SDIO_IRQn);
+  HAL_NVIC_DisableIRQ(DMA2_Stream3_IRQn);
+  HAL_NVIC_DisableIRQ(DMA2_Stream6_IRQn);
 }
 
 void GPIOWritePin(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, GPIO_PinState PinState){
@@ -1714,7 +1716,7 @@ static void MX_NVIC_Init(void)
   HAL_NVIC_EnableIRQ(TIM2_IRQn);
   /* TIM5_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(TIM5_IRQn, 10, 0);
-  HAL_NVIC_EnableIRQ(TIM5_IRQn);
+  //HAL_NVIC_EnableIRQ(TIM5_IRQn);
   /* TIM4_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(TIM4_IRQn, 10, 0);
   HAL_NVIC_EnableIRQ(TIM4_IRQn);
@@ -2274,8 +2276,8 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin : SELECT_Pin */
   GPIO_InitStruct.Pin = SELECT_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(SELECT_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : WR_REQ_Pin */
