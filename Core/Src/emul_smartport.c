@@ -33,7 +33,6 @@
 extern TIM_HandleTypeDef htim1;                             // Timer1 is managing buzzer pwm
 extern TIM_HandleTypeDef htim2;                             // Timer2 is handling WR_DATA
 extern TIM_HandleTypeDef htim3;                             // Timer3 is handling RD_DATA
-extern TIM_HandleTypeDef htim5;                             // Timer3 is handling RD_DATA
 
 extern SD_HandleTypeDef hsd;
 extern FATFS fs;                                            // fatfs global variable <!> do not remount witihn a function the fatfs otherwise it breaks the rest
