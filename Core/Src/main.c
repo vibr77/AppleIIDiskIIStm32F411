@@ -395,7 +395,6 @@ TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
-TIM_HandleTypeDef htim5;
 TIM_HandleTypeDef htim9;
 
 UART_HandleTypeDef huart1;
@@ -559,17 +558,6 @@ void TIM1_BRK_TIM9_IRQHandler(void){
   }else
     TIM9->SR = 0;
     return;
-}
-
-void TIM5_IRQHandler(void){
-
-  if (TIM5->SR & TIM_SR_UIF){
-    
-  } if (TIM5->SR & TIM_SR_CC1IF){                         // Pulse compare interrrupt on Channel 1
-    flgBreakLoop=1;
-    TIM5->SR &= ~TIM_SR_CC1IF;                            // Clear the compare interrupt flag
-  }else
-    TIM5->SR = 0;
 }
 
 /**
@@ -1722,9 +1710,7 @@ static void MX_NVIC_Init(void)
   /* TIM2_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(TIM2_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(TIM2_IRQn);
-  /* TIM5_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(TIM5_IRQn, 10, 0);
-  //HAL_NVIC_EnableIRQ(TIM5_IRQn);
+
   /* TIM4_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(TIM4_IRQn, 10, 0);
   HAL_NVIC_EnableIRQ(TIM4_IRQn);

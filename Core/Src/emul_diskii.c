@@ -52,7 +52,7 @@ image_info_t mountImageInfo;
 extern TIM_HandleTypeDef htim1;                                                                 // Timer1 is managing buzzer pwm
 extern TIM_HandleTypeDef htim2;                                                                 // Timer2 is handling WR_DATA
 extern TIM_HandleTypeDef htim3;  
-extern TIM_HandleTypeDef htim5;                                                                 // Timer3 is handling RD_DATA
+//extern TIM_HandleTypeDef htim5;                                                                 // Timer3 is handling RD_DATA
 
 extern uint8_t bootMode;                    
 
@@ -490,14 +490,11 @@ int DiskIIDeviceEnableIRQ(uint16_t GPIO_Pin){
     <!> The Below part is extremly important for the timing of the IIGS  
   
     */
-    
-    TIM5->ARR=10000;
-    TIM5->CNT=0;
-    HAL_TIM_Base_Start(&htim5);
-    while(TIM5->CNT<1500){
-    }
-    HAL_TIM_Base_Stop(&htim5);
-                                                  
+
+    for (int i=0;i<1500;i++){
+        __NOP();
+
+    }                                            
     return flgDeviceEnable;
 }
 
@@ -821,8 +818,7 @@ void DiskIIInit(){
         switchPage(FAVORITES,NULL);
     }
 
-    TIM5->CNT=0;                                                                                // Reset the
-    TIM5->ARR=50000;                                                                              // 5000 us  
+    
 
     //irqEnableSDIO();
     //getTrackBitStream(22,read_track_data_bloc);
