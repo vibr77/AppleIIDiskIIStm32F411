@@ -113,6 +113,9 @@ void processDiskHeadMoveInterrupt(uint16_t GPIO_Pin);
 char processDeviceEnableInterrupt(uint16_t GPIO_Pin);
 void pSdEject();
 
+/* Play buzzer for ms milliseconds (non-blocking). Uses TIM1 for PWM and TIM5 one-shot to stop it. */
+void play_buzzer_ms(uint32_t ms);
+
 
 enum STATUS makeSDFS();
 

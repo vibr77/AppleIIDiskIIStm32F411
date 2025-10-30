@@ -9,6 +9,7 @@
 #include "main.h"
 #include "log.h"
 #include "emul_diskii.h"
+#include "emul_smartport.h"
 #include "display.h"
 
 extern long database;                                            // start of the data segment in FAT
@@ -17,6 +18,9 @@ extern volatile enum FS_STATUS fsState;
 unsigned int fatSmartloaderCluster[20];
 extern image_info_t mountImageInfo;
 extern char smartloader_bin[];
+
+extern const  char * smartportImageExt[];
+extern const  char * diskIIImageExt[];
 
 #define NIBBLE_BLOCK_SIZE  416 // 400 51 200
 #define NIBBLE_SECTOR_SIZE 512
@@ -106,6 +110,8 @@ extern char currentPath[MAX_PATH_LENGTH];
 extern char currentFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];  // fullpath from root image filename
 extern char tmpFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];
 
+extern uint8_t smartloaderEmulationType;
+
 extern const  char** ptrFileFilter;  
 
 static uint8_t  smtlCommand=0x0;                        // Command from Smartloader
@@ -170,10 +176,10 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
                                                                         // HEADER
                                                                         // ---------------------------------------------------
                     header[0]=0x20;                                     // Byte [1]+0: Return code
-                    header[1]=0x05;                                     // Byte [1]+1: Number of Item in the page
+                    header[1]=0x06;                                     // Byte [1]+1: Number of Item in the page
                     header[2]=smtlValue;                                // Byte [1]+2: Value
                     header[3]=0x0;                                      // Byte [1]+3: Max Page
-                    header[4]=0x0;                                      // Byte [1]+4: Reserved
+                    header[4]=smartloaderEmulationType;                 // Byte [1]+4: Reserved
                                                                         // Byte [1]+5: Reserved
                                                                         // Byte [23]+6: Current Path
                                                                         // Byte [3]+30: Reserved
@@ -188,11 +194,19 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
                     sprintf(item[0],"TMAIN MENU");
                     sprintf(item[1],"MFAVORITES");
                     sprintf(item[2],"MFILE MANAGER");
-                    sprintf(item[3],"MSETTINGS");
-                    sprintf(item[4],"MHELP");
+                    sprintf(item[3],"E");
+
+                    if (smartloaderEmulationType==DISKII)
+                        sprintf(item[4],"VEMULATION|DISKII");
+                    else if (smartloaderEmulationType==SMARTPORTHD)
+                        sprintf(item[4],"VEMULATION|SMARTPORT");
+                    else
+                        sprintf(item[4],"VEMULATION|???");
+
+                    sprintf(item[5],"MHELP");
                 
                     memcpy(tmp,header,32);
-                    for (uint8_t i=0;i<5;i++){
+                    for (uint8_t i=0;i<6;i++){
                         memcpy(tmp+32+i*24,item[i],24);
                     }
 
@@ -232,8 +246,6 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
                     for (uint8_t i=0;i<14;i++){
                         memcpy(tmp+32+i*24,item[i],24);
                     }
-
-
                 }
                 else if (smtlCurrentCategory==CAT_FAVORITE){
 
@@ -291,6 +303,13 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
                 }else if (smtlCurrentCategory==CAT_FILE){
 
                     list_destroy(dirChainedList);                       // First free existing chainedlist if exists
+
+                    if (smartloaderEmulationType==DISKII){
+                        ptrFileFilter=diskIIImageExt;
+                    }else if (smartloaderEmulationType==SMARTPORTHD){
+                        ptrFileFilter=smartportImageExt;
+                    }
+
                     walkDir(currentFullPath,ptrFileFilter);             // Build new File chained List
 
                     header[0]=0x20;                                     // Byte [1]+0: Return code
@@ -331,6 +350,7 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
                     header[1]=currentPageItemCount;                     // Number of Items in the current page
                     header[2]=smtlCurrentPage;                          // Current Page (smtValue)
                     header[3]=maxPage;                                  // Max number of Page
+                    header[4]=smartloaderEmulationType; 
 
                     list_node_t *pItem=NULL;
                     int offset=0;
@@ -403,16 +423,14 @@ enum STATUS setSmartloaderTrackBitStream(int trk,unsigned char * buffer){
         smtlCommand=dskData[0];
         smtlValue=dskData[1];
         //dumpBuf(dskData,1,512);
-        log_info("cmd:%d, value:%d",smtlCommand,smtlValue);
+        log_info("cmd:%02X, value:%d",smtlCommand,smtlValue);
 
         list_node_t *pItem=NULL;
         char *tmp;
 
         if (smtlCommand==0x09){
-            //log_info("hereA");
             smtlCurrentCategory=CAT_ROOT;
             smtlReturnCode=0x20;
-            //return RET_OK;
         }
         else if (smtlCurrentCategory==CAT_HELP){                // Selection in Help menu lead to MAIN
             smtlCommand=0x09;
@@ -420,11 +438,28 @@ enum STATUS setSmartloaderTrackBitStream(int trk,unsigned char * buffer){
             smtlReturnCode=0x20;
         }                                                       // We go to Main Menu
         else if (smtlCurrentCategory==CAT_ROOT){
+            
             if (smtlCommand==0x10 && smtlValue==4){
+                log_info("Change the emulation");
+                smtlCurrentCategory=CAT_ROOT;
+                sprintf(currentFullPath,"");
+
+                if (smartloaderEmulationType==DISKII){
+                    smartloaderEmulationType=SMARTPORTHD;
+                }else{
+                    smartloaderEmulationType=DISKII;
+                }
+                setConfigParamInt("smartloaderEmulationType",smartloaderEmulationType);
+                saveConfigFile();
+                smtlValue=0;
+            }
+            
+            if (smtlCommand==0x10 && smtlValue==5){
                 log_info("getting help text");
                 smtlCurrentCategory=CAT_HELP;
                 sprintf(currentFullPath,"HELP");
             }
+
             if (smtlCommand==0x10 && smtlValue==2){             // We go to File Listing
                 log_info("getting root file");
                 smtlCurrentCategory=CAT_FILE;
@@ -432,20 +467,22 @@ enum STATUS setSmartloaderTrackBitStream(int trk,unsigned char * buffer){
             }else if (smtlCommand==0x10 && smtlValue==1){
                 smtlCurrentCategory=CAT_FAVORITE;
             }
+
         }else if  (smtlCurrentCategory==CAT_FAVORITE && smtlCommand==0x10){
             
             pItem=list_at(favoritesChainedList, smtlValue);
             if (pItem && pItem->val!=NULL){
                 listItem_t * pFavItem=pItem->val;
                 DiskIIMountImagefile(pFavItem->cval);
-            
                 free(dskData);
                 return RET_OK;
+
             }else{
                 log_error("pItem is null Argh# !");
                 free(dskData);
                 return RET_ERR;
             } 
+
         }else if  (smtlCurrentCategory==CAT_FILE && smtlCommand==0x10){
             
             uint8_t ilen=strlen(currentFullPath);
@@ -456,7 +493,7 @@ enum STATUS setSmartloaderTrackBitStream(int trk,unsigned char * buffer){
             smtlReturnCode=0x20;
 
             if (!strcmp(tmp,"D|..")){   
-                log_info("updir %s",currentFullPath);                                                                        // selectedItem is [UpDir];
+                log_info("updir %s",currentFullPath);                                                           // selectedItem is [UpDir];
                 for (int i=ilen-1;i!=-1;i--){
                     if (currentFullPath[i]=='/'){
                         snprintf(currentPath,MAX_PATH_LENGTH,"%s",currentFullPath+i);
@@ -467,6 +504,7 @@ enum STATUS setSmartloaderTrackBitStream(int trk,unsigned char * buffer){
                     if (i==0)
                         currentFullPath[0]=0x0;
                 }
+
             }else if (tmp[0]=='D'){
                                                                                                                 // 0x02 Process item
                 pItem=list_at(dirChainedList, smtlValue);
@@ -475,16 +513,22 @@ enum STATUS setSmartloaderTrackBitStream(int trk,unsigned char * buffer){
 
                 sprintf(currentFullPath+ilen,"/%s",tmp+2);
             
-                list_destroy(dirChainedList);
-                walkDir(currentFullPath,ptrFileFilter);
+                //list_destroy(dirChainedList);
+                //walkDir(currentFullPath,ptrFileFilter);                                                         // TODO Check if needed as WalkDir is done on the reading side
+            
             }else if (tmp[0]=='F'){
 
-                sprintf(tmpFullPathImageFilename,"%s/%s",currentFullPath,tmp+2);                                                              // Not a File issue an error
+                sprintf(tmpFullPathImageFilename,"%s/%s",currentFullPath,tmp+2);                                // Not a File issue an error
+                
+                // We need to put a bit of magik Here to switch the emulation if needed and load the image...
+                // not easy...
+                
                 DiskIIMountImagefile(tmpFullPathImageFilename);
                 switchPage(DISKIIIMAGE,tmpFullPathImageFilename);
                 free(dskData);
                 return RET_OK;
             }
+
         }else if  (smtlCurrentCategory==CAT_FILE && smtlCommand==0x11){
             smtlCurrentPage=smtlValue;
             smtlCommand=0x10;

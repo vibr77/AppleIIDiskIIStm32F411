@@ -53,8 +53,9 @@ prodosPartition_t devices[MAX_PARTITIONS];
 char* smartPortHookFilename=NULL;
 //bool is_valid_image(File imageFile);
 
-volatile unsigned char packet_buffer[SP_PKT_SIZE];   //smartport packet buffer
-unsigned char status, packet_byte;
+volatile unsigned char packet_buffer[SP_PKT_SIZE];                                          // smartport packet buffer for Request / Response
+int packetLen=0;
+//unsigned char status/*,packet_byte*/;
 
 int count;
 int partition;
@@ -82,7 +83,7 @@ static void encodeExtendedStatusDibReplyPacket (prodosPartition_t d);
 
 static enum STATUS verifyCmdpktChecksum(void);
 static void print_packet (unsigned char* data, int bytes);
-static int packet_length (void);
+//static int packet_length (void);
 
 static enum STATUS SmartportReceivePacket();
 static void pNextAction();
@@ -92,9 +93,7 @@ static void pNextAction();
   * @retval None
   */
 void SmartPortPhaseIRQ(){
-    
     phase=(GPIOA->IDR&0b0000000000001111);
-    //log_info("phase:0x%02X",phase);
     return;
 }
 
@@ -117,6 +116,7 @@ static volatile unsigned char flgDeviceEnable=0;
 
 static uint8_t dbgbuf[512];
 
+/*
 static void sendDebugPin(uint8_t pulse){
     for (uint8_t i=0;i<pulse;i++){
         for (int j=0;j<48;j++){
@@ -127,9 +127,11 @@ static void sendDebugPin(uint8_t pulse){
         }
     }
 }
+*/
 
 int SmartPortDeviceEnableIRQ(uint16_t GPIO_Pin){                                                        // DEVICE ENABLE is not used on Smartport
     __NOP();
+    return 0;
 }
 
 void SmartPortWrReqIRQ(){
@@ -445,7 +447,7 @@ void SmartPortSendPacket(volatile unsigned char* buffer){
     bitCounter=0;
     bitPtr=0;
     bytePtr=0;
-    bitSize=packet_length()*8;
+    bitSize=packetLen*8;
 
     setRddataPort(1);
     setWPProtectPort(1);                                                                        // Set ACK Port to output
@@ -488,7 +490,7 @@ static enum STATUS SmartportReceivePacket(){
     while (flgPacket!=1){
 
     }                                                                                           // Receive finish
-
+    packetLen=wrBytes;                                                                         // to avoid recomputation
     deAssertAck();                                                                              // ACK LOW indicates to the host we have received a packer
     
     while(phase & 0x01){
@@ -607,7 +609,7 @@ void SmartPortMainLoop(){
                 // STEP 1 CHECK IF INIT PACKET 
                 //---------------------------------------------
                 
-                //print_packet ((unsigned char*) packet_buffer, packet_length());
+                //print_packet ((unsigned char*) packet_buffer, packetLen);
                 
                                                                                             // lets check if the pkt is for us
                 if (packet_buffer[SP_COMMAND] != 0x85){                                     // if its an init pkt, then assume its for us and continue on
@@ -751,7 +753,7 @@ void SmartPortMainLoop(){
 
                                     //log_error("Unidisk UniDiskStat  not implemented");
                                     encodeUnidiskStatReplyPacket(devices[dev]);
-                                    //print_packet((unsigned char*) packet_buffer,packet_length());
+                                    //print_packet((unsigned char*) packet_buffer,packetLen);
 
                                 }else{
                                     encodeStatusReplyPacket(devices[dev]);                                              // else just return device status
@@ -833,8 +835,7 @@ void SmartPortMainLoop(){
                         if (flgSoundEffect==1){
                             TIM1->PSC=1000;
                             HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_2);
-                            HAL_Delay(15);
-                            HAL_TIMEx_PWMN_Stop(&htim1,TIM_CHANNEL_2);
+                            play_buzzer_ms(15);
                         }
 
                         BN_3B_LOW = packet_buffer[SP_G7BYTE3];                                                              // block number low
@@ -863,7 +864,7 @@ void SmartPortMainLoop(){
                                     FRESULT fres=f_lseek(&devices[dev].fil,devices[dev].dataOffset+blockNumber*512);
                                     if (fres!=FR_OK){
                                         log_error("Read seek err!, partition:%d, block:%d res:%d",dev,blockNumber,fres);
-                                        print_packet ((unsigned char*) packet_buffer,packet_length());
+                                        print_packet ((unsigned char*) packet_buffer,packetLen);
                                         statusCode=0x2D;                                                                    // Invalid Block Number
                                     }else{
                                         statusCode=0x0;
@@ -917,8 +918,7 @@ void SmartPortMainLoop(){
                         if (flgSoundEffect==1){
                             TIM1->PSC=1000;
                             HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_2);
-                            HAL_Delay(15);
-                            HAL_TIMEx_PWMN_Stop(&htim1,TIM_CHANNEL_2);
+                            play_buzzer_ms(15);
                         }
  
                         MSB2    =  packet_buffer[SP_GRP7MSB+8];
@@ -951,7 +951,7 @@ void SmartPortMainLoop(){
                                     FRESULT fres=f_lseek(&devices[dev].fil,devices[dev].dataOffset+blockNumber*512);
                                     if (fres!=FR_OK){
                                         log_error("Read seek err!, partition:%d, block:%d",dev,blockNumber);
-                                        print_packet ((unsigned char*) packet_buffer,packet_length());
+                                        print_packet ((unsigned char*) packet_buffer,packetLen);
                                         statusCode=0x2D;                // Invalid Block Number
                                     }else{
                                         statusCode=0x0;
@@ -1018,8 +1018,7 @@ void SmartPortMainLoop(){
                         if (flgSoundEffect==1){
                             TIM1->PSC=1000;
                             HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_2);
-                            HAL_Delay(15);
-                            HAL_TIMEx_PWMN_Stop(&htim1,TIM_CHANNEL_2);
+                           play_buzzer_ms(15);
                         }
 
                         BN_3B_LOW = packet_buffer[SP_G7BYTE3];                                                          // block number low
@@ -1368,7 +1367,7 @@ void SmartPortMainLoop(){
                                 }  
                                 
                                 //log_info("Smartport cmd:%02X, dest:%02X, control command code:%02X EXECUTE",packet_buffer[SP_COMMAND],dest,ctrlCode);
-                                //print_packet ((unsigned char*) packet_buffer,packet_length());
+                                //print_packet ((unsigned char*) packet_buffer,packetLen);
                                 
                                 respType=0x01;
                                 statusCode=0x0; 
@@ -1379,7 +1378,7 @@ void SmartPortMainLoop(){
                                 //
                                 SmartportReceivePacket();
                                 //log_info("Smartport cmd:%02X, dest:%02X, control command code:%02X SETADDRESS",packet_buffer[SP_COMMAND],dest,ctrlCode);
-                                //print_packet ((unsigned char*) packet_buffer,packet_length());
+                                //print_packet ((unsigned char*) packet_buffer,packetLen);
                                 //log_info("Data Packet end");
                                 respType=0x01;
                                 statusCode=0x0; 
@@ -1390,7 +1389,7 @@ void SmartPortMainLoop(){
                                 //
                                 SmartportReceivePacket();
                                 //log_info("Smartport cmd:%02X, dest:%02X, control command code:%02X DOWNLOAD",packet_buffer[SP_COMMAND],dest,ctrlCode);
-                                //print_packet ((unsigned char*) packet_buffer,packet_length());
+                                //print_packet ((unsigned char*) packet_buffer,packetLen);
                                 statusCode=0x0; 
                                 respType=0x01;
                                 break;
@@ -1403,7 +1402,7 @@ void SmartPortMainLoop(){
                         encodeReplyPacket(dest,respType,AUX,statusCode);
                         SmartPortSendPacket(packet_buffer);
                         //log_info("Smartport Response Control Packet");
-                        //print_packet ((unsigned char*) packet_buffer,packet_length());
+                        //print_packet ((unsigned char*) packet_buffer,packetLen);
                         break;
 
                     case 0xC4:                                                                                      // EXTENDED CONTROL CMD
@@ -1471,12 +1470,12 @@ void SmartPortMainLoop(){
                                 log_error("Smartport CONTROL cmd:%02X, dest:%02X, control command code:%02X OTHER",packet_buffer[SP_COMMAND],dest,ctrlCode);
                         }
 
-                        //print_packet ((unsigned char*) packet_buffer,packet_length());
+                        //print_packet ((unsigned char*) packet_buffer,packetLen);
 
                         encodeReplyPacket(dest,0x0,AUX,statusCode);                                                     // just send back a successful response
                         SmartPortSendPacket(packet_buffer);
                         
-                        //print_packet ((unsigned char*) packet_buffer,packet_length());
+                        //print_packet ((unsigned char*) packet_buffer,packetLen);
                         
                         break;
                 
@@ -1526,7 +1525,7 @@ void SmartPortMainLoop(){
                             
                         log_info("Smartport READ cmd:%02X, dst:%02X, dataPtr:%04x, ByteCount:%d, addrPtr:%lu",packet_buffer[SP_COMMAND],dest,dataPtr,ByteCount,addressPtr);
                         
-                        //print_packet ((unsigned char*) packet_buffer,packet_length());
+                        //print_packet ((unsigned char*) packet_buffer,packetLen);
                         
                         encodeReplyPacket(dest,0x0,AUX,0x0);                                                                          // For the moment send a OK reply
                         SmartPortSendPacket(packet_buffer);                                                                             // We should send the data...
@@ -1534,17 +1533,17 @@ void SmartPortMainLoop(){
 
                     case 0x89:                                                                 // Normal Write
                         log_info("Smartport cmd:%02X",packet_buffer[SP_COMMAND]);
-                        //print_packet ((unsigned char*) packet_buffer,packet_length());
+                        //print_packet ((unsigned char*) packet_buffer,packetLen);
                         break;
                     
                     case 0xC8:                                                                 // Extended Read
                         log_info("Smartport cmd:%02X",packet_buffer[SP_COMMAND]);
-                        //print_packet ((unsigned char*) packet_buffer,packet_length());
+                        //print_packet ((unsigned char*) packet_buffer,packetLen);
                         break;
 
                     case 0xc9:                                                                  // Extended Write
                         log_info("Smartport cmd:%02X",packet_buffer[SP_COMMAND]);
-                        //print_packet ((unsigned char*) packet_buffer,packet_length());         
+                        //print_packet ((unsigned char*) packet_buffer,packetLen);         
                         break;
                 } 
                
@@ -1651,6 +1650,8 @@ static void encodeDataPacket (unsigned char source){
     //end bytes
     packet_buffer[602] = 0xc8;                                                                      //pkt end
     packet_buffer[603] = 0x00;                                                                      //mark the end of the packet_buffer
+    
+    packetLen=603;
 
 }
 
@@ -1720,6 +1721,7 @@ static void encodeExtendedDataPacket (unsigned char source){
     //end bytes
     packet_buffer[602] = 0xc8;                                                                      //pkt end
     packet_buffer[603] = 0x00;                                                                      //mark the end of the packet_buffer
+    packetLen=603;
 
 }
 #pragma GCC diagnostic pop
@@ -1781,9 +1783,9 @@ static int decodeDataPacket (void){
     unsigned char checksum = 0, bit0to6, bit7, oddbits, evenbits;
     unsigned char group_buffer[8];
 
-    int pl= packet_length();
+    int pl= packetLen;
     //log_info("Data Packet Len:%d",pl);
-    //print_packet ((unsigned char*) packet_buffer,packet_length());
+    //print_packet ((unsigned char*) packet_buffer,packetLen);
 
     numodd = packet_buffer[6] & 0x7f;                                                               // Handle arbitrary length packets :) 
     numgrps = packet_buffer[7] & 0x7f;
@@ -1934,9 +1936,7 @@ static void encodeUnidiskStatReplyPacket(prodosPartition_t d){
     for (count=0;count <7;count++){
         packet_buffer[17+count] = data[count] | 0x80; 
     }
-    //log_warn("message");
-    //print_packet(packet_buffer,24);
-
+   
     packet_buffer[16] = 0x81; 
     packet_buffer[17] = 0x80; 
     packet_buffer[18] = 0x80; 
@@ -1966,6 +1966,8 @@ static void encodeUnidiskStatReplyPacket(prodosPartition_t d){
 
     packet_buffer[26] = 0xc8;                                                                       //PEND
     packet_buffer[27] = 0x00;                                                                       //end of packet in buffer
+
+    packetLen=28;
 }
 
 
@@ -2059,6 +2061,8 @@ static void encodeStatusReplyPacket (prodosPartition_t d){
     packet_buffer[21] = 0xc8;                                                                   // PEND
     packet_buffer[22] = 0x00;                                                                   // end of packet in buffer
 
+    packetLen=22;
+
 }
 
 
@@ -2149,6 +2153,8 @@ static void encodeExtendedStatusReplyPacket (prodosPartition_t d){
     packet_buffer[22] = 0xc8;                                                                   // PEND
     packet_buffer[23] = 0x00;                                                                   // end of packet in buffer
 
+    packetLen=23;
+
 }
 
 static void encodeReplyPacket(unsigned char source,unsigned char type,unsigned char aux, unsigned char respCode){
@@ -2191,7 +2197,9 @@ static void encodeReplyPacket(unsigned char source,unsigned char type,unsigned c
 
     packet_buffer[16] = 0xC8;                                                                       //PEND
     packet_buffer[17] = 0x00;                                                                       //end of packet in buffer
-
+    
+    packetLen=18;
+    
 }
 
 //*****************************************************************************
@@ -2363,6 +2371,8 @@ void encodeStatusDibReplyPacket (prodosPartition_t d){
 
     packet_buffer[45] = 0xc8;                                                                       // PEND
     packet_buffer[46] = 0x00;                                                                       // end of packet in buffer
+
+    packetLen=46;
 }
 
 
@@ -2496,6 +2506,7 @@ void encodeExtendedStatusDibReplyPacket (prodosPartition_t d){
     packet_buffer[47] = 0xc8;                                                                        // PEND
     packet_buffer[48] = 0x00;                                                                        // end of packet in buffer
 
+    packetLen=48;
 }
 
 //*****************************************************************************
@@ -2513,7 +2524,7 @@ static enum STATUS verifyCmdpktChecksum(void){
     unsigned char calc_checksum = 0; //initial value is 0
     unsigned char pkt_checksum;
 
-    length = packet_length();
+    length = packetLen;
     uint8_t offset=0;
     if(packet_buffer[length-1]!=0xC8){                                          // This is ultra weired but on the IIc & IIe 
                                                                                 // There is no trailing C8 (as per the spec)
@@ -2577,7 +2588,7 @@ C3              PBEGIN    MARKS BEGINNING OF PACKET             32 micro Sec.   
     if ( pkt_checksum == calc_checksum )
         return RET_OK;
     else{
-        print_packet ((unsigned char*) packet_buffer,packet_length());
+        print_packet ((unsigned char*) packet_buffer,packetLen);
         log_info("packet_buffer[length - 2]:%02X",packet_buffer[length - 2]);
         log_info("packet_buffer[length - 3]:%02X",packet_buffer[length - 3]);
         log_info("pkt_chksum:%02X!=calc_chksum:%02X",pkt_checksum,calc_checksum);
@@ -2623,20 +2634,6 @@ static void print_packet (unsigned char* data, int bytes){
     }
     printf(".\r\n");
     
-}
-
-//*****************************************************************************
-// Function: packet_length
-// Parameters: none
-// Returns: length
-//
-// Description: Calculates the length of the packet in the packet_buffer.
-// A zero marks the end of the packet data.
-//*****************************************************************************
-static int packet_length (void){
-    int x = 0;
-    while (packet_buffer[x++]);
-    return x - 1; // point to last packet byte = C8
 }
 
 enum STATUS SmartPortUnMountImageFromIndex(uint8_t i){

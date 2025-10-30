@@ -115,6 +115,11 @@ UART1
 // Changelog
 
 /*
+30.10.25 
+  + Modify TIM5 to be used with Buzzer
+  + Unblocking code for Buzzer Management
+  + PacketLen() clean up
+  
 27.10.25
   + Board v8 final version
   + [Smartport] fixing timing issue on IIc
@@ -396,6 +401,7 @@ TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
 TIM_HandleTypeDef htim9;
+TIM_HandleTypeDef htim5;
 
 UART_HandleTypeDef huart1;
 
@@ -419,6 +425,7 @@ static void MX_USART1_UART_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_TIM4_Init(void);
 static void MX_SDIO_SD_Init(void);
+static void MX_TIM5_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_TIM9_Init(void);
@@ -474,6 +481,7 @@ volatile uint8_t flgScreenSaver=0;
 volatile uint8_t flgDisplaySleep=0;
 uint8_t bootMode=0;
 uint8_t emulationType=0;
+uint8_t smartloaderEmulationType= DISKII;
 uint8_t bootImageIndex=0;
 list_t * dirChainedList;
 
@@ -569,7 +577,7 @@ void TIM4_IRQHandler(void){
 
   if (TIM4->SR & TIM_SR_UIF){
     buttonDebounceState = true;
-    log_debug("debounced\n");
+    //log_debug("debounced\n");
     if(HAL_GPIO_ReadPin(BTN_UP_GPIO_Port, BTN_UP_Pin)){
       debounceBtn(BTN_UP_Pin);
       TIM4->ARR=200;                                      // Manage repeat acceleration
@@ -639,6 +647,33 @@ void TIM2_IRQHandler(void){
   }    
 }
 
+#if 1
+/**
+  * @brief TIM5 IRQ Handler
+  * @note stops the buzzer PWM (TIM1 CH2 complementary) and disables TIM5 after one-shot
+  *
+  * ISR-safety: this handler performs only minimal register-level operations
+  * (clear UIF, disable complementary channel and stop the timer). Do NOT call
+  * HAL functions or any blocking code from this ISR to avoid impacting timing
+  * critical subsystems (SDIO/DMA etc.).
+  */
+void TIM5_IRQHandler(void){
+  /* Check update interrupt flag */
+  if (TIM5->SR & TIM_SR_UIF){
+    TIM5->SR &= ~TIM_SR_UIF;
+
+    /* Stop complementary PWM (non-blocking) */
+    /* Stop TIM1 CH2 complementary output (CH2N) directly via register */
+    TIM1->CCER &= ~TIM_CCER_CC2NE;
+    
+
+    /* Disable timer and its update interrupt */
+    TIM5->CR1 &= ~TIM_CR1_CEN;
+    /* Disable update interrupt using timer register (clear UIE in DIER) */
+    TIM5->DIER &= ~TIM_DIER_UIE;
+  }
+}
+#endif
 
 /**
   * @brief Adjust Enable IRQ for reading process to avoid jitter / delay / corrupted data 
@@ -843,14 +878,12 @@ void dumpBuf(unsigned char * buf,long memoryAddr,int len){
   * @retval char *
   */
 char *byte_to_binary(int x){
-  char * b=(char*)malloc(9*sizeof(char));
-  b[0] = '\0';
-
-  int z;
-  for (z = 128; z > 0; z >>= 1){
-      strcat(b, ((x & z) == z) ? "1" : "0");
+  char *b = (char*)malloc(9 * sizeof(char));
+  if (!b) return NULL;
+  for (int i = 0; i < 8; i++) {
+    b[i] = ((x & (1 << (7 - i))) ? '1' : '0');
   }
-
+  b[8] = '\0';
   return b;
 }
 
@@ -1201,10 +1234,13 @@ void processBtnInterrupt(uint16_t GPIO_Pin){
   if (flgSoundEffect==1 && (GPIO_Pin==BTN_UP_Pin || GPIO_Pin==BTN_DOWN_Pin || GPIO_Pin==BTN_ENTR_Pin || GPIO_Pin==BTN_RET_Pin)){
       TIM1->PSC=500;
       TIM1->ARR=1000;
-      TIM1->CCR2=500;
+      if (TIM1->CCR2 != 500) TIM1->CCR2=500;
       HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_2);
-      HAL_Delay(15);
-      HAL_TIMEx_PWMN_Stop(&htim1,TIM_CHANNEL_2);
+    // Instead of blocking delay, start TIM5 (15ms) to stop the sound in its IRQ callback
+    // Use direct register/macros to be ISR-safe: reset counter, enable update interrupt and start timer
+    __HAL_TIM_SET_COUNTER(&htim5, 0);
+    __HAL_TIM_ENABLE_IT(&htim5, TIM_IT_UPDATE);
+    TIM5->CR1 |= TIM_CR1_CEN; // start TIM5
   }
 
   switch (GPIO_Pin){
@@ -1231,6 +1267,32 @@ void processBtnInterrupt(uint16_t GPIO_Pin){
     default:
       break;
   }       
+}
+
+/**
+ * @brief Play buzzer for a given duration (ms). Non-blocking: starts TIM1 PWM and
+ * uses TIM5 one-shot to stop it. Assumes TIM5 prescaler is configured to 10 kHz
+ * tick (prescaler = 9599) so ticks = ms * 10.
+ */
+void play_buzzer_ms(uint32_t ms){
+  if (ms == 0) return;
+
+  TIM1->PSC = 500;
+  TIM1->ARR = 1000;
+  if (TIM1->CCR2 != 500) TIM1->CCR2 = 500;
+  HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_2);
+
+  uint32_t ticks = ms * 10U; /* 10 kHz tick -> 10 ticks per ms */
+  if (ticks == 0) ticks = 1;
+
+  /* Stop timer while we change ARR/counter */
+  TIM5->CR1 &= ~TIM_CR1_CEN;
+  TIM5->ARR = (uint32_t)(ticks - 1U);
+  TIM5->CNT = 0;
+
+  /* Enable update interrupt and start one-shot timer */
+  __HAL_TIM_ENABLE_IT(&htim5, TIM_IT_UPDATE);
+  TIM5->CR1 |= TIM_CR1_CEN;
 }
 
 /**
@@ -1396,6 +1458,7 @@ int main(void)
   MX_TIM2_Init();
   MX_TIM1_Init();
 
+  MX_TIM5_Init();
   MX_TIM9_Init();
 
   /* Initialize interrupts */
@@ -1507,6 +1570,11 @@ int main(void)
         log_warn("error getting weakBit from Config");
       else 
         log_info("weakBit=%d",flgWeakBit);
+
+      if (getConfigParamUInt8("smartloaderEmulationType",&smartloaderEmulationType)==RET_ERR)
+        log_warn("error getting smartloaderEmulationType from Config");
+      else 
+        log_info("smartloaderEmulationType=%d",smartloaderEmulationType);
 
     }
 
@@ -1710,6 +1778,10 @@ static void MX_NVIC_Init(void)
   /* TIM2_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(TIM2_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(TIM2_IRQn);
+
+  /* TIM5_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(TIM5_IRQn, 10, 0);
+  HAL_NVIC_EnableIRQ(TIM5_IRQn);
 
   /* TIM4_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(TIM4_IRQn, 10, 0);
@@ -2041,6 +2113,39 @@ static void MX_TIM4_Init(void)
 }
 
 /**
+  * @brief TIM5 Initialization Function
+  *        Configured for a 15ms periodic update (prescaler / period chosen
+  *        for timer clock = 96 MHz -> prescaler 9599, period 149 -> 15ms)
+  * @param None
+  * @retval None
+  */
+static void MX_TIM5_Init(void)
+{
+  /* USER CODE BEGIN TIM5_Init 0 */
+
+  /* USER CODE END TIM5_Init 0 */
+
+  htim5.Instance = TIM5;
+  htim5.Init.Prescaler = 9599; /* 96MHz / (9599+1) = 10 kHz */
+  htim5.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim5.Init.Period = 149;     /* 150 ticks -> 150 / 10000 = 0.015 s = 15 ms */
+  htim5.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim5.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim5) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /* USER CODE BEGIN TIM5_Init 2 */
+
+  /* Ensure update IRQ is disabled until needed; NVIC configured in MX_NVIC_Init */
+  __HAL_TIM_DISABLE_IT(&htim5, TIM_IT_UPDATE);
+
+  /* USER CODE END TIM5_Init 2 */
+
+}
+
+/**
   * @brief TIM9 Initialization Function
   * @param None
   * @retval None
@@ -2071,7 +2176,7 @@ static void MX_TIM9_Init(void)
   sConfigOC.Pulse = 65535;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-  if (HAL_TIM_OnePulse_Init(&htim4, TIM_OPMODE_SINGLE) != HAL_OK)
+  if (HAL_TIM_OnePulse_Init(&htim9, TIM_OPMODE_SINGLE) != HAL_OK)
   {
     Error_Handler();
   }
@@ -2328,6 +2433,7 @@ void Error_Handler(void)
   }
   /* USER CODE END Error_Handler_Debug */
 }
+
 #ifdef USE_FULL_ASSERT
 /**
   * @brief  Reports the name of the source file and the source line number

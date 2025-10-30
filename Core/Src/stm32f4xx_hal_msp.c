@@ -435,8 +435,8 @@ void HAL_TIM_OC_MspInit(TIM_HandleTypeDef* htim_oc)
     /* Peripheral clock enable */
     __HAL_RCC_TIM5_CLK_ENABLE();
     /* USER CODE BEGIN TIM5_MspInit 1 */
-    HAL_NVIC_SetPriority(TIM5_IRQn, 12, 0);
-    HAL_NVIC_EnableIRQ(TIM5_IRQn);
+    /* NVIC for TIM5 is configured centrally in MX_NVIC_Init() to keep
+       interrupt priorities consistent across the project. */
     /* USER CODE END TIM5_MspInit 1 */
   }
   else if(htim_oc->Instance==TIM9)

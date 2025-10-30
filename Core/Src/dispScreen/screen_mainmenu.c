@@ -42,6 +42,7 @@ static void pFavorites();
 static void pFS();
 static void pSettings();
 static void pDiskIIImage();
+static void pSmartloader();
 static void pSmartport();
 
 int8_t currentMainMenuItem=0;
@@ -77,7 +78,7 @@ listWidget_t menuLw;
       list_rpush(menuLw.lst, list_node_new(manuItem));
     }
 
-    if (emulationType==DISKII){
+    if (emulationType==DISKII || emulationType==SMARTLOADER){                                   // TODO to be tested
       manuItem=(listItem_t *)malloc(sizeof(listItem_t));
       if (manuItem==NULL){
           log_error("malloc error listItem_t");
@@ -109,6 +110,25 @@ listWidget_t menuLw;
       
       list_rpush(menuLw.lst, list_node_new(manuItem));
     }
+
+    if (emulationType==SMARTLOADER){                                                            // Callback Menu for Smartloader after browsing to file
+      manuItem=(listItem_t *)malloc(sizeof(listItem_t));
+      if (manuItem==NULL){
+          log_error("malloc error listItem_t");
+          return;
+      }
+      
+      sprintf(manuItem->title,"SMARTLOADER");
+      manuItem->type=0;
+      manuItem->icon=4;
+      manuItem->triggerfunction=pSmartloader;
+      manuItem->ival=0;
+      manuItem->arg=0;
+      
+      list_rpush(menuLw.lst, list_node_new(manuItem));
+    }
+
+
 
     if (emulationType==SMARTPORTHD){
       manuItem=(listItem_t *)malloc(sizeof(listItem_t));
@@ -194,6 +214,11 @@ static void pSettings(){
 
 static void pDiskIIImage(){
   switchPage(DISKIIIMAGE,NULL);
+  return;
+}
+
+static void pSmartloader(){
+  switchPage(DISKIIIMAGE,NULL);                                       // Smartloader and DiskIIImage share the same main screen
   return;
 }
 

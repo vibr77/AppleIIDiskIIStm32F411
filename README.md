@@ -1,6 +1,6 @@
 # SmartDisk II for Apple II
 
-The SmartDisk II is an Apple II floppy disk emulator based on the STM32F411.
+The SmartDisk II is an Apple II floppy disk emulator based on the STM32F411 (known as the blackPill)
 
 
 <img src="https://github.com/vibr77/AppleIIDiskIIStm32F411/blob/main/resources/readmeMainPhoto.png?raw=true" width="400px" />
@@ -22,10 +22,7 @@ If you do not want to build yourself a board, you can order direcly a [ready to 
 https://www.ebay.fr/itm/306152710617)
 
 The current production board revision is 4, 
-the beta revision is 7, It has not yet been fully tested. If you decide to build it yourself, it is higly recommanded to use production revision.
-
-
-
+the beta revision is 8, It has not yet been fully tested. If you decide to build it yourself, it is higly recommanded to use production revision.
 
 A discord server is available if you need support and discuss the product [discords server](
 https://discord.gg/6y2Zdazy)
@@ -38,6 +35,8 @@ The current firmware revision supports the followwing
 | DISK II 5.25| YES   |
 | SMARTPORT HD| YES   |
 | UNIDISK IIGS| YES   |
+| SMARTLOADER | YES   |
+
 
 ### Supported disk image format:
 
@@ -118,6 +117,8 @@ to format the SDCard under linux use the following command:
 Please be careful, Window 10/11 is not formatting the SDCard the right way. 
 
 An config menu option is provided directly in the SmartDisk II to format the SDCard
+
+<!> Please note as well that some SDCard has a very poor read / write rate, I have been testing dozen of sdcard, I really suggest to use known brand to avoid wasting your time.
 
 ## Main Features ##
 
