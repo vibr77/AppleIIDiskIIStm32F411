@@ -577,7 +577,7 @@ void TIM4_IRQHandler(void){
 
   if (TIM4->SR & TIM_SR_UIF){
     buttonDebounceState = true;
-    //log_debug("debounced\n");
+
     if(HAL_GPIO_ReadPin(BTN_UP_GPIO_Port, BTN_UP_Pin)){
       debounceBtn(BTN_UP_Pin);
       TIM4->ARR=200;                                      // Manage repeat acceleration
@@ -659,9 +659,10 @@ void TIM2_IRQHandler(void){
   */
 void TIM5_IRQHandler(void){
   /* Check update interrupt flag */
+  log_info("A");
   if (TIM5->SR & TIM_SR_UIF){
     TIM5->SR &= ~TIM_SR_UIF;
-
+    
     /* Stop complementary PWM (non-blocking) */
     /* Stop TIM1 CH2 complementary output (CH2N) directly via register */
     TIM1->CCER &= ~TIM_CCER_CC2NE;
@@ -1232,15 +1233,7 @@ void pSdEject(){
 void processBtnInterrupt(uint16_t GPIO_Pin){     
 
   if (flgSoundEffect==1 && (GPIO_Pin==BTN_UP_Pin || GPIO_Pin==BTN_DOWN_Pin || GPIO_Pin==BTN_ENTR_Pin || GPIO_Pin==BTN_RET_Pin)){
-      TIM1->PSC=500;
-      TIM1->ARR=1000;
-      if (TIM1->CCR2 != 500) TIM1->CCR2=500;
-      HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_2);
-    // Instead of blocking delay, start TIM5 (15ms) to stop the sound in its IRQ callback
-    // Use direct register/macros to be ISR-safe: reset counter, enable update interrupt and start timer
-    __HAL_TIM_SET_COUNTER(&htim5, 0);
-    __HAL_TIM_ENABLE_IT(&htim5, TIM_IT_UPDATE);
-    TIM5->CR1 |= TIM_CR1_CEN; // start TIM5
+    play_buzzer_ms(150);
   }
 
   switch (GPIO_Pin){
@@ -1279,20 +1272,26 @@ void play_buzzer_ms(uint32_t ms){
 
   TIM1->PSC = 500;
   TIM1->ARR = 1000;
-  if (TIM1->CCR2 != 500) TIM1->CCR2 = 500;
+  if (TIM1->CCR2 != 500) 
+    TIM1->CCR2 = 500;
   HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_2);
 
   uint32_t ticks = ms * 10U; /* 10 kHz tick -> 10 ticks per ms */
   if (ticks == 0) ticks = 1;
 
   /* Stop timer while we change ARR/counter */
-  TIM5->CR1 &= ~TIM_CR1_CEN;
+ //TIM5->CR1 &= ~TIM_CR1_CEN;
   TIM5->ARR = (uint32_t)(ticks - 1U);
   TIM5->CNT = 0;
-
+  HAL_TIM_Base_Start_IT(&htim5);
   /* Enable update interrupt and start one-shot timer */
-  __HAL_TIM_ENABLE_IT(&htim5, TIM_IT_UPDATE);
-  TIM5->CR1 |= TIM_CR1_CEN;
+  //TIM5->DIER |= TIM_DIER_UIE;
+  //TIM5->CR1 |= TIM_CR1_CEN;
+   HAL_NVIC_SetPriority(TIM5_IRQn, 1, 0);
+  HAL_NVIC_EnableIRQ(TIM5_IRQn);
+  while (1){
+    printf("%d %d\n",TIM5->CNT, TIM5->ARR);
+  }
 }
 
 /**
@@ -1400,6 +1399,58 @@ enum STATUS execAction(enum action *nextAction){
   return RET_OK;
 }
 
+
+void setEmulationPtr(uint8_t emuType){
+
+  switch(emuType){
+    
+    case SMARTLOADER:                                         // Smartloader & DISK II shares the same function it is the driver that is changing
+    case DISKII:
+      log_info("loading DiskII emulation");
+      ptrPhaseIRQ=DiskIIPhaseIRQ;
+      ptrReceiveDataIRQ=DiskIIReceiveDataIRQ;
+      ptrSendDataIRQ=DiskIISendDataIRQ;
+      ptrWrReqIRQ=DiskIIWrReqIRQ;
+      //ptrSelectIRQ=DiskIISelectIRQ;
+      ptrDeviceEnableIRQ=DiskIIDeviceEnableIRQ;
+      ptrMainLoop=DiskIIMainLoop;
+      ptrUnmountImage=DiskIIUnmountImage;
+      ptrMountImagefile=DiskIIMountImagefile;
+      ptrInit=DiskIIInit;
+      //ptrFileFilter=diskIIImageExt;
+
+      break;
+
+    case DISK35:
+      log_info("loading Disk3.5 emulation");
+      ptrPhaseIRQ=disk35PhaseIRQ;
+      ptrReceiveDataIRQ=disk35ReceiveDataIRQ;
+      ptrSendDataIRQ=disk35SendDataIRQ;
+      ptrWrReqIRQ=disk35WrReqIRQ;
+      ptrDeviceEnableIRQ=disk35DeviceEnableIRQ;
+      ptrMainLoop=disk35MainLoop;
+      //ptrUnmountImage=nothing;
+      //ptrMountImagefile=nothing;
+      ptrInit=disk35Init;
+      break;
+
+    case SMARTPORTHD:
+      log_info("loading SmartPortHD emulation");
+      ptrPhaseIRQ=SmartPortPhaseIRQ;
+      ptrReceiveDataIRQ=SmartPortReceiveDataIRQ;
+      ptrSendDataIRQ=SmartPortSendDataIRQ;
+      ptrWrReqIRQ=SmartPortWrReqIRQ;
+      //ptrDeviceEnableIRQ=SmartPortDeviceEnableIRQ;
+      ptrMainLoop=SmartPortMainLoop;
+      //ptrUnmountImage=NULL;
+      //ptrMountImagefile=SmartPortMountImage;
+      ptrInit=SmartPortInit;
+      break;
+
+  }
+
+
+}
 
 /* USER CODE END 0 */
 
@@ -1611,52 +1662,7 @@ int main(void)
   //emulationType=DISKII;
   //emulationType=SMARTPORTHD;
 
-  switch(emulationType){
-    
-    case SMARTLOADER:                                         // Smartloader & DISK II shares the same function it is the driver that is changing
-    case DISKII:
-      log_info("loading DiskII emulation");
-      ptrPhaseIRQ=DiskIIPhaseIRQ;
-      ptrReceiveDataIRQ=DiskIIReceiveDataIRQ;
-      ptrSendDataIRQ=DiskIISendDataIRQ;
-      ptrWrReqIRQ=DiskIIWrReqIRQ;
-      //ptrSelectIRQ=DiskIISelectIRQ;
-      ptrDeviceEnableIRQ=DiskIIDeviceEnableIRQ;
-      ptrMainLoop=DiskIIMainLoop;
-      ptrUnmountImage=DiskIIUnmountImage;
-      ptrMountImagefile=DiskIIMountImagefile;
-      ptrInit=DiskIIInit;
-      //ptrFileFilter=diskIIImageExt;
-
-      break;
-
-    case DISK35:
-      log_info("loading Disk3.5 emulation");
-      ptrPhaseIRQ=disk35PhaseIRQ;
-      ptrReceiveDataIRQ=disk35ReceiveDataIRQ;
-      ptrSendDataIRQ=disk35SendDataIRQ;
-      ptrWrReqIRQ=disk35WrReqIRQ;
-      ptrDeviceEnableIRQ=disk35DeviceEnableIRQ;
-      ptrMainLoop=disk35MainLoop;
-      //ptrUnmountImage=nothing;
-      //ptrMountImagefile=nothing;
-      ptrInit=disk35Init;
-      break;
-
-    case SMARTPORTHD:
-      log_info("loading SmartPortHD emulation");
-      ptrPhaseIRQ=SmartPortPhaseIRQ;
-      ptrReceiveDataIRQ=SmartPortReceiveDataIRQ;
-      ptrSendDataIRQ=SmartPortSendDataIRQ;
-      ptrWrReqIRQ=SmartPortWrReqIRQ;
-      //ptrDeviceEnableIRQ=SmartPortDeviceEnableIRQ;
-      ptrMainLoop=SmartPortMainLoop;
-      //ptrUnmountImage=NULL;
-      //ptrMountImagefile=SmartPortMountImage;
-      ptrInit=SmartPortInit;
-      break;
-
-  }
+  setEmulationPtr(emulationType);
 
   // --------------------------------------------------------------------
   // Init emulation
@@ -2139,7 +2145,7 @@ static void MX_TIM5_Init(void)
   /* USER CODE BEGIN TIM5_Init 2 */
 
   /* Ensure update IRQ is disabled until needed; NVIC configured in MX_NVIC_Init */
-  __HAL_TIM_DISABLE_IT(&htim5, TIM_IT_UPDATE);
+  //__HAL_TIM_DISABLE_IT(&htim5, TIM_IT_UPDATE);
 
   /* USER CODE END TIM5_Init 2 */
 

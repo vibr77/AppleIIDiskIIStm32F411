@@ -102,6 +102,9 @@ void irqWIdle();
 
 void irqEnableSDIO();
 void irqDisableSDIO();
+
+void setEmulationPtr(uint8_t emuType);
+
 void GPIOWritePin(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, GPIO_PinState PinState);
 void Custom_SD_WriteCpltCallback(void);
 void Custom_SD_ReadCpltCallback(void);
@@ -121,6 +124,8 @@ enum STATUS makeSDFS();
 
 enum STATUS mountImagefile(char * filename);
 enum STATUS initeBeaming();
+
+
 
 typedef struct image_info_s {
   char title[32];

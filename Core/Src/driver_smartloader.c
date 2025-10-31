@@ -523,6 +523,20 @@ enum STATUS setSmartloaderTrackBitStream(int trk,unsigned char * buffer){
                 // We need to put a bit of magik Here to switch the emulation if needed and load the image...
                 // not easy...
                 
+                if (smartloaderEmulationType==DISKII){
+                    setEmulationPtr(DISKII);
+                    DiskIIMountImagefile(tmpFullPathImageFilename);
+                    switchPage(DISKIIIMAGE,tmpFullPathImageFilename);
+                    free(dskData);
+                    return RET_OK;
+                }else if (smartloaderEmulationType==SMARTPORTHD){
+                    setEmulationPtr(SMARTPORTHD);
+                    SmartPortInitWithImage(tmpFullPathImageFilename);
+                    free(dskData);
+                    return RET_OK;
+                }
+                    
+
                 DiskIIMountImagefile(tmpFullPathImageFilename);
                 switchPage(DISKIIIMAGE,tmpFullPathImageFilename);
                 free(dskData);

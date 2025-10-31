@@ -32,6 +32,7 @@ void SmartPortReceiveDataIRQ();
 void SmartPortSendDataIRQ();
 void SmartPortMainLoop();
 void SmartPortInit();
+void SmartPortInitWithImage(char * filename);
 
 void assertAck();
 void deAssertAck();

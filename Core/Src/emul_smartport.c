@@ -388,7 +388,19 @@ char * SmartPortFindImage(char * pattern){
     f_closedir(&dir);
     return NULL;
 }
-const  char * smartportImageExt[]={"PO","po","2MG","2mg","HDV","hdv",NULL};   
+const  char * smartportImageExt[]={"PO","po","2MG","2mg","HDV","hdv",NULL};  
+
+void SmartPortInitWithImage(char * filename){
+    
+    HAL_TIM_PWM_Stop_IT(&htim2,TIM_CHANNEL_3);
+    HAL_TIMEx_PWMN_Stop(&htim1,TIM_CHANNEL_2);
+
+    TIM3->ARR=(32*12)-1;
+    TIM2->ARR=(32*12)-5;
+    SmartPortMountImage(&devices[0],filename);
+   
+}
+
 void SmartPortInit(){
 
 
@@ -441,6 +453,7 @@ void SmartPortInit(){
 }
 
 
+
 void SmartPortSendPacket(volatile unsigned char* buffer){
     
                                                                                                 // Reset the flag before sending
@@ -490,7 +503,7 @@ static enum STATUS SmartportReceivePacket(){
     while (flgPacket!=1){
 
     }                                                                                           // Receive finish
-    packetLen=wrBytes;                                                                         // to avoid recomputation
+    packetLen=wrBytes-1;                                                                         // to avoid recomputation
     deAssertAck();                                                                              // ACK LOW indicates to the host we have received a packer
     
     while(phase & 0x01){
@@ -833,8 +846,8 @@ void SmartPortMainLoop(){
                         */
 
                         if (flgSoundEffect==1){
-                            TIM1->PSC=1000;
-                            HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_2);
+                            //TIM1->PSC=1000;
+                            //HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_2);
                             play_buzzer_ms(15);
                         }
 
@@ -916,8 +929,8 @@ void SmartPortMainLoop(){
                         */
 
                         if (flgSoundEffect==1){
-                            TIM1->PSC=1000;
-                            HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_2);
+                            //TIM1->PSC=1000;
+                            //HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_2);
                             play_buzzer_ms(15);
                         }
  
@@ -1016,9 +1029,9 @@ void SmartPortMainLoop(){
                         */
 
                         if (flgSoundEffect==1){
-                            TIM1->PSC=1000;
-                            HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_2);
-                           play_buzzer_ms(15);
+                            //TIM1->PSC=1000;
+                            //HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_2);
+                            play_buzzer_ms(15);
                         }
 
                         BN_3B_LOW = packet_buffer[SP_G7BYTE3];                                                          // block number low
