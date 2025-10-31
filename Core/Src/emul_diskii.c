@@ -940,8 +940,7 @@ void DiskIIMainLoop(){
                 
                 // updateDiskIIImageScr(1,rTrk);
                 if (flgSoundEffect==1){
-                    TIM1->PSC=1000;
-                    HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_2);
+                    play_buzzer_ms(150);
                 }
                 
                 irqEnableSDIO();
@@ -982,11 +981,11 @@ void DiskIIMainLoop(){
                     
                     //updateDiskIIImageScr(1,prevTrk);
                     if (flgSoundEffect==1){
-                        TIM1->PSC=1000;
-                        HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_2);
+                        play_buzzer_ms(150);
                     }
 
                     irqEnableSDIO();
+
                     #pragma GCC diagnostic push
                     #pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
                     if (setTrackBitStream(prevTrk,DMA_BIT_TX_BUFFER)==RET_OK){
@@ -1015,8 +1014,7 @@ void DiskIIMainLoop(){
                 // --------------------------------------------------------------------
                 
                 if (flgSoundEffect==1){
-                    TIM1->PSC=1000;
-                    HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_2);
+                    play_buzzer_ms(150);
                 }
 
                 irqEnableSDIO();
@@ -1100,9 +1098,9 @@ void DiskIIMainLoop(){
             }
         }
 
-        if (flgSoundEffect==1){
-            HAL_TIMEx_PWMN_Stop(&htim1,TIM_CHANNEL_2);
-        }
+        //if (flgSoundEffect==1){
+        //    HAL_TIMEx_PWMN_Stop(&htim1,TIM_CHANNEL_2);
+        //}
 
         if (flgWrRequest==1){
             cAlive++;

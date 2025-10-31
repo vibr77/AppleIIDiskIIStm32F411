@@ -87,6 +87,11 @@ static void print_packet (unsigned char* data, int bytes);
 
 static enum STATUS SmartportReceivePacket();
 static void pNextAction();
+
+int click=100;
+
+const char SmartportProlog[]={0xFF,0x3F,0xCF,0xF3,0xFC,0xFF,0xC3};
+
 /**
   * @brief SmartPortReceiveDataIRQ function is used to manage SmartPort Emulation in TIMER 
   * @param None
@@ -259,7 +264,6 @@ static volatile int byteSize=0;
 
 void SmartPortSendDataIRQ(){
     
-
     if (nextBit==1)                                                                 // This has to be at the beginning otherwise timing of pulse will be reduced
         RD_DATA_GPIO_Port->BSRR=RD_DATA_Pin;
     else
@@ -455,9 +459,8 @@ void SmartPortInit(){
 
 
 void SmartPortSendPacket(volatile unsigned char* buffer){
-    
-                                                                                                // Reset the flag before sending
-    bitCounter=0;
+                                                                                                
+    bitCounter=0;                                                                               // Reset the data counters
     bitPtr=0;
     bytePtr=0;
     bitSize=packetLen*8;
@@ -466,10 +469,10 @@ void SmartPortSendPacket(volatile unsigned char* buffer){
     setWPProtectPort(1);                                                                        // Set ACK Port to output
     assertAck();                                                                                // Set ACK high to signal we are ready to send
     
-    while (!(phase & 0x1)){
+    while (!(phase & 0x1)){                                                                     // Wait for REQ to go high              
        pNextAction();
     }; 
-                                                                                           // Wait Req to be HIGH, HOST is ready to receive
+                                                                                           
     HAL_TIM_PWM_Start_IT(&htim3,TIM_CHANNEL_4);
     flgPacket=0;                                                                                // This line need to be here <!>
     while (flgPacket!=1){
@@ -498,17 +501,16 @@ static enum STATUS SmartportReceivePacket(){
     while(!(phase & 0x01)){
         pNextAction();
     };
-                                                                                                // WAIT FOR REQ TO GO HIGH
+                                                                                                
     flgPacket=0;                                                                                // <!> This position is important
     while (flgPacket!=1){
 
     }                                                                                           // Receive finish
-    packetLen=wrBytes-1;                                                                         // to avoid recomputation
+    packetLen=wrBytes-1;                                                                        // to avoid recomputation
     deAssertAck();                                                                              // ACK LOW indicates to the host we have received a packer
     
     while(phase & 0x01){
     }
-
 
     return RET_OK;                                                                              // Wait for REQ to go low
 }
@@ -522,13 +524,12 @@ void deAssertAck(){
 
 void SmartPortMainLoop(){
 
-
     /*
     Function    PH3     PH2     PH1     PH0     Binary
     Bus ENABLE   1       X       1       X        0b1010 0b1011 0b1110 Ob1111 
     Bus Reset    0       1       0       1
 
-    Binary       8        4        2        1
+    Binary       8       4       2       1
     
     Bus enable can take:
     0b1010  2+8=10      0x0A
@@ -569,7 +570,6 @@ void SmartPortMainLoop(){
     if (bootImageIndex==0)
         bootImageIndex=1;
 
-
     while (1) {
 
         initPartition=bootImageIndex-1;                                                     // Update are enable
@@ -592,7 +592,7 @@ void SmartPortMainLoop(){
                 for (partition = 0; partition < MAX_PARTITIONS; partition++)                // Clear device_id table
                     devices[partition].device_id = 0;
                 
-                log_info("Ph:0x05 Reset message");
+                log_info("Ph:0x05 Bus Reset message");
                 break;
                                                                                             // Phase lines for smartport bus enable
                                                                                             // Ph3=1 ph2=x ph1=1 ph0=x
@@ -617,7 +617,6 @@ void SmartPortMainLoop(){
                     break;
                 }
                 
-
                 //---------------------------------------------
                 // STEP 1 CHECK IF INIT PACKET 
                 //---------------------------------------------
@@ -764,7 +763,7 @@ void SmartPortMainLoop(){
                                         0010: 88 FF FF BB C8                                  - ................
                                     */
 
-                                    //log_error("Unidisk UniDiskStat  not implemented");
+                                    
                                     encodeUnidiskStatReplyPacket(devices[dev]);
                                     //print_packet((unsigned char*) packet_buffer,packetLen);
 
@@ -846,9 +845,7 @@ void SmartPortMainLoop(){
                         */
 
                         if (flgSoundEffect==1){
-                            //TIM1->PSC=1000;
-                            //HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_2);
-                            play_buzzer_ms(15);
+                            play_buzzer_ms(click);
                         }
 
                         BN_3B_LOW = packet_buffer[SP_G7BYTE3];                                                              // block number low
@@ -929,9 +926,7 @@ void SmartPortMainLoop(){
                         */
 
                         if (flgSoundEffect==1){
-                            //TIM1->PSC=1000;
-                            //HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_2);
-                            play_buzzer_ms(15);
+                            play_buzzer_ms(click);
                         }
  
                         MSB2    =  packet_buffer[SP_GRP7MSB+8];
@@ -1029,9 +1024,7 @@ void SmartPortMainLoop(){
                         */
 
                         if (flgSoundEffect==1){
-                            //TIM1->PSC=1000;
-                            //HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_2);
-                            play_buzzer_ms(15);
+                            play_buzzer_ms(click);
                         }
 
                         BN_3B_LOW = packet_buffer[SP_G7BYTE3];                                                          // block number low
@@ -1248,7 +1241,7 @@ void SmartPortMainLoop(){
                         
                         uint8_t numMountedPartition=0;
                         for (partition = 0; partition < MAX_PARTITIONS; partition++) { 
-                                numMountedPartition++;
+                            numMountedPartition++;
                         }
 
                         if (number_partitions_initialised >numMountedPartition){                                            // The ROM03 IIGS seems to REINIT the Smartport after Boot, we need to manage this case
@@ -1563,8 +1556,7 @@ void SmartPortMainLoop(){
             }
             
             packet_buffer[0]=0x0;
-            //assertAck();
-
+            
             cAlive++;
             if (cAlive==5000000){ 
                 HAL_SD_CardStateTypeDef state;
@@ -1586,7 +1578,6 @@ void SmartPortMainLoop(){
                         execAction(&nextAction);
                 }
             }
-            
         }            
 
     return;
@@ -1615,14 +1606,15 @@ static void encodeDataPacket (unsigned char source){
     for (count = 0; count < 512; count++)                                                           // Calculate checksum of sector bytes before we destroy them
         checksum = checksum ^ packet_buffer[count];                                                 // xor all the data bytes
 
-  // Start assembling the packet at the rear and work 
-  // your way to the front so we don't overwrite data
-  // we haven't encoded yet
+    // Start assembling the packet at the rear and work 
+    // your way to the front so we don't overwrite data
+    // we haven't encoded yet
 
-  //grps of 7
+    //grps of 7
+    
     for (grpcount = 72; grpcount >= 0; grpcount--){ //73
 
-        memcpy(group_buffer, packet_buffer + 1 + (grpcount * 7), 7);
+        memcpy(group_buffer, (const unsigned char*)(packet_buffer + 1 + (grpcount * 7)), 7);
         grpmsb = 0;                                                                                 // add group msb byte
         for (grpbyte = 0; grpbyte < 7; grpbyte++)
             grpmsb = grpmsb | ((group_buffer[grpbyte] >> (grpbyte + 1)) & (0x80 >> (grpbyte + 1)));
@@ -1635,24 +1627,27 @@ static void encodeDataPacket (unsigned char source){
 
     }
 
-    packet_buffer[14] = ((packet_buffer[0] >> 1) & 0x40) | 0x80;                                    //total number of packet data bytes for 512 data bytes is 584
-    packet_buffer[15] = packet_buffer[0] | 0x80;                                                    //odd byte
+    packet_buffer[14] = ((packet_buffer[0] >> 1) & 0x40) | 0x80;                                    // total number of packet data bytes for 512 data bytes is 584
+    packet_buffer[15] = packet_buffer[0] | 0x80;                                                    // odd byte
 
-    packet_buffer[0] = 0xff;                                                                        //sync bytes
+    memcpy((void*)packet_buffer,SmartportProlog,7);
+     
+    /*
+    packet_buffer[0] = 0xff;                                                                        // sync bytes
     packet_buffer[1] = 0x3f;
     packet_buffer[2] = 0xcf;
     packet_buffer[3] = 0xf3;
     packet_buffer[4] = 0xfc;
     packet_buffer[5] = 0xff;
-
-    packet_buffer[6] = 0xc3;                                                                        //PBEGIN - start byte
-    packet_buffer[7] = 0x80;                                                                        //DEST - dest id - host
-    packet_buffer[8] = source;                                                                      //SRC - source id - us
-    packet_buffer[9] = 0x82;                                                                        //TYPE - 0x82 = data
-    packet_buffer[10] = 0x80;                                                                       //AUX
-    packet_buffer[11] = 0x80;                                                                       //STAT
-    packet_buffer[12] = 0x81;                                                                       //ODDCNT  - 1 odd byte for 512 byte packet
-    packet_buffer[13] = 0xC9;                                                                       //GRP7CNT - 73 groups of 7 bytes for 512 byte packet
+    packet_buffer[6] = 0xc3;                                                                        // PBEGIN - start byte
+    */
+    packet_buffer[7] = 0x80;                                                                        // DEST - dest id - host
+    packet_buffer[8] = source;                                                                      // SRC - source id - us
+    packet_buffer[9] = 0x82;                                                                        // TYPE - 0x82 = data
+    packet_buffer[10] = 0x80;                                                                       // AUX
+    packet_buffer[11] = 0x80;                                                                       // STAT
+    packet_buffer[12] = 0x81;                                                                       // ODDCNT  - 1 odd byte for 512 byte packet
+    packet_buffer[13] = 0xC9;                                                                       // GRP7CNT - 73 groups of 7 bytes for 512 byte packet
 
     for (count = 7; count < 14; count++)                                                            // now xor the packet header bytes
         checksum = checksum ^ packet_buffer[count];
@@ -1688,11 +1683,12 @@ static void encodeExtendedDataPacket (unsigned char source){
     for (count = 0; count < 512; count++)                                                            // Calculate checksum of sector bytes before we destroy them
         checksum = checksum ^ packet_buffer[count];                                                  // xor all the data bytes
 
-  // Start assembling the packet at the rear and work 
-  // your way to the front so we don't overwrite data
-  // we haven't encoded yet
+    // Start assembling the packet at the rear and work 
+    // your way to the front so we don't overwrite data
+    // we haven't encoded yet
 
-  //grps of 7
+    // grps of 7
+
     for (grpcount = 72; grpcount >= 0; grpcount--){ //73
         memcpy(group_buffer, packet_buffer + 1 + (grpcount * 7), 7);
         grpmsb = 0;                                                                                  // add group msb byte
@@ -1709,15 +1705,21 @@ static void encodeExtendedDataPacket (unsigned char source){
 
     packet_buffer[14] = ((packet_buffer[0] >> 1) & 0x40) | 0x80;                                    //total number of packet data bytes for 512 data bytes is 584
     packet_buffer[15] = packet_buffer[0] | 0x80;                                                    //odd byte
-
+    memcpy((void*)packet_buffer,SmartportProlog,7);
+    /*
     packet_buffer[0] = 0xff;                                                                        //sync bytes
     packet_buffer[1] = 0x3f;
     packet_buffer[2] = 0xcf;
     packet_buffer[3] = 0xf3;
     packet_buffer[4] = 0xfc;
     packet_buffer[5] = 0xff;
-
     packet_buffer[6] = 0xc3;                                                                        //PBEGIN - start byte
+    */
+                                                                        //PBEGIN - start byte
+    
+
+
+
     packet_buffer[7] = 0x80;                                                                        //DEST - dest id - host
     packet_buffer[8] = source;                                                                      //SRC - source id - us
     packet_buffer[9] = 0xC2;                                                                        //TYPE - 0xC2 = extended data
@@ -1845,19 +1847,20 @@ static int decodeDataPacket (void){
     }
 }
 
-
-
-
 static void encodeUnidiskStatReplyPacket(prodosPartition_t d){
     unsigned char checksum = 0;
 
 
+    memcpy((void*)packet_buffer,SmartportProlog,7);
+    /*
     packet_buffer[0] = 0xff;                                                                        //sync bytes
     packet_buffer[1] = 0x3f;
     packet_buffer[2] = 0xcf;
     packet_buffer[3] = 0xf3;
     packet_buffer[4] = 0xfc;
     packet_buffer[5] = 0xff;
+    packet_buffer[6] = 0xc3;                                                                        //PBEGIN - start byte
+    */
 
     /*
 
@@ -1926,7 +1929,7 @@ static void encodeUnidiskStatReplyPacket(prodosPartition_t d){
     data[5]=d.unidiskRegister_Y;
     data[6]=d.unidiskRegister_P;
 
-    packet_buffer[6] = 0xC3;                                                                        // PBEGIN   - start byte
+    //packet_buffer[6] = 0xC3;                                                                        // PBEGIN   - start byte
     packet_buffer[7] = 0x80;                                                                        // DEST     - dest id - host
     packet_buffer[8] = d.device_id;                                                                 // SRC      - source id - us
     packet_buffer[9] =  0x81;                                                                       // TYPE     - status
@@ -2034,14 +2037,16 @@ static void encodeStatusReplyPacket (prodosPartition_t d){
     data[2] = (d.blocks >> 8 ) & 0xff;
     data[3] = (d.blocks >> 16 ) & 0xff;
 
+   memcpy((void*)packet_buffer,SmartportProlog,7);
+    /*
     packet_buffer[0] = 0xff;                                                                        //sync bytes
     packet_buffer[1] = 0x3f;
     packet_buffer[2] = 0xcf;
     packet_buffer[3] = 0xf3;
     packet_buffer[4] = 0xfc;
     packet_buffer[5] = 0xff;
-
-    packet_buffer[6] = 0xc3;                                                                    // PBEGIN   - start byte
+    packet_buffer[6] = 0xc3;                                                                        //PBEGIN - start byte
+    */                                                               
     packet_buffer[7] = 0x80;                                                                    // DEST     - dest id - host
     packet_buffer[8] = d.device_id;                                                             // SRC      - source id - us
     packet_buffer[9] = 0x81;                                                                    // TYPE     - status
@@ -2126,14 +2131,16 @@ static void encodeExtendedStatusReplyPacket (prodosPartition_t d){
     data[3] = (d.blocks >> 16 ) & 0xff;
     data[4] = (d.blocks >> 24 ) & 0xff;
 
-    packet_buffer[0] = 0xff;                                                                    // SYNC bytes
+    memcpy((void*)packet_buffer,SmartportProlog,7);
+    /*
+    packet_buffer[0] = 0xff;                                                                        //sync bytes
     packet_buffer[1] = 0x3f;
     packet_buffer[2] = 0xcf;
     packet_buffer[3] = 0xf3;
     packet_buffer[4] = 0xfc;
     packet_buffer[5] = 0xff;
-
-    packet_buffer[6] = 0xc3;                                                                    // PBEGIN - start byte
+    packet_buffer[6] = 0xc3;                                                                   
+    */                                                                                          // PBEGIN - start byte
     packet_buffer[7] = 0x80;                                                                    // DEST - dest id - host
     packet_buffer[8] = d.device_id;                                                             // SRC - source id - us
     packet_buffer[9] = 0xC1;                                                                    // TYPE - extended status
@@ -2187,14 +2194,16 @@ static void encodeReplyPacket(unsigned char source,unsigned char type,unsigned c
 
     unsigned char checksum = 0;
 
-    packet_buffer[0] = 0xff;                                                                        // sync bytes
+    memcpy((void*)packet_buffer,SmartportProlog,7);
+    /*
+    packet_buffer[0] = 0xff;                                                                        //sync bytes
     packet_buffer[1] = 0x3f;
     packet_buffer[2] = 0xcf;
     packet_buffer[3] = 0xf3;
     packet_buffer[4] = 0xfc;
     packet_buffer[5] = 0xff;
-
-    packet_buffer[6] = 0xC3;                                                                        // PBEGIN - start byte
+    packet_buffer[6] = 0xc3;                                                                        
+    */                                                                                              // PBEGIN - start byte
     packet_buffer[7] = 0x80;                                                                        // DEST - dest id - host
     packet_buffer[8] = source;                                                                      // SRC - source id - us
     packet_buffer[9] = type | 0x80;                                                                 // TYPE -status
@@ -2362,13 +2371,16 @@ void encodeStatusDibReplyPacket (prodosPartition_t d){
     packet_buffer[17] = data[2] | 0x80;
     packet_buffer[18] = data[3] | 0x80;;
 
-    packet_buffer[0] = 0xff;                                                                        // sync bytes
+    memcpy((void*)packet_buffer,SmartportProlog,7);
+    /*
+    packet_buffer[0] = 0xff;                                                                        //sync bytes
     packet_buffer[1] = 0x3f;
     packet_buffer[2] = 0xcf;
     packet_buffer[3] = 0xf3;
     packet_buffer[4] = 0xfc;
     packet_buffer[5] = 0xff;
-    packet_buffer[6] = 0xc3;                                                                        // PBEGIN - start byte
+    packet_buffer[6] = 0xc3;                                                                        //PBEGIN - start byte
+    */                                                                        // PBEGIN - start byte
     packet_buffer[7] = 0x80;                                                                        // DEST - dest id - host
     packet_buffer[8] = d.device_id;                                                                 // SRC - source id - us
     packet_buffer[9] = 0x81;                                                                        // TYPE -status
@@ -2455,14 +2467,16 @@ void encodeExtendedStatusDibReplyPacket (prodosPartition_t d){
 
     unsigned char checksum = 0;
 
-    packet_buffer[0] = 0xff;                                                                        // SYNC BYTES
+    memcpy((void*)packet_buffer,SmartportProlog,7);
+    /*
+    packet_buffer[0] = 0xff;                                                                        //sync bytes
     packet_buffer[1] = 0x3f;
     packet_buffer[2] = 0xcf;
     packet_buffer[3] = 0xf3;
     packet_buffer[4] = 0xfc;
     packet_buffer[5] = 0xff;
-
-    packet_buffer[6] = 0xc3;                                                                        // PBEGIN - start byte
+    packet_buffer[6] = 0xc3;                                                                       
+    */                                                                                              // PBEGIN - start byte
     packet_buffer[7] = 0x80;                                                                        // DEST - dest id - host
     packet_buffer[8] = d.device_id;                                                                 // SRC - source id - us
     packet_buffer[9] = 0x81;                                                                        // TYPE -status

@@ -119,6 +119,13 @@ UART1
   + Modify TIM5 to be used with Buzzer
   + Unblocking code for Buzzer Management
   + PacketLen() clean up
+  + Fixing minor issue on Smartport write checksum calculation
+  + Screensaver timer management fix
+  + Fixing deadlock on buzzer
+  + blocking Smartport fix
+  + Adding Smartloader Emulation type switch in main menu
+  + Adding Smartloader navigation to file Manager
+  
   
 27.10.25
   + Board v8 final version
@@ -657,23 +664,26 @@ void TIM2_IRQHandler(void){
   * HAL functions or any blocking code from this ISR to avoid impacting timing
   * critical subsystems (SDIO/DMA etc.).
   */
+
 void TIM5_IRQHandler(void){
-  /* Check update interrupt flag */
-  log_info("A");
+  //log_info("A");
   if (TIM5->SR & TIM_SR_UIF){
-    TIM5->SR &= ~TIM_SR_UIF;
     
-    /* Stop complementary PWM (non-blocking) */
-    /* Stop TIM1 CH2 complementary output (CH2N) directly via register */
+    
+  } if (TIM5->SR & TIM_SR_CC1IF){                         // Pulse compare interrrupt on Channel 1
+    //TIM1->CCER &= ~TIM_CCER_CC2NE;
     TIM1->CCER &= ~TIM_CCER_CC2NE;
     
-
+    HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);
     /* Disable timer and its update interrupt */
     TIM5->CR1 &= ~TIM_CR1_CEN;
     /* Disable update interrupt using timer register (clear UIE in DIER) */
     TIM5->DIER &= ~TIM_DIER_UIE;
-  }
+    TIM5->SR &= ~TIM_SR_CC1IF;                            // Clear the compare interrupt flag
+  }else
+    TIM5->SR = 0;
 }
+
 #endif
 
 /**
@@ -1236,25 +1246,27 @@ void processBtnInterrupt(uint16_t GPIO_Pin){
     play_buzzer_ms(150);
   }
 
+  TIM9->CNT=0;                                                                          // Reset the screensaver timer    
+
   switch (GPIO_Pin){
     case BTN_UP_Pin:
       ptrbtnUp(NULL);
-      log_debug("BTN UP"); 
+      //log_debug("BTN UP"); 
       break;
 
     case BTN_DOWN_Pin:
       ptrbtnDown(NULL);
-      log_debug("BTN DOWN");
+      //log_debug("BTN DOWN");
       break;
 
     case BTN_ENTR_Pin:
       ptrbtnEntr(NULL);
-      log_debug("BTN ENT");
+      //log_debug("BTN ENT");
       break;
 
     case BTN_RET_Pin:
       ptrbtnRet(NULL);
-      log_debug("BTN RET");
+      //log_debug("BTN RET");
       break;
 
     default:
@@ -1270,28 +1282,31 @@ void processBtnInterrupt(uint16_t GPIO_Pin){
 void play_buzzer_ms(uint32_t ms){
   if (ms == 0) return;
 
-  TIM1->PSC = 500;
+  TIM1->PSC = 1000;                                                   // Change from 500 to have a lower tone
   TIM1->ARR = 1000;
   if (TIM1->CCR2 != 500) 
     TIM1->CCR2 = 500;
-  HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_2);
 
+  /* Enable complementary channel */
+  TIM1->CCER |= TIM_CCER_CC2NE;
+  /* Enable output */
+  TIM1->BDTR |= TIM_BDTR_MOE;
+  /* Start timer */
+  TIM1->CR1 |= TIM_CR1_CEN;
+  HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);
   uint32_t ticks = ms * 10U; /* 10 kHz tick -> 10 ticks per ms */
   if (ticks == 0) ticks = 1;
 
   /* Stop timer while we change ARR/counter */
- //TIM5->CR1 &= ~TIM_CR1_CEN;
-  TIM5->ARR = (uint32_t)(ticks - 1U);
+  TIM5->CR1 &= ~TIM_CR1_CEN;
+  TIM5->ARR = (uint32_t)(ticks - 1U)*10;
+  TIM5->CCR1 = (uint32_t)(ticks - 1U)*10;
   TIM5->CNT = 0;
-  HAL_TIM_Base_Start_IT(&htim5);
+  //HAL_TIM_Base_Start_IT(&htim5);
   /* Enable update interrupt and start one-shot timer */
-  //TIM5->DIER |= TIM_DIER_UIE;
-  //TIM5->CR1 |= TIM_CR1_CEN;
-   HAL_NVIC_SetPriority(TIM5_IRQn, 1, 0);
-  HAL_NVIC_EnableIRQ(TIM5_IRQn);
-  while (1){
-    printf("%d %d\n",TIM5->CNT, TIM5->ARR);
-  }
+  TIM5->DIER |= TIM_DIER_UIE;
+  TIM5->CR1 |= TIM_CR1_CEN;
+
 }
 
 /**
@@ -2127,30 +2142,50 @@ static void MX_TIM4_Init(void)
   */
 static void MX_TIM5_Init(void)
 {
+
   /* USER CODE BEGIN TIM5_Init 0 */
 
   /* USER CODE END TIM5_Init 0 */
 
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+
+  /* USER CODE BEGIN TIM5_Init 1 */
+
+  /* USER CODE END TIM5_Init 1 */
   htim5.Instance = TIM5;
-  htim5.Init.Prescaler = 9599; /* 96MHz / (9599+1) = 10 kHz */
+  htim5.Init.Prescaler = 96;
   htim5.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim5.Init.Period = 149;     /* 150 ticks -> 150 / 10000 = 0.015 s = 15 ms */
+  htim5.Init.Period = 1000;
   htim5.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim5.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim5) != HAL_OK)
+  if (HAL_TIM_OC_Init(&htim5) != HAL_OK)
   {
     Error_Handler();
   }
-
+  if (HAL_TIM_OnePulse_Init(&htim5, TIM_OPMODE_SINGLE) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim5, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_TIMING;
+  sConfigOC.Pulse = 500;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_OC_ConfigChannel(&htim5, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
   /* USER CODE BEGIN TIM5_Init 2 */
-
-  /* Ensure update IRQ is disabled until needed; NVIC configured in MX_NVIC_Init */
-  //__HAL_TIM_DISABLE_IT(&htim5, TIM_IT_UPDATE);
 
   /* USER CODE END TIM5_Init 2 */
 
 }
-
 /**
   * @brief TIM9 Initialization Function
   * @param None

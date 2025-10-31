@@ -119,11 +119,11 @@ static uint8_t  smtlValue=0x0;                          // Param from Smartloade
 static uint8_t  smtlCurrentCategory=0x0;                // See list below
 static uint8_t  smtlCurrentPage=0x0;                    // a page is a list of 16 (0x0F) items, Page 01 => Item from 17 -> 32                
 
-static enum SMTL_CATEGORY{CAT_ROOT,CAT_FAVORITE,CAT_FILE,CAT_SETTINGS,CAT_HELP};
-static uint8_t  smtlLevel=0x0;
+enum SMTL_CATEGORY{CAT_ROOT,CAT_FAVORITE,CAT_FILE,CAT_SETTINGS,CAT_HELP};
 
+//static uint8_t  smtlLevel=0x0;
 static uint8_t  smtlReturnCode=0x0;
-static uint8_t  smtlErrorCode=0x0;
+//static uint8_t  smtlErrorCode=0x0;
 
 int getSmartloaderTrackFromPh(int phtrack){
     return phtrack >> 2;
@@ -143,7 +143,6 @@ long getSmartloaderSDAddr(int trk,int block,int csize, long database){
 
 enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
     
-
     unsigned char * tmp=(unsigned char *)malloc(4096*sizeof(char));
     
     if (tmp==NULL){
@@ -292,9 +291,9 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
                         pItem=list_at(favoritesChainedList, i);
                         if (pItem!=NULL && pItem->val!=NULL){
                             listItem_t * li=pItem->val;
-                            snprintf(tmp+offset,23,"F%s",li->title);
+                            snprintf((char *)(tmp+offset),23,"F%s",li->title);
                         }else{
-                            snprintf(tmp+offset,23,"(NULL)");
+                            snprintf((char *)(tmp+offset),23,"(NULL)");
                         }
                         jj++;  
                     }
@@ -369,7 +368,7 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
                         if (pItem!=NULL && pItem->val!=NULL){
                             char * val=pItem->val;
                             tmp[offset]=val[0];
-                            snprintf(tmp+offset+1,23,"%s",val+2);
+                            snprintf((char *)(tmp+offset+1),23,"%s",val+2);
                             //log_info("val:%s",val);
                         }
                         jj++;
@@ -442,7 +441,8 @@ enum STATUS setSmartloaderTrackBitStream(int trk,unsigned char * buffer){
             if (smtlCommand==0x10 && smtlValue==4){
                 log_info("Change the emulation");
                 smtlCurrentCategory=CAT_ROOT;
-                sprintf(currentFullPath,"");
+                currentFullPath[0]=0x0;
+                
 
                 if (smartloaderEmulationType==DISKII){
                     smartloaderEmulationType=SMARTPORTHD;
@@ -463,7 +463,8 @@ enum STATUS setSmartloaderTrackBitStream(int trk,unsigned char * buffer){
             if (smtlCommand==0x10 && smtlValue==2){             // We go to File Listing
                 log_info("getting root file");
                 smtlCurrentCategory=CAT_FILE;
-                sprintf(currentFullPath,"");
+                currentFullPath[0]=0x0;
+
             }else if (smtlCommand==0x10 && smtlValue==1){
                 smtlCurrentCategory=CAT_FAVORITE;
             }
