@@ -38,7 +38,11 @@ extern SD_HandleTypeDef hsd;
 extern FATFS fs;                                            // fatfs global variable <!> do not remount witihn a function the fatfs otherwise it breaks the rest
 extern long database;                                       // start of the data segment in FAT
 extern int csize;
-extern volatile enum FS_STATUS fsState;   
+extern volatile enum FS_STATUS fsState; 
+
+extern uint8_t emulationType;
+extern uint8_t flgSwitchEmulationType;
+extern uint8_t preBootSmartport;
 
 extern uint8_t flgSoundEffect; 
 extern uint8_t bootImageIndex;
@@ -401,12 +405,61 @@ void SmartPortInitWithImage(char * filename){
 
     TIM3->ARR=(32*12)-1;
     TIM2->ARR=(32*12)-5;
-    SmartPortMountImage(&devices[0],filename);
+
+    for(uint8_t i=0; i< MAX_PARTITIONS; i++){
+        devices[i].filename=NULL;
+        
+        devices[i].mounted=0;
+    }
+    if (filename!=NULL){
+        SmartPortMountImage(&devices[0],filename);
+        if (devices[0].mounted!=1){
+            log_error("Mount error: %s not mounted",filename);
+            devices[0].filename=NULL;
+        }else{
+            log_info("%s mounted",filename);
+            devices[0].filename=(malloc(MAX_FILENAME_LENGTH*sizeof(char)));
+            snprintf(devices[0].filename,MAX_FILENAME_LENGTH,"%s",filename);
+        }
+    }else{
+        log_warn("Smartport no Image mounted");
+    }
+
+    switchPage(SMARTPORT,NULL);                                                                 // Display the Frame of the screen
+    char * fileTab[4];
+
+    for (uint8_t i=0;i<MAX_PARTITIONS;i++){
+        devices[i].dispIndex=i;
+        fileTab[i]=devices[i].filename;                                                         // Display the name of the PO according to the position
+    }
+    setImageTabSmartPortHD(fileTab,bootImageIndex);
+    SmartPortDeviceEnableIRQ(DEVICE_ENABLE_Pin);
    
 }
 
 void SmartPortInit(){
 
+
+    /*
+    GPIO_InitTypeDef GPIO_InitStruct = {0};                                             // This Pin should be High on IIGS but connected to Ground Disk II 
+    GPIO_InitStruct.Pin = SELECT_Pin;                                                   // 
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+    GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+    HAL_GPIO_Init(SELECT_GPIO_Port, &GPIO_InitStruct);
+    */
+
+   /*
+    GPIO_InitTypeDef GPIO_InitStruct = {0};                                             // This Pin should be High on IIGS but connected to Ground Disk II 
+    GPIO_InitStruct.Pin = SELECT_Pin;                                                   // 
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+    HAL_GPIO_Init(SELECT_GPIO_Port, &GPIO_InitStruct);
+*/
+    
+    //HAL_GPIO_WritePin(_35DSK_GPIO_Port,_35DSK_Pin,GPIO_PIN_RESET);
+    //HAL_Delay(500);
+  //  HAL_GPIO_WritePin(SELECT_GPIO_Port,SELECT_Pin,GPIO_PIN_RESET);
+    
 
     HAL_TIM_PWM_Stop_IT(&htim2,TIM_CHANNEL_3);
     HAL_TIMEx_PWMN_Stop(&htim1,TIM_CHANNEL_2);
@@ -464,7 +517,8 @@ void SmartPortSendPacket(volatile unsigned char* buffer){
     bitPtr=0;
     bytePtr=0;
     bitSize=packetLen*8;
-
+    //log_warn("Outgoing response pkt dump: %d bytes",packetLen);
+    //print_packet(packet_buffer,packetLen);
     setRddataPort(1);
     setWPProtectPort(1);                                                                        // Set ACK Port to output
     assertAck();                                                                                // Set ACK high to signal we are ready to send
@@ -477,15 +531,17 @@ void SmartPortSendPacket(volatile unsigned char* buffer){
     flgPacket=0;                                                                                // This line need to be here <!>
     while (flgPacket!=1){
     }; 
-
+    packet_buffer[0]=0x0;
+    packetLen=0;
     setRddataPort(0);
     HAL_GPIO_WritePin(RD_DATA_GPIO_Port, RD_DATA_Pin,GPIO_PIN_RESET);    
     
     deAssertAck();                                                                              // set ACK(BSY) low to signal we have sent the pkt
-
+    HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);                                    // ACK LOW, indicates packet sent
     while (phase & 0x01){
     
     }
+    HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET); 
 
     return;
 }
@@ -497,16 +553,20 @@ static enum STATUS SmartportReceivePacket(){
     setWPProtectPort(1); 
     assertAck(); 
 
-    GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);                                    // ACK HIGH, indicates ready to receive
+    //GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);                                    // ACK HIGH, indicates ready to receive
     while(!(phase & 0x01)){
         pNextAction();
+        __NOP();
     };
                                                                                                 
-    flgPacket=0;                                                                                // <!> This position is important
+    flgPacket=0;
+    //GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);                                                                                // <!> This position is important
     while (flgPacket!=1){
-
-    }                                                                                           // Receive finish
-    packetLen=wrBytes-1;                                                                        // to avoid recomputation
+        __NOP();
+    }  
+    //GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);                                                                                         // Receive finish
+    packetLen=wrBytes-1; 
+                                                                                               // to avoid recomputation
     deAssertAck();                                                                              // ACK LOW indicates to the host we have received a packer
     
     while(phase & 0x01){
@@ -540,6 +600,9 @@ void SmartPortMainLoop(){
     */
 
     log_info("SmartPortMainLoop entering loop");
+    log_info("(re)Enabling SDIO IRQs");                       // <!> Important to enable here cause when switching emulationType IRQ might be disabled
+    irqEnableSDIO();
+    
     unsigned long blockNumber;
     uint8_t statusCode=0;
     uint8_t ctrlCode=0;
@@ -608,10 +671,14 @@ void SmartPortMainLoop(){
                     SmartPortSendPacket(packet_buffer);
                     break;
                 }
-                                                                                                                                                                  
+                
+                //log_warn("Incomming request pkt dump:");
+                //print_packet ((unsigned char*) packet_buffer, packetLen);
                 if (verifyCmdpktChecksum()==RET_ERR){                                       // Verify Packet checksum
                     statusCode=0x06;                                                        // Generic BUS_ERR 0x06 
                     log_error("Incomming command checksum error");
+                    print_packet ((unsigned char*) packet_buffer, packetLen);
+                    log_error("After Error pkt dump:");
                     encodeReplyPacket(0x0,0x1 | 0x01 ,0x01,statusCode);
                     SmartPortSendPacket(packet_buffer);
                     break;
@@ -883,7 +950,7 @@ void SmartPortMainLoop(){
                                         fres=f_read(&devices[dev].fil,(unsigned char*) packet_buffer,512,&pt);              // Reading block from SD Card
                                         
                                         if(fres != FR_OK){
-                                            log_error("Read err!");
+                                            log_error("Read err! dev:%d, block:%d res:%d",dev,blockNumber,fres);
                                             statusCode=0x27;
                                         }
                                         while(fsState!=READY){};
@@ -1272,12 +1339,18 @@ void SmartPortMainLoop(){
                             }
                         }
                         
-                        if (statusCode!=0x0){
-                            log_warn("Smartport LAST INIT cmd:%02X, dest:%02X, statusCode:%02X",packet_buffer[SP_COMMAND],dest,statusCode);
-                        }
+                        
                         
                         encodeReplyPacket(dest,0x0,AUX,statusCode);
                         SmartPortSendPacket(packet_buffer);
+
+                        if (statusCode!=0x0){
+                            log_warn("Smartport LAST INIT cmd:%02X, dest:%02X, statusCode:%02X",packet_buffer[SP_COMMAND],dest,statusCode);
+                            /*if (preBootSmartport==1){
+                                preBootSmartport=0;
+                                flgSwitchEmulationType=1;
+                            }*/
+                        }
                         break;
                     
                     case 0x84:                                                                 // Normal Control
@@ -1556,6 +1629,10 @@ void SmartPortMainLoop(){
             }
             
             packet_buffer[0]=0x0;
+            /*if (flgSwitchEmulationType==1){
+                log_info("Switching SmartPort Emulation Type to DISK II"); 
+                break;
+            }*/
             
             cAlive++;
             if (cAlive==5000000){ 
@@ -1611,7 +1688,7 @@ static void encodeDataPacket (unsigned char source){
     // we haven't encoded yet
 
     //grps of 7
-    
+
     for (grpcount = 72; grpcount >= 0; grpcount--){ //73
 
         memcpy(group_buffer, (const unsigned char*)(packet_buffer + 1 + (grpcount * 7)), 7);

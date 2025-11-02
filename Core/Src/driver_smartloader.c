@@ -111,7 +111,7 @@ extern char currentFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];  // fullpath
 extern char tmpFullPathImageFilename[MAX_FULLPATHIMAGE_LENGTH];
 
 extern uint8_t smartloaderEmulationType;
-
+extern uint8_t flgSwitchEmulationType;
 extern const  char** ptrFileFilter;  
 
 static uint8_t  smtlCommand=0x0;                        // Command from Smartloader
@@ -164,7 +164,8 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
             
             char header[32];
             char item[16][24];
-
+            log_info("smtlCommand:%02X, smtlValue:%d, smtlCurrentCategory:%d, smtlCurrentPage:%d",smtlCommand,smtlValue,smtlCurrentCategory,smtlCurrentPage);       
+            
             switch (smtlCommand){
                 
                 case 0x09:                                              // Managing back to Main
@@ -215,7 +216,7 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
                     header[1]=0x0E;                                     // Byte [1]+1: Number of Item in the page
                     header[2]=0x0;                                      // Byte [1]+2: Value
                     header[3]=0x0;                                      // Byte [1]+3: Max Page
-                    header[4]=0x0;                                      // Byte [1]+4: Reserved
+                    header[4]=smartloaderEmulationType;                 // Byte [1]+4: Reserved
 
                     sprintf(header+6,"HELP");
                                                                         // Item prefix
@@ -253,7 +254,7 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
                 //  header[1]=0x05;                                     // Byte [1]+1: Number of Item in the current page
                 //  header[2]=smtlValue;                                // Byte [1]+2: Value
                     header[3]=0x0;                                      // Byte [1]+3: Max Page
-                    header[4]=0x0;                                      // Byte [1]+4: Reserved
+                    header[4]=smartloaderEmulationType;                 // Byte [1]+4: Reserved
                                                                         // Byte [1]+5: Reserved
                                                                         // Byte [23]+6: Current Path
                                                                         // Byte [3]+30: Reserved
@@ -297,7 +298,6 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
                         }
                         jj++;  
                     }
-                    //dumpBuf(tmp,1,512);
 
                 }else if (smtlCurrentCategory==CAT_FILE){
 
@@ -328,7 +328,6 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
                     uint8_t maxPage=lstCount/maxItemPerPage;
                     if ((lstCount % maxItemPerPage) !=0){
                         maxPage++;
-                        //log_info("MaxPage:%d",maxPage);
                     }
                     // Remember Max page Index = Page Count starting from 0 so -1
                     maxPage--;
@@ -373,7 +372,7 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
                         }
                         jj++;
                     }
-                    //dumpBuf(tmp,1,512);
+                    
                 }else if (smtlCurrentCategory==CAT_SETTINGS){
 
                 }
@@ -387,11 +386,13 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
                 break;
                                                         
             }
+            dumpBuf(tmp,1,16);
             break;
         default:
             memset(tmp,0x0,4096);    
         break;
     }
+    //dumpBuf(tmp,1,16);
         
     if (dsk2Nib(tmp,buffer,trk)==RET_ERR){
         log_error("dsk2nib return an error");
@@ -427,7 +428,33 @@ enum STATUS setSmartloaderTrackBitStream(int trk,unsigned char * buffer){
         list_node_t *pItem=NULL;
         char *tmp;
 
-        if (smtlCommand==0x09){
+        if (smtlCommand==0x15){                            // Refresh command
+            smtlReturnCode=0x20;
+            char * filename=getConfigParamStr("smartloaderLastBootImage");
+            if (filename!=NULL && strlen(filename)>0){
+                sprintf(tmpFullPathImageFilename,"%s",filename);
+
+                 if (smartloaderEmulationType==DISKII){
+                    setEmulationPtr(DISKII);
+                    
+                    DiskIIMountImagefile(tmpFullPathImageFilename);
+                    switchPage(DISKIIIMAGE,tmpFullPathImageFilename);
+                    free(dskData);
+                    return RET_OK;
+                }else if (smartloaderEmulationType==SMARTPORTHD){
+                    
+                    SmartPortInitWithImage(tmpFullPathImageFilename);
+                    flgSwitchEmulationType=1;
+                    
+                    // Now we need to break current 
+                    free(dskData);
+                    return RET_OK;
+                }
+            }
+
+        }
+       
+        else if (smtlCommand==0x09){
             smtlCurrentCategory=CAT_ROOT;
             smtlReturnCode=0x20;
         }
@@ -526,21 +553,29 @@ enum STATUS setSmartloaderTrackBitStream(int trk,unsigned char * buffer){
                 
                 if (smartloaderEmulationType==DISKII){
                     setEmulationPtr(DISKII);
+                    
+                    setConfigParamStr("smartloaderLastBootImage",tmpFullPathImageFilename);
+                    saveConfigFile();
+
                     DiskIIMountImagefile(tmpFullPathImageFilename);
                     switchPage(DISKIIIMAGE,tmpFullPathImageFilename);
                     free(dskData);
                     return RET_OK;
                 }else if (smartloaderEmulationType==SMARTPORTHD){
-                    setEmulationPtr(SMARTPORTHD);
+                    //setEmulationPtr(SMARTPORTHD);
+                    
+                    setConfigParamStr("smartloaderLastBootImage",tmpFullPathImageFilename);
+                    saveConfigFile();
+
                     SmartPortInitWithImage(tmpFullPathImageFilename);
+                    flgSwitchEmulationType=1;
+                    
+
+                    // Now we need to break current 
                     free(dskData);
                     return RET_OK;
                 }
                     
-
-                DiskIIMountImagefile(tmpFullPathImageFilename);
-                switchPage(DISKIIIMAGE,tmpFullPathImageFilename);
-                free(dskData);
                 return RET_OK;
             }
 

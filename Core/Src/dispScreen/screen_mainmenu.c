@@ -26,6 +26,7 @@ extern void (*ptrbtnRet)(void *);
 
 extern enum action nextAction;
 extern uint8_t emulationType;
+extern uint8_t smartloaderEmulationType;
 
 /*
  * 
@@ -78,7 +79,7 @@ listWidget_t menuLw;
       list_rpush(menuLw.lst, list_node_new(manuItem));
     }
 
-    if (emulationType==DISKII || emulationType==SMARTLOADER){                                   // TODO to be tested
+    if (emulationType==DISKII || (emulationType==SMARTLOADER && smartloaderEmulationType==DISKII)){                                   // TODO to be tested
       manuItem=(listItem_t *)malloc(sizeof(listItem_t));
       if (manuItem==NULL){
           log_error("malloc error listItem_t");

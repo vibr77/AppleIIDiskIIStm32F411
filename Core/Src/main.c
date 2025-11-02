@@ -489,6 +489,11 @@ volatile uint8_t flgDisplaySleep=0;
 uint8_t bootMode=0;
 uint8_t emulationType=0;
 uint8_t smartloaderEmulationType= DISKII;
+uint8_t emulationSubType=DISKII;
+
+uint8_t flgSwitchEmulationType=0;
+uint8_t preBootSmartport=0;                                                             // Preboot Smartport HD during SmartLoader init
+
 uint8_t bootImageIndex=0;
 list_t * dirChainedList;
 
@@ -1419,7 +1424,8 @@ void setEmulationPtr(uint8_t emuType){
 
   switch(emuType){
     
-    case SMARTLOADER:                                         // Smartloader & DISK II shares the same function it is the driver that is changing
+                                       // Smartloader & DISK II shares the same function it is the driver that is changing
+    case SMARTLOADER:
     case DISKII:
       log_info("loading DiskII emulation");
       ptrPhaseIRQ=DiskIIPhaseIRQ;
@@ -1447,19 +1453,21 @@ void setEmulationPtr(uint8_t emuType){
       //ptrUnmountImage=nothing;
       //ptrMountImagefile=nothing;
       ptrInit=disk35Init;
+      emulationSubType=DISKII;
       break;
-
+    
     case SMARTPORTHD:
       log_info("loading SmartPortHD emulation");
       ptrPhaseIRQ=SmartPortPhaseIRQ;
       ptrReceiveDataIRQ=SmartPortReceiveDataIRQ;
       ptrSendDataIRQ=SmartPortSendDataIRQ;
       ptrWrReqIRQ=SmartPortWrReqIRQ;
-      //ptrDeviceEnableIRQ=SmartPortDeviceEnableIRQ;
+      ptrDeviceEnableIRQ=ui16NothingHook;
       ptrMainLoop=SmartPortMainLoop;
-      //ptrUnmountImage=NULL;
-      //ptrMountImagefile=SmartPortMountImage;
+
+      emulationSubType=SMARTPORTHD;
       ptrInit=SmartPortInit;
+      
       break;
 
   }
@@ -1559,8 +1567,14 @@ int main(void)
 
   csize=fs.csize;
   database=fs.database;
-
-  initSplash(); 
+  
+  GPIO_InitTypeDef GPIO_InitStruct = {0};                                             // This Pin should be High on IIGS but connected to Ground Disk II 
+  GPIO_InitStruct.Pin = SELECT_Pin;                                                   // 
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  HAL_GPIO_Init(SELECT_GPIO_Port, &GPIO_InitStruct);
+    
+  initSplash();
                                   
   HAL_Delay(100);
  
@@ -1676,6 +1690,8 @@ int main(void)
   // --------------------------------------------------------------------
   //emulationType=DISKII;
   //emulationType=SMARTPORTHD;
+  if (emulationType==SMARTLOADER)
+    preBootSmartport=1;
 
   setEmulationPtr(emulationType);
 
@@ -1686,12 +1702,34 @@ int main(void)
   //switchPage(FSSELECTIMAGE,0);
   //while(1);
   ptrInit();
-
+  //SmartPortInitWithImage("/smartport/Total.Replay 240909.po");
   // --------------------------------------------------------------------
   // Execute emulation
   // --------------------------------------------------------------------
 
   ptrMainLoop();
+
+while(1){
+  if (flgSwitchEmulationType==1){
+    flgSwitchEmulationType=0;
+    /*if (emulationSubType==SMARTPORTHD){
+      ptrMainLoop=SmartPortMainLoop;
+      emulationSubType=DISKII;
+      setEmulationPtr(DISKII);
+      ptrInit();
+      log_info("Switching from DiskII to Smartport HD emulation");
+    }else if(emulationSubType==DISKII){*/
+      ptrMainLoop=SmartPortMainLoop;
+      emulationSubType=SMARTPORTHD;
+     
+      setEmulationPtr(SMARTPORTHD);
+   // }
+    
+      
+    log_info("Starting mainLoop");
+    ptrMainLoop();
+  }
+}
 
   while(1){};
 

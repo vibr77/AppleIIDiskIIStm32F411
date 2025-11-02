@@ -296,7 +296,7 @@ static void pBtnEntrFsScr(){
     nextAction=FSDISP;
     
   }else{
-    if (emulationType==DISKII){
+    if (emulationType==DISKII ||emulationType==SMARTLOADER){
       sprintf(tmpFullPathImageFilename,"%s/%s",currentFullPath,selItem+2);
       switchPage(MOUNT,selItem+2);
     }else if (emulationType==SMARTPORTHD){

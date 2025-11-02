@@ -45,6 +45,8 @@ uint8_t optimalBitTiming=32;                                                    
 extern woz_info_t wozFile;
 image_info_t mountImageInfo;
 
+extern uint8_t flgSwitchEmulationType;
+
 // --------------------------------------------------------------------
 // Extern Declaration
 // --------------------------------------------------------------------
@@ -260,6 +262,7 @@ void DiskIIWrReqIRQ(){
         
         wrBitPos=0;                                                                             // Reset the BitPos
         wrBitCounter=bytePtr*8;                                                                 // Compute the wrCounter from bytePtr 
+        GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);
         HAL_TIM_PWM_Start_IT(&htim2,TIM_CHANNEL_3);   
         pendingWriteTrk=1;                                                                      // Pending write has to be here and not in the below section
                                    
@@ -269,7 +272,7 @@ void DiskIIWrReqIRQ(){
     }else if (flgWrRequest==1 && pFlgWRRequest==0){
         
         HAL_TIM_PWM_Start_IT(&htim3,TIM_CHANNEL_4); 
-                                                                                                      
+        GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);                                                                                              
         bitPos=7;                                                                               // Reset the bitPos
         rdBitCounter=bytePtr*8; 
         HAL_TIM_PWM_Stop_IT(&htim2,TIM_CHANNEL_3);                                              // Stop the WRITING Timer
@@ -310,6 +313,8 @@ WRITE PART:
 
 void DiskIIReceiveDataIRQ(){
     
+    for (uint8_t i=0;i<10;i++);
+
     if ((GPIOA->IDR & WR_DATA_Pin)==0)                                                          // get WR_DATA DO NOT USE THE HAL function creating an overhead
         wrData=0;
     else
@@ -343,7 +348,7 @@ void DiskIIReceiveDataIRQ(){
     wrBitCounter++;                                                                             // bitSize can be 53248 => bitCounter from 0 - 53247
     if (wrBitCounter==bitSize){                                                                 // Same Size as the original track size
         
-        //byteWindow<<=7-(wrBitPos);                                                              // TODO: to be tested with bitcounter not aligned with 8 The last byte may be incomplete, and it will be read starting by the MSB Bit 7
+        //byteWindow<<=7-(wrBitPos);                                                            // TODO: to be tested with bitcounter not aligned with 8 The last byte may be incomplete, and it will be read starting by the MSB Bit 7
         //byteWindow<<=1;                                                                       // Incomplete byte need to be shift left
         DMA_BIT_TX_BUFFER[bytePtr]=byteWindow;                                                  // Check which bit MSB LSB order
         // variable cleared out for next disk loop
@@ -493,8 +498,8 @@ int DiskIIDeviceEnableIRQ(uint16_t GPIO_Pin){
 
     for (int i=0;i<1500;i++){
         __NOP();
+    } 
 
-    }                                            
     return flgDeviceEnable;
 }
 
@@ -741,7 +746,16 @@ enum STATUS DiskIIiniteBeaming(){
   */
 void DiskIIInit(){
     
+    GPIO_InitTypeDef GPIO_InitStruct = {0};                                             // This Pin should be High on IIGS but connected to Ground Disk II 
+    GPIO_InitStruct.Pin = SELECT_Pin;                                                   // 
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+    HAL_GPIO_Init(SELECT_GPIO_Port, &GPIO_InitStruct);
     
+    //HAL_GPIO_WritePin(_35DSK_GPIO_Port,_35DSK_Pin,GPIO_PIN_RESET);
+    //HAL_Delay(500);
+    HAL_GPIO_WritePin(SELECT_GPIO_Port,SELECT_Pin,GPIO_PIN_RESET);
+    /*
     GPIO_InitTypeDef GPIO_InitStruct = {0};                                             // This Pin should be High on IIGS but connected to Ground Disk II 
     GPIO_InitStruct.Pin = _35DSK_Pin;                                                   // 
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -751,7 +765,7 @@ void DiskIIInit(){
     HAL_GPIO_WritePin(_35DSK_GPIO_Port,_35DSK_Pin,GPIO_PIN_RESET);
     HAL_Delay(500);
     HAL_GPIO_WritePin(_35DSK_GPIO_Port,_35DSK_Pin,GPIO_PIN_SET);
-    
+    */
     ph_track=0;
    
     ptrFileFilter=diskIIImageExt;
@@ -1114,6 +1128,11 @@ void DiskIIMainLoop(){
         }
 
         pSdEject();
+
+        if (flgSwitchEmulationType==1){
+            //flgSwitchEmulationType=0;
+            break;
+        }
 
 
 #ifdef A2F_MODE
