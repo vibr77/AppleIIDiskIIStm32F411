@@ -313,14 +313,19 @@ WRITE PART:
 
 void DiskIIReceiveDataIRQ(){
     
-    for (uint8_t i=0;i<10;i++);
-
-    if ((GPIOA->IDR & WR_DATA_Pin)==0)                                                          // get WR_DATA DO NOT USE THE HAL function creating an overhead
+    //for (uint8_t i=0;i<10;i++);
+    // This is the old verison
+    /*if ((GPIOA->IDR & WR_DATA_Pin)==0)                                                          // get WR_DATA DO NOT USE THE HAL function creating an overhead
         wrData=0;
     else
         wrData=1;
-
+    
     wrData^= 0x01u;                                                                             // get /WR_DATA
+    */
+    wrData=1;
+    if ((GPIOA->IDR & WR_DATA_Pin)!=0)
+        wrData=0;
+    
     xorWrData=wrData ^ prevWrData;                                                              // Compute Magnetic polarity inversion
     prevWrData=wrData;                                                                          // for next cycle keep the wrData
 
@@ -338,12 +343,15 @@ void DiskIIReceiveDataIRQ(){
             //GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);                              // DEBUG ONLY
             wrLoopFlg=1;
         }
-    }
-
-    wrBitPos++;
-    if (wrBitPos==8){
-        wrBitPos=0;
-    }
+        wrBitPos=0;                                                                             // Add VIB 0911
+    }else
+        wrBitPos++;
+    
+    // Oldversion
+    //wrBitPos++;    
+    //if (wrBitPos==8){
+    //    wrBitPos=0;
+    //}
 
     wrBitCounter++;                                                                             // bitSize can be 53248 => bitCounter from 0 - 53247
     if (wrBitCounter==bitSize){                                                                 // Same Size as the original track size
@@ -726,11 +734,12 @@ enum STATUS DiskIIiniteBeaming(){
 
     GPIOWritePin(RD_DATA_GPIO_Port,RD_DATA_Pin,GPIO_PIN_RESET); 
 
-    bbPtr=(volatile u_int8_t*)&DMA_BIT_TX_BUFFER;
+    bbPtr=(volatile uint8_t*)&DMA_BIT_TX_BUFFER;
     bitSize=6656*8;
     rdBitCounter=0;
 
     TIM3->ARR=(mountImageInfo.optimalBitTiming*12)-1;
+    TIM2->ARR=(mountImageInfo.optimalBitTiming*12)-1;
 
     log_info("initeBeaming optimalBitTiming:%d",mountImageInfo.optimalBitTiming);
 
@@ -766,6 +775,9 @@ void DiskIIInit(){
     HAL_Delay(500);
     HAL_GPIO_WritePin(_35DSK_GPIO_Port,_35DSK_Pin,GPIO_PIN_SET);
     */
+
+    TIM2->ARR=(32*12)-1;
+
     ph_track=0;
    
     ptrFileFilter=diskIIImageExt;
@@ -913,7 +925,7 @@ void DiskIIMainLoop(){
     int trk=0;
     
     while(1){
-
+        pendingWriteTrk=0;
         if (flgSelect==1 && flgDeviceEnable==0){  
             
             if (flgWrRequest==1 && pendingWriteTrk==1 ){ 
@@ -954,20 +966,20 @@ void DiskIIMainLoop(){
                 
                 // updateDiskIIImageScr(1,rTrk);
                 if (flgSoundEffect==1){
-                    play_buzzer_ms(150);
+                    play_buzzer_ms(50);
                 }
                 
                 irqEnableSDIO();
                 #pragma GCC diagnostic push
                 #pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
                 if (setTrackBitStream(rTrk,DMA_BIT_TX_BUFFER)==RET_OK){
-                    log_info("WR trk:%d OK",rTrk);
+                    //log_info("WR trk:%d OK",rTrk);
                 }else{
                     log_error("WR trk:%d KO",rTrk);
                 }
                 #pragma GCC diagnostic pop
                 irqDisableSDIO();
-                GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);
+                //GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);
             
             }
 
@@ -1003,7 +1015,7 @@ void DiskIIMainLoop(){
                     #pragma GCC diagnostic push
                     #pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
                     if (setTrackBitStream(prevTrk,DMA_BIT_TX_BUFFER)==RET_OK){
-                        log_info("sw WR trk:%d OK",prevTrk);
+                        //log_info("sw WR trk:%d OK",prevTrk);
                     }else{
                         log_error("sw WR trk:%d KO",prevTrk);
                     }
@@ -1018,7 +1030,7 @@ void DiskIIMainLoop(){
                 if (trk==255 ){
                     bitSize=51200;
                     ByteSize=6400;
-                    printf("ph:%02d fakeTrack:255\n",ph_track);
+                    //printf("ph:%02d fakeTrack:255\n",ph_track);
                     prevTrk=trk;
                     continue;
                 }

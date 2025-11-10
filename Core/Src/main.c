@@ -115,7 +115,7 @@ UART1
 // Changelog
 
 /*
-30.10.25 
+30.10.25 V0.80.29
   + Modify TIM5 to be used with Buzzer
   + Unblocking code for Buzzer Management
   + PacketLen() clean up
@@ -125,6 +125,9 @@ UART1
   + blocking Smartport fix
   + Adding Smartloader Emulation type switch in main menu
   + Adding Smartloader navigation to file Manager
+  + Adding Smartloader auto boot sequence 5s
+  + add specific boot sequence for IIGS 
+
   
   
 27.10.25

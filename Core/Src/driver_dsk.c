@@ -15,7 +15,7 @@ extern volatile enum FS_STATUS fsState;
 unsigned int fatDskCluster[20];
 extern image_info_t mountImageInfo;
 
-#define NIBBLE_BLOCK_SIZE  416 // 400 51 200
+#define NIBBLE_BLOCK_SIZE  412 // 400 51 200
 #define NIBBLE_SECTOR_SIZE 512
 #define ENCODE_525_6_2_RIGHT_BUFFER_SIZE 86
 
@@ -228,7 +228,7 @@ static enum STATUS dsk2Nib(unsigned char *rawByte,unsigned char *buffer,uint8_t 
     for (i=0x1a0; i<0x200; i++) 
         dst[i]=0x00;
 
-    for (u_int8_t sector=0;sector<16;sector++){
+    for (uint8_t sector=0;sector<16;sector++){
         uint8_t sm=sectorMap[sector];
         memcpy(src,rawByte+sm * 256,256);
         src[256] = src[257] = 0;
