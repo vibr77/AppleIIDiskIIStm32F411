@@ -259,7 +259,7 @@ void DiskIIWrReqIRQ(){
     if (flgWrRequest==0 && pFlgWRRequest==1){                                                                       // WR_REQ is active LOW                  
 
         HAL_TIM_PWM_Stop_IT(&htim3,TIM_CHANNEL_4);                                              // First stop the READING TIMER
-        
+        //bytePtr=0;
         wrBitPos=0;                                                                             // Reset the BitPos
         wrBitCounter=bytePtr*8;                                                                 // Compute the wrCounter from bytePtr 
         GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);
@@ -273,8 +273,9 @@ void DiskIIWrReqIRQ(){
         
         HAL_TIM_PWM_Start_IT(&htim3,TIM_CHANNEL_4); 
         GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);                                                                                              
+        //bytePtr=0;
         bitPos=7;                                                                               // Reset the bitPos
-        rdBitCounter=bytePtr*8; 
+        rdBitCounter=bytePtr*8-1; 
         HAL_TIM_PWM_Stop_IT(&htim2,TIM_CHANNEL_3);                                              // Stop the WRITING Timer
     
         cAlive=0;                                                                               // Reset the cAlive
@@ -354,7 +355,7 @@ void DiskIIReceiveDataIRQ(){
     //}
 
     wrBitCounter++;                                                                             // bitSize can be 53248 => bitCounter from 0 - 53247
-    if (wrBitCounter==bitSize){                                                                 // Same Size as the original track size
+    if (wrBitCounter>bitSize){                                                                 // Same Size as the original track size
         
         //byteWindow<<=7-(wrBitPos);                                                            // TODO: to be tested with bitcounter not aligned with 8 The last byte may be incomplete, and it will be read starting by the MSB Bit 7
         //byteWindow<<=1;                                                                       // Incomplete byte need to be shift left
@@ -394,15 +395,17 @@ void DiskIISendDataIRQ(){
     }else{
        
         nextBit=(*(bbPtr+bytePtr)>>bitPos ) & 1;
-        bitPos--;
-        if (bitPos<0){
+        
+        if (bitPos==0){
             bitPos=7;
             bytePtr++;
             if (bytePtr==wrLoopStartPtr && pendingWriteTrk==1){
                 //HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);
                 wrLoopFlg=1;
             }
-        }
+        }else
+            bitPos--;
+
 
         // ************  WEAKBIT ****************
 
@@ -923,7 +926,7 @@ void DiskIIInit(){
 
 void DiskIIMainLoop(){
     int trk=0;
-    
+   
     while(1){
         pendingWriteTrk=0;
         if (flgSelect==1 && flgDeviceEnable==0){  
