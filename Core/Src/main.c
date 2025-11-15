@@ -115,6 +115,33 @@ UART1
 // Changelog
 
 /*
+11.11.25 v0.80.30
+  + Fixing issue with write process not working after several writes
+  + Adding missing variable reset for write process
+  WOZ test :
+    + Blazing Paddles working OK
+    + Borderzone KO
+    + Bouncing Kamungast working OK
+    + Hard Hat Mike working OK
+    + Crisis Mountain working OK
+    + Dino Eggs working OK
+    + First Math Adventures working OK
+    + The print Shop Companion working OK (Use Weak Bit feature)
+    + Commando working OK (Use Weak Bit feature)
+    + Miner 2049er II working OK
+    + Planetfall working OK
+    + Rescue Raiders working OK
+    + Sammy Lightfoot working OK
+    + The Bilestoad working OK
+    + Stickybear Town Builder working OK
+    + Take 1 working OK
+
+
+
+Issue:
+  [DiskII] after image mounting, boot is not happening, need to reset
+
+
 30.10.25 V0.80.29
   + Modify TIM5 to be used with Buzzer
   + Unblocking code for Buzzer Management
@@ -565,6 +592,69 @@ void debounceBtn(int GPIO){
 
 
 
+void EXTI0_IRQHandler(void){
+    if (__HAL_GPIO_EXTI_GET_IT(STEP0_Pin) != RESET){
+      __HAL_GPIO_EXTI_CLEAR_IT(STEP0_Pin);
+      ptrPhaseIRQ();
+    }
+}
+/**
+  * @brief This function handles EXTI line1 interrupt.
+  */
+void EXTI1_IRQHandler(void){
+  if (__HAL_GPIO_EXTI_GET_IT(STEP1_Pin) != RESET){
+    __HAL_GPIO_EXTI_CLEAR_IT(STEP1_Pin);
+    ptrPhaseIRQ();
+  }
+}
+
+/**
+  * @brief This function handles EXTI line2 interrupt.
+  */
+void EXTI2_IRQHandler(void){
+    if (__HAL_GPIO_EXTI_GET_IT(STEP2_Pin) != RESET){
+    __HAL_GPIO_EXTI_CLEAR_IT(STEP2_Pin);
+    ptrPhaseIRQ();
+  }
+}
+
+/**
+  * @brief This function handles EXTI line3 interrupt.
+  */
+void EXTI3_IRQHandler(void){
+  if (__HAL_GPIO_EXTI_GET_IT(STEP3_Pin) != RESET){
+    __HAL_GPIO_EXTI_CLEAR_IT(STEP3_Pin);
+    ptrPhaseIRQ();
+  }
+}
+
+/**
+  * @brief This function handles EXTI line4 interrupt.
+  */
+void EXTI4_IRQHandler(void){
+  if (__HAL_GPIO_EXTI_GET_IT(DEVICE_ENABLE_Pin) != RESET){
+    __HAL_GPIO_EXTI_CLEAR_IT(DEVICE_ENABLE_Pin);
+    ptrDeviceEnableIRQ(DEVICE_ENABLE_Pin);
+  }
+}
+
+void EXTI9_5_IRQHandler(void)
+{
+  /* USER CODE BEGIN EXTI9_5_IRQn 0 */
+
+  /* USER CODE END EXTI9_5_IRQn 0 */
+  //HAL_GPIO_EXTI_IRQHandler(SELECT_Pin);
+  if (__HAL_GPIO_EXTI_GET_IT(WR_REQ_Pin) != RESET){
+    __HAL_GPIO_EXTI_CLEAR_IT(WR_REQ_Pin);
+    ptrWrReqIRQ();
+  }  
+  //HAL_GPIO_EXTI_IRQHandler(WR_REQ_Pin);
+  /* USER CODE BEGIN EXTI9_5_IRQn 1 */
+
+
+  /* USER CODE END EXTI9_5_IRQn 1 */
+}
+
 void TIM1_BRK_TIM9_IRQHandler(void){
 
   if (TIM9->SR & TIM_SR_UIF){
@@ -624,11 +714,12 @@ void TIM4_IRQHandler(void){
   * @retval None
   */
 void TIM3_IRQHandler(void){
-  //HAL_TIM_IRQHandler(&htim9);
+  
   if (TIM3->SR & TIM_SR_UIF){
     //HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);
     TIM3->SR &= ~TIM_SR_UIF;                              // Clear the overflow interrupt 
     ptrSendDataIRQ();
+  
   }else if (TIM3->SR & TIM_SR_CC1IF){                     // Pulse compare interrrupt on Channel 1
     RD_DATA_GPIO_Port->BSRR=1U <<16;                      // Reset the RD_DATA GPIO
     TIM3->SR &= ~TIM_SR_CC1IF;                            // Clear the compare interrupt flag
@@ -647,19 +738,17 @@ volatile enum FS_STATUS fsState=READY;
 void TIM2_IRQHandler(void){
 
   if (TIM2->SR & TIM_SR_UIF){ 
-    TIM2->SR &= ~TIM_SR_UIF;                                                  // Reset the Interrupt
-    //HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_RESET);
-    
-  }else if (TIM2->SR & TIM_SR_CC2IF){                                        // The count & compare is on channel 2 to avoid issue with ETR1
-    //HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_SET);
-    ptrReceiveDataIRQ();
-    //HAL_GPIO_WritePin(DEBUG_GPIO_Port,DEBUG_Pin,GPIO_PIN_RESET);
-    TIM2->SR &= ~TIM_SR_CC2IF;                                                // clear the count & compare interrupt
-    //TIM2->SR=0;
 
-  }else{
+    TIM2->SR &= ~TIM_SR_UIF;                                                  // Reset the Interrupt
+  }else if (TIM2->SR & TIM_SR_CC2IF){
+
+    ptrReceiveDataIRQ();
+
+    TIM2->SR &= ~TIM_SR_CC2IF;                                                // clear the count & compare interrupt
+                                                    
+  }/*else{
     TIM2->SR=0;
-  }    
+  }*/    
 }
 
 #if 1
@@ -682,7 +771,7 @@ void TIM5_IRQHandler(void){
     //TIM1->CCER &= ~TIM_CCER_CC2NE;
     TIM1->CCER &= ~TIM_CCER_CC2NE;
     
-    HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);
+    //HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);
     /* Disable timer and its update interrupt */
     TIM5->CR1 &= ~TIM_CR1_CEN;
     /* Disable update interrupt using timer register (clear UIE in DIER) */
@@ -952,7 +1041,8 @@ void getDataBlocksBareMetal(long memoryAdr,volatile unsigned char * buffer,int c
   
   while(HAL_SD_ReadBlocks_DMA(&hsd, (uint8_t *)buffer, memoryAdr, count) != HAL_OK && i<2){
     state = HAL_SD_GetCardState(&hsd);
-    log_error("Error HAL_SD_ReadBlocks_DMA state:%d, memoryAdr:%ld, numBlock:%d, error:%lu, retry:%d",state,memoryAdr,count,hsd.ErrorCode,i);
+    //log_error("Error HAL_SD_ReadBlocks_DMA state:%d, memoryAdr:%ld, numBlock:%d, error:%lu, retry:%d",state,memoryAdr,count,hsd.ErrorCode,i);
+    printf("DMA SD RD err:%lu\n",hsd.ErrorCode);
     i++;
   }
 }
@@ -1301,7 +1391,7 @@ void play_buzzer_ms(uint32_t ms){
   TIM1->BDTR |= TIM_BDTR_MOE;
   /* Start timer */
   TIM1->CR1 |= TIM_CR1_CEN;
-  HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);
+ // HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);
   uint32_t ticks = ms * 10U; /* 10 kHz tick -> 10 ticks per ms */
   if (ticks == 0) ticks = 1;
 
@@ -2013,7 +2103,7 @@ static void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 0;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = (32*11.5)-1-1;
+  htim2.Init.Period = (32*12)-1;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -2024,10 +2114,10 @@ static void MX_TIM2_Init(void)
   {
     Error_Handler();
   }
-  if (HAL_TIM_PWM_Init(&htim2) != HAL_OK)
+  /*if (HAL_TIM_PWM_Init(&htim2) != HAL_OK)
   {
     Error_Handler();
-  }
+  }*/
   sSlaveConfig.SlaveMode = TIM_SLAVEMODE_RESET;
   sSlaveConfig.InputTrigger = TIM_TS_ETRF;
   sSlaveConfig.TriggerPolarity = TIM_TRIGGERPOLARITY_NONINVERTED;
@@ -2051,11 +2141,11 @@ static void MX_TIM2_Init(void)
   {
     Error_Handler();
   }
-  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  /*sConfigOC.OCMode = TIM_OCMODE_PWM1;
   if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
   {
     Error_Handler();
-  }
+  }*/
   /* USER CODE BEGIN TIM2_Init 2 */
 
   /* USER CODE END TIM2_Init 2 */
@@ -2341,10 +2431,10 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, RD_DATA_Pin|WR_PROTECT_Pin, GPIO_PIN_RESET);
+  //HAL_GPIO_WritePin(GPIOB, RD_DATA_Pin|WR_PROTECT_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_RESET);
+  //HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : BTN_DOWN_Pin BTN_UP_Pin BTN_ENTR_Pin */
   GPIO_InitStruct.Pin = BTN_DOWN_Pin|BTN_UP_Pin|BTN_ENTR_Pin;
@@ -2367,7 +2457,7 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pins : WR_DATA_Pin _35DSK_Pin */
   GPIO_InitStruct.Pin = WR_DATA_Pin|_35DSK_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pin : RD_DATA_Pin */
@@ -2402,6 +2492,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
   HAL_GPIO_Init(DEBUG_GPIO_Port, &GPIO_InitStruct);
+
+  GPIO_InitStruct.Pin = DEBUG2_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  HAL_GPIO_Init(DEBUG2_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : SELECT_Pin */
   GPIO_InitStruct.Pin = SELECT_Pin;
@@ -2449,7 +2545,7 @@ static void MX_GPIO_Init(void)
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 
   //printf("startr here 0 %d\n",GPIO_Pin);
-  if( GPIO_Pin == STEP0_Pin   ||               // Step 0 PA0
+  /*if( GPIO_Pin == STEP0_Pin   ||               // Step 0 PA0
       GPIO_Pin == STEP1_Pin   ||               // Step 1 PA1
       GPIO_Pin == STEP2_Pin   ||               // Step 2 PA2
       GPIO_Pin == STEP3_Pin                    // Step 3 PA3
@@ -2461,7 +2557,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
   }else if (GPIO_Pin==DEVICE_ENABLE_Pin){
     ptrDeviceEnableIRQ(DEVICE_ENABLE_Pin);
 
-  }else if ((GPIO_Pin == BTN_RET_Pin   ||      // BTN_RETURN
+  }else */if ((GPIO_Pin == BTN_RET_Pin   ||      // BTN_RETURN
             GPIO_Pin == BTN_ENTR_Pin  ||       // BTN_ENTER
             GPIO_Pin == BTN_UP_Pin    ||       // BTN_UP
             GPIO_Pin == BTN_DOWN_Pin           // BTN_DOWN
@@ -2469,14 +2565,6 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 
               debounceBtn(GPIO_Pin);
 
-  }else if (GPIO_Pin == WR_REQ_Pin){
-    
-    ptrWrReqIRQ();
-    
-  }else if (GPIO_Pin == SELECT_Pin){
-    
-    ptrSelectIRQ();
-    
   }
   
   else {

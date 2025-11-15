@@ -109,12 +109,14 @@ static volatile uint8_t flgSelect=0;                                            
 #endif
 
 static volatile unsigned int rdBitCounter=0;                                                    // read Bitcounter index to keep read head position on virtual floppy circle
-static volatile unsigned int wrBitCounter=0;                                                    // write Bitcounter index to keep write  head position on virtual floppy circle
-static volatile unsigned int wrLoopStartPtr=0;                                                  // index position of the start position of write segment
+volatile unsigned int wrBitCounter=0;                                                    // write Bitcounter index to keep write  head position on virtual floppy circle
+static volatile unsigned int wrLastWriteStartPtr=0;                                                  // index position of the start position of write segment
+static volatile unsigned int  wrDeltaLastWritePtr=0;                                                  // index position of the start position of write loop segment
 static volatile unsigned char wrLoopFlg=0;                                                      // Write flag Loop when bytePtr reached wrLoopStartPtr
+static volatile unsigned int wrTrack=0;                                                         // Track to write to avoid losing track info during step change
 
 static volatile uint8_t pendingWriteTrk=0;                                                      // pending write to disc flag
-static volatile int8_t wrBitPos=0;                                                              // bit number of the current WR DATA char
+                                                              // bit number of the current WR DATA char
 static volatile uint8_t wrData=0;                                                               // GPIO WR DATA value
 static volatile uint8_t prevWrData=0;                                                           // GPIO WR Data prev value to enable XOR (changing polarity) 
 static volatile uint8_t xorWrData=0;                                                            // Result of XOR between WR Data and Prev WR DATA
@@ -122,12 +124,16 @@ static volatile unsigned char byteWindow=0x0;                                   
 
 static volatile int8_t bitPos=0;                                                                // Read Bit number of the current read char
 static volatile int bytePtr=0;                                                                  // BytePtr based on wrBitCounter and rdBitCounter
+
+//static volatile int bytePtrWr=0;                                                                // BytePtr for WR DATA based on wrBitCounter
+//static volatile unsigned char tmpBuffer[8192];
+
 static volatile int bitSize=0;                                                                  // Number of bits for the current track
 static volatile int ByteSize=0;                                                                 // Number of Bytes for the current track 
-
+volatile unsigned char rByte=0x0;                                                               // Current Read Byte
 static int wr_attempt=0;                                                                        // DEBUG only temp variable to keep incremental counter of the debug dump to file
 static unsigned long cAlive=0;
-
+static volatile uint8_t wrBitPos=0; 
 const uint8_t weakBitTank[]   ={1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0,
                                 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0,
                                 1, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1,
@@ -239,6 +245,10 @@ void DiskIISelectIRQ(){
 }
 
 uint8_t pFlgWRRequest=0;
+static volatile unsigned long maxt,t1,t2,diff1;
+static volatile uint8_t  flgDebug=0;
+static volatile int      dbg2=0,dbg1=0;
+static volatile char     dbgchar1,dbgchar2,dbgchar3;   
 
 /**
   * @brief Write Req Interrupt function, Manage start and end of the write process.
@@ -246,6 +256,62 @@ uint8_t pFlgWRRequest=0;
   * @param None
   * @retval None
 ***/
+
+void DiskIIWrReqIRQ(){
+    // Read WR_REQ pin state once
+    uint8_t currentWrRequest = ((WR_REQ_GPIO_Port->IDR & WR_REQ_Pin) != 0);
+    
+    // Early exit if device not enabled
+    if (flgDeviceEnable == 0)
+        return;
+
+    // Falling edge: Start write mode
+    if (currentWrRequest == 0 /*&& pFlgWRRequest == 1*/) {
+        // Stop read timer (combined operations)
+        TIM3->DIER &= ~TIM_DIER_CC4IE;
+        TIM3->CCER &= ~TIM_CCER_CC4E;
+        TIM3->CR1 &= ~TIM_CR1_CEN;
+
+        wrBitPos = 0;
+        wrBitCounter = bytePtr * 8;
+        wrLastWriteStartPtr = bytePtr;
+        wrDeltaLastWritePtr = 0;
+        
+        __DSB();
+
+        // Start write timer (combined operations)
+        TIM2->DIER |= TIM_DIER_CC2IE;
+        TIM2->CR1 |= TIM_CR1_CEN;
+    }
+    // Rising edge: End write mode, start read mode
+    else if (currentWrRequest == 1 && pFlgWRRequest == 0) {
+        //GPIOWritePin(DEBUG2_GPIO_Port, DEBUG2_Pin, GPIO_PIN_SET); 
+        wrTrack=intTrk;  // Store the current track to write even if step change during write
+        // Stop write timer (combined operations)
+        TIM2->DIER &= ~TIM_DIER_CC2IE;
+        TIM2->CCER &= ~TIM_CCER_CC2E;
+        TIM2->CR1 &= ~TIM_CR1_CEN;
+
+        bitPos = 0;
+        rdBitCounter = bytePtr * 8;
+        rByte = DMA_BIT_TX_BUFFER[bytePtr];
+        pendingWriteTrk = 1;
+        cAlive = 0;
+        
+        __DSB();
+
+        // Start read timer (combined operations)
+        TIM3->DIER |= TIM_DIER_CC4IE;
+        TIM3->CCER |= TIM_CCER_CC4E;
+        TIM3->CR1 |= TIM_CR1_CEN;
+        
+        //GPIOWritePin(DEBUG2_GPIO_Port, DEBUG2_Pin, GPIO_PIN_RESET);     
+    }
+    
+    pFlgWRRequest = currentWrRequest;
+    flgWrRequest = currentWrRequest;
+}
+/* Old version
 void DiskIIWrReqIRQ(){
 
     if ((WR_REQ_GPIO_Port->IDR & WR_REQ_Pin)==0)
@@ -253,36 +319,64 @@ void DiskIIWrReqIRQ(){
     else
         flgWrRequest=1;
 
-    if (flgSelect==0 || flgDeviceEnable==0)                                                     // A2 is not connected do nothing or DeviceEnable is not LOW
+    if (flgDeviceEnable==0)                                                     // A2 is not connected do nothing or DeviceEnable is not LOW
         return;
 
-    if (flgWrRequest==0 && pFlgWRRequest==1){                                                                       // WR_REQ is active LOW                  
+    if (flgWrRequest==0 ){                          // Write Request is active Low 
+        
+        // <!> The order of the line below is important DO NOT CHANGE IT <!!>
+        
+        TIM3->DIER &= ~TIM_DIER_CC4IE;                                      // disable CC4 interrupt
+        TIM3->CCER &= ~TIM_CCER_CC4E;                                       // disable CC4 output
+        TIM3->CR1 &= ~TIM_CR1_CEN;                                          // stop the timer
 
-        HAL_TIM_PWM_Stop_IT(&htim3,TIM_CHANNEL_4);                                              // First stop the READING TIMER
-        //bytePtr=0;
-        wrBitPos=0;                                                                             // Reset the BitPos
-        wrBitCounter=bytePtr*8;                                                                 // Compute the wrCounter from bytePtr 
-        GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);
-        HAL_TIM_PWM_Start_IT(&htim2,TIM_CHANNEL_3);   
-        pendingWriteTrk=1;                                                                      // Pending write has to be here and not in the below section
-                                   
-        if (wrLoopStartPtr==0)                                                                  // write start pointer to check for a full loop
-            wrLoopStartPtr=bytePtr;
+        flgDebug=0;
+        wrBitPos=0; 
+        
+        //dbgchar1=0x0;                                                       // Debug only
+        //dbgchar2=0x0;
+        //dbgchar3=0x0;
+        
+        //bytePtr++;                                                        // Reset the BitPos
+        wrBitCounter=bytePtr*8;
+        __DSB();
+
+        //GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);           // WR_REQ is active LOW                  
+        TIM2->DIER |= TIM_DIER_CC2IE;                                      // enable CC2 Channel2 interrupt
+        TIM2->CR1 |= TIM_CR1_CEN;                                          // start the timerHAL_TIM_PWM_Start_IT(&htim2,TIM_CHANNEL_2); 
+    
+        //endingWriteTrk=1;                                                // Pending write has to be here and not in the below section
+
+        wrLastWriteStartPtr=bytePtr;                                      // set the write loop start pointer 256 bytes after the current position
+        wrDeltaLastWritePtr=0;
 
     }else if (flgWrRequest==1 && pFlgWRRequest==0){
         
-        HAL_TIM_PWM_Start_IT(&htim3,TIM_CHANNEL_4); 
-        GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);                                                                                              
-        //bytePtr=0;
-        bitPos=7;                                                                               // Reset the bitPos
-        rdBitCounter=bytePtr*8-1; 
-        HAL_TIM_PWM_Stop_IT(&htim2,TIM_CHANNEL_3);                                              // Stop the WRITING Timer
-    
-        cAlive=0;                                                                               // Reset the cAlive
+        GPIOWritePin(DEBUG2_GPIO_Port, DEBUG2_Pin,GPIO_PIN_SET); 
+        
+        TIM2->DIER &= ~TIM_DIER_CC2IE;   // disable CC3 interrupt
+        TIM2->CCER &= ~TIM_CCER_CC2E;    // disable CC3 output
+        TIM2->CR1 &= ~TIM_CR1_CEN;       // stop the timer
+        
+        dbgchar3=byteWindow;
+        
+        bitPos=0;                                                                               // Reset the bitPos          
+        rByte=DMA_BIT_TX_BUFFER[bytePtr];
+        rdBitCounter=bytePtr*8;                                                                 // Prepare the next read byte after write            
+        
+        TIM3->DIER  |= TIM_DIER_CC4IE;     // enable CC4 interrupt
+        TIM3->CCER  |= TIM_CCER_CC4E;      // enable CC4 output
+        TIM3->CR1   |= TIM_CR1_CEN;         // start the timer 
+        
+        flgDebug=0;
+        pendingWriteTrk=1;
+        cAlive=0;
+        __DSB();                                                                               // Reset the cAlive
+        GPIOWritePin(DEBUG2_GPIO_Port, DEBUG2_Pin,GPIO_PIN_RESET);     
     }
     pFlgWRRequest=flgWrRequest;   
 }
-
+*/
 
 /*
 WRITE PART:
@@ -311,71 +405,41 @@ WRITE PART:
   * @retval None
   */
 
-
 void DiskIIReceiveDataIRQ(){
-    
+     
+    // Read WR_DATA pin once and combine operations
     //for (uint8_t i=0;i<10;i++);
-    // This is the old verison
-    /*if ((GPIOA->IDR & WR_DATA_Pin)==0)                                                          // get WR_DATA DO NOT USE THE HAL function creating an overhead
-        wrData=0;
-    else
-        wrData=1;
-    
-    wrData^= 0x01u;                                                                             // get /WR_DATA
-    */
-    wrData=1;
-    if ((GPIOA->IDR & WR_DATA_Pin)!=0)
-        wrData=0;
-    
-    xorWrData=wrData ^ prevWrData;                                                              // Compute Magnetic polarity inversion
-    prevWrData=wrData;                                                                          // for next cycle keep the wrData
+    uint8_t wrData = ((GPIOA->IDR & WR_DATA_Pin) == 0) ? 1 : 0;
+     
+    //GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,wrData);
+    //GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);
 
-    byteWindow<<=1;                                                                             // Shift left 1 bit to get the next one
-    byteWindow|=xorWrData;                                                                      // Write the next bit to the byteWindow
+    // Compute XOR and shift in one expression
+    byteWindow = (byteWindow << 1) | (wrData ^ prevWrData);
+    prevWrData = wrData;
     
-     //if (byteWindow & 0x80 ){                                                                 // For debug purpose only
+    if (++wrBitPos == 8) {
+        DMA_BIT_TX_BUFFER[bytePtr++] = byteWindow;
+        byteWindow = 0x0;
+        wrBitPos = 0;
+    }
     
-    if (wrBitPos==7){   
-        DMA_BIT_TX_BUFFER[bytePtr]=byteWindow;
-        byteWindow=0x0;       
-        bytePtr++;
-
-        if (bytePtr==wrLoopStartPtr){
-            //GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);                              // DEBUG ONLY
-            wrLoopFlg=1;
-        }
-        wrBitPos=0;                                                                             // Add VIB 0911
-    }else
-        wrBitPos++;
-    
-    // Oldversion
-    //wrBitPos++;    
-    //if (wrBitPos==8){
-    //    wrBitPos=0;
-    //}
-
-    wrBitCounter++;                                                                             // bitSize can be 53248 => bitCounter from 0 - 53247
-    if (wrBitCounter>bitSize){                                                                 // Same Size as the original track size
-        
-        //byteWindow<<=7-(wrBitPos);                                                            // TODO: to be tested with bitcounter not aligned with 8 The last byte may be incomplete, and it will be read starting by the MSB Bit 7
-        //byteWindow<<=1;                                                                       // Incomplete byte need to be shift left
-        DMA_BIT_TX_BUFFER[bytePtr]=byteWindow;                                                  // Check which bit MSB LSB order
-        // variable cleared out for next disk loop
-        byteWindow=0x0;                                                                         // TODO: to be tested
-        wrBitCounter=0;
-        wrBitPos=0;
-        bytePtr=0;
-    } 
-
-    //GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET); 
+    if (++wrBitCounter >= bitSize) {
+        DMA_BIT_TX_BUFFER[bytePtr] = byteWindow;
+        byteWindow = 0x0;
+        wrBitCounter = 0;
+        wrBitPos = 0;
+        bytePtr = 0;
+    }
+    //GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);
 }
+    
 
-
-uint8_t nextBit=0;
+volatile uint8_t nextBit=0;
 volatile uint8_t *bbPtr=0x0;
 
 volatile int zeroBits=0;                                                                        // Count number of consecutives zero bits
-volatile unsigned char rByte=0x0;
+
 
 
 /**
@@ -387,56 +451,94 @@ volatile unsigned char rByte=0x0;
 
 void DiskIISendDataIRQ(){
     
-    RD_DATA_GPIO_Port->BSRR=nextBit;                                                            // start by outputing the nextBit and then due the internal cooking for the next one
-
-    if (intTrk==255){
-        weakBitTankPosition=rdBitCounter%256;
-        nextBit=weakBitTank[weakBitTankPosition] & 1;    
-    }else{
-       
-        nextBit=(*(bbPtr+bytePtr)>>bitPos ) & 1;
-        
-        if (bitPos==0){
-            bitPos=7;
-            bytePtr++;
-            if (bytePtr==wrLoopStartPtr && pendingWriteTrk==1){
-                //HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);
-                wrLoopFlg=1;
-            }
-        }else
-            bitPos--;
-
-
-        // ************  WEAKBIT ****************
-
-//        #if WEAKBIT ==1
-
-        if ( nextBit==0 && flgWeakBit==1 ){
-            if (++zeroBits>3){
-                nextBit=weakBitTank[weakBitTankPosition] & 1;    // 30% of fakebit in the buffer as per AppleSauce reco      
-                
-                if (++weakBitTankPosition>208)
-                weakBitTankPosition=0;
-            }
-        }else{
-            zeroBits=0;
+    // Pre-calculate next bit and update GPIO immediately (most time-critical operation)
+    nextBit = rByte >> 7;  // Simpler than ternary operator
+                                
+    if (nextBit == 0 && flgWeakBit == 1) {
+        if (++zeroBits > 3) {
+            nextBit = weakBitTank[weakBitTankPosition] & 1;
+            if (++weakBitTankPosition > 208)
+                weakBitTankPosition = 0;
         }
-        
-//        #endif
+    } else {
+        zeroBits = 0;
+    }        
+    
+    RD_DATA_GPIO_Port->BSRR = nextBit;  // Output bit ASAP
+    
+    rByte <<= 1; 
+    
+    if (++bitPos == 8) {
+        bitPos = 0;
+        rByte = DMA_BIT_TX_BUFFER[++bytePtr];
 
-        // ************  WEAKBIT ****************
-
+        if (pendingWriteTrk == 1) {
+            if (++wrDeltaLastWritePtr > 64 && wrLoopFlg == 0) {
+                wrLoopFlg = 1;
+            }  
+        }
     }
+
+    if (++rdBitCounter >= bitSize) {
+        rdBitCounter = 0;
+        bytePtr = 0;
+        bitPos = 0;
+        rByte = DMA_BIT_TX_BUFFER[0];
+    }
+}
+
+
+/*
+void DiskIISendDataIRQ(){
+    
+    nextBit=rByte & 0x80 ? 1:0;
+                                
+    if ( nextBit==0 && flgWeakBit==1 ){
+        if (++zeroBits>3){
+            nextBit=weakBitTank[weakBitTankPosition] & 1;    // 30% of fakebit in the buffer as per AppleSauce reco      
+                
+            if (++weakBitTankPosition>208)
+                weakBitTankPosition=0;
+        }
+    }else{
+        zeroBits=0;
+    }        
+                                                                                                // Get the MSB bit to output
+                                                                                                // Shift left the byteWindow for next bit
+    RD_DATA_GPIO_Port->BSRR=nextBit;                                                            // start by outputing the nextBit and then due the internal cooking for the next one
+    
+    rByte<<=1; 
+    
+    bitPos++;
+    if (bitPos==8){
+        bitPos=0;
+        bytePtr++;
+        rByte=DMA_BIT_TX_BUFFER[bytePtr];
+
+        if (pendingWriteTrk==1){
+            wrDeltaLastWritePtr++;
+            if (wrDeltaLastWritePtr>256 && wrLoopFlg==0){
+                wrLoopFlg=1;
+                //GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET); 
+            }  
+        }
+    }
+
+    
 
     rdBitCounter++;
     if (rdBitCounter>=bitSize){
+        
         rdBitCounter=0;
         bytePtr=0;
-        bitPos=7;
+        bitPos=0;
+        rByte=DMA_BIT_TX_BUFFER[0];
     }
-        
-}
 
+
+    
+}
+*/
 /**
   * @brief 
   * @param None
@@ -466,17 +568,21 @@ int DiskIIDeviceEnableIRQ(uint16_t GPIO_Pin){
         GPIO_InitStruct.Pull  = GPIO_PULLDOWN;
         HAL_GPIO_Init(RD_DATA_GPIO_Port, &GPIO_InitStruct);
 
-        HAL_TIM_PWM_Start_IT(&htim3,TIM_CHANNEL_4);
+        TIM3->DIER |= TIM_DIER_CC4IE;
+        TIM3->CCER |= TIM_CCER_CC4E;
+        TIM3->CR1 |= TIM_CR1_CEN;
 
         GPIO_InitStruct.Pin   = WR_PROTECT_Pin;
         GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP;
         GPIO_InitStruct.Pull  = GPIO_PULLDOWN;
         HAL_GPIO_Init(WR_PROTECT_GPIO_Port, &GPIO_InitStruct);
 
-        if (flgWriteProtected==1)
+        GPIOWritePin(WR_PROTECT_GPIO_Port,WR_PROTECT_Pin,flgWriteProtected);  
+        /*if (flgWriteProtected==1)
             GPIOWritePin(WR_PROTECT_GPIO_Port,WR_PROTECT_Pin,GPIO_PIN_SET);                     // WRITE_PROTECT is enable
         else
             GPIOWritePin(WR_PROTECT_GPIO_Port,WR_PROTECT_Pin,GPIO_PIN_RESET);
+        */
     
     }else if (flgDeviceEnable==1 && a==1 ){
 
@@ -496,8 +602,10 @@ int DiskIIDeviceEnableIRQ(uint16_t GPIO_Pin){
         GPIO_InitStruct.Mode  = GPIO_MODE_INPUT;
         GPIO_InitStruct.Pull  = GPIO_NOPULL;
         HAL_GPIO_Init(WR_PROTECT_GPIO_Port, &GPIO_InitStruct);
-
-        HAL_TIM_PWM_Stop_IT(&htim3,TIM_CHANNEL_4);                                               // Stop the Timer
+        
+        TIM3->DIER &= ~TIM_DIER_CC4IE;                                                          // disable CC4 interrupt
+        TIM3->CCER &= ~TIM_CCER_CC4E;                                                           // disable CC4 output
+        TIM3->CR1 &= ~TIM_CR1_CEN;                                                              // stop the timer
         
     }
 
@@ -742,7 +850,7 @@ enum STATUS DiskIIiniteBeaming(){
     rdBitCounter=0;
 
     TIM3->ARR=(mountImageInfo.optimalBitTiming*12)-1;
-    TIM2->ARR=(mountImageInfo.optimalBitTiming*12)-1;
+   // TIM2->ARR=(mountImageInfo.optimalBitTiming*12)-1-3;
 
     log_info("initeBeaming optimalBitTiming:%d",mountImageInfo.optimalBitTiming);
 
@@ -779,7 +887,7 @@ void DiskIIInit(){
     HAL_GPIO_WritePin(_35DSK_GPIO_Port,_35DSK_Pin,GPIO_PIN_SET);
     */
 
-    TIM2->ARR=(32*12)-1;
+    //TIM2->ARR=(32*12)-1;
 
     ph_track=0;
    
@@ -918,88 +1026,72 @@ void DiskIIInit(){
    flgSelect=1;
 }
 
+static void processWriteTrack(uint8_t rTrk){
+    // Placeholder for future write processing logic
+    wrLoopFlg=0;
+    pendingWriteTrk=0;
+    cAlive=0;
+
+    /*
+    char filename[32];
+    sprintf(filename,"rawdmp_trk_%d.bin",rTrk);
+    irqEnableSDIO();
+    dumpBufFile(filename,DMA_BIT_TX_BUFFER,6657);
+    irqDisableSDIO();
+    */
+
+    GPIOWritePin(DEBUG2_GPIO_Port, DEBUG2_Pin,GPIO_PIN_SET);
+    
+    // updateDiskIIImageScr(1,rTrk);
+    
+    if (flgSoundEffect==1){
+        play_buzzer_ms(50);
+    }
+    
+    irqEnableSDIO();
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
+    if (setTrackBitStream(rTrk,DMA_BIT_TX_BUFFER)==RET_OK){
+        __NOP();
+    }
+    #pragma GCC diagnostic pop
+    irqDisableSDIO();
+    GPIOWritePin(DEBUG2_GPIO_Port, DEBUG2_Pin,GPIO_PIN_RESET);
+}
+
 /**
   * @brief 
   * @param None
   * @retval None
   */
 
+
 void DiskIIMainLoop(){
     int trk=0;
-   
+    TIM2->ARR=32*12-1;
+    TIM2->CCR2= 5;
+    //TIM3->CCR3=32*6;
+    getTrackBitStream(0,read_track_data_bloc);
+    memcpy((unsigned char *)&DMA_BIT_TX_BUFFER,read_track_data_bloc,RAW_SD_TRACK_SIZE);
+                
+    //dumpBuf(DMA_BIT_TX_BUFFER,1,6656);
     while(1){
-        pendingWriteTrk=0;
-        if (flgSelect==1 && flgDeviceEnable==0){  
+        //pendingWriteTrk=0;
+        if (flgDeviceEnable==0){  
             
             if (flgWrRequest==1 && pendingWriteTrk==1 ){ 
-                uint8_t rTrk=intTrk;
-                wrLoopStartPtr=0;
-                wrLoopFlg=0;
-                pendingWriteTrk=0;
-                cAlive=0;
-                
-                GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);
-                
-                irqEnableSDIO();
-                #pragma GCC diagnostic push
-                #pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
-                if (setTrackBitStream(rTrk,DMA_BIT_TX_BUFFER)==RET_OK){
-                    log_info("WR trk:%d OK",rTrk);
-                }else{
-                    log_error("WR trk:%d KO",rTrk);
-                }
-                #pragma GCC diagnostic pop
-                irqDisableSDIO();
-                GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);
-            
+                //uint8_t rTrk=intTrk;
+                processWriteTrack(wrTrack);
             }
-        } 
+        }
         
-        if (flgSelect==1 && flgDeviceEnable==1){                                            // A2 is Powered (Select Line HIGH) & DeviceEnable is active LOW
+        if (flgDeviceEnable==1){                                                             // A2 is Powered (Select Line HIGH) & DeviceEnable is active LOW
             
             
             if (flgWrRequest==1 && pendingWriteTrk==1 && wrLoopFlg==1){                     // Reading Mode, pending track to be written after a full revolution
-                uint8_t rTrk=intTrk;
-                wrLoopStartPtr=0;
-                wrLoopFlg=0;
-                pendingWriteTrk=0;
-                cAlive=0;
-                
-                GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);
-                
-                // updateDiskIIImageScr(1,rTrk);
-                if (flgSoundEffect==1){
-                    play_buzzer_ms(50);
-                }
-                
-                irqEnableSDIO();
-                #pragma GCC diagnostic push
-                #pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
-                if (setTrackBitStream(rTrk,DMA_BIT_TX_BUFFER)==RET_OK){
-                    //log_info("WR trk:%d OK",rTrk);
-                }else{
-                    log_error("WR trk:%d KO",rTrk);
-                }
-                #pragma GCC diagnostic pop
-                irqDisableSDIO();
-                //GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);
-            
+                //uint8_t rTrk=intTrk;
+                processWriteTrack(wrTrack);
             }
-
-            /*
-            
-            if (pendingWriteTrk==1 && flgDeviceEnable==0){
-                
-                pendingWriteTrk=0;
-                dumpBuf(DMA_BIT_TX_BUFFER,1,6656);
-                if (setTrackBitStream(prevTrk,DMA_BIT_TX_BUFFER)==RET_OK){
-                    log_info("WR trk:%d OK",prevTrk);
-                }else{
-                    log_error("WR trk:%d KO",prevTrk);
-                }
-            }
-            
-            */
 
             if (prevTrk!=intTrk && flgBeaming==1){                                                  // <!> TO Be tested
 
@@ -1007,33 +1099,13 @@ void DiskIIMainLoop(){
                 cAlive=0;
             
                 if (pendingWriteTrk==1){
-                    
-                    //updateDiskIIImageScr(1,prevTrk);
-                    if (flgSoundEffect==1){
-                        play_buzzer_ms(150);
-                    }
-
-                    irqEnableSDIO();
-
-                    #pragma GCC diagnostic push
-                    #pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
-                    if (setTrackBitStream(prevTrk,DMA_BIT_TX_BUFFER)==RET_OK){
-                        //log_info("sw WR trk:%d OK",prevTrk);
-                    }else{
-                        log_error("sw WR trk:%d KO",prevTrk);
-                    }
-                    #pragma GCC diagnostic pop
-                    irqDisableSDIO();
-                    
-                    pendingWriteTrk=0;
-                    wrLoopFlg=0;
-                    wrLoopStartPtr=0;
+                    processWriteTrack(wrTrack);
                 }
                 
                 if (trk==255 ){
                     bitSize=51200;
                     ByteSize=6400;
-                    //printf("ph:%02d fakeTrack:255\n",ph_track);
+                    printf("ph:%02d fakeTrack:255\n",ph_track);
                     prevTrk=trk;
                     continue;
                 }
@@ -1047,6 +1119,9 @@ void DiskIIMainLoop(){
                 }
 
                 irqEnableSDIO();
+                while (fsState!=READY){
+                    __NOP();
+                }
                 getTrackBitStream(trk,read_track_data_bloc);
                 while(fsState!=READY);
                 irqDisableSDIO();
@@ -1127,9 +1202,6 @@ void DiskIIMainLoop(){
             }
         }
 
-        //if (flgSoundEffect==1){
-        //    HAL_TIMEx_PWMN_Stop(&htim1,TIM_CHANNEL_2);
-        //}
 
         if (flgWrRequest==1){
             cAlive++;

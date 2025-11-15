@@ -15,29 +15,27 @@ extern volatile enum FS_STATUS fsState;
 unsigned int fatDskCluster[20];
 extern image_info_t mountImageInfo;
 
-#define NIBBLE_BLOCK_SIZE  412 // 400 51 200
+#define NIBBLE_BLOCK_SIZE  400 // 400 51 200
 #define NIBBLE_SECTOR_SIZE 512
 #define ENCODE_525_6_2_RIGHT_BUFFER_SIZE 86
 
- enum BITSTREAM_PARSING_STAGE{N,ADDR_START,ADDR_END,DATA_START,DATA_END};
+enum BITSTREAM_PARSING_STAGE{N,SEARCH_ADDR,READ_ADDR,SEARCH_DATA,READ_DATA};
 
 static enum STATUS nib2dsk(unsigned char * dskData,unsigned char *buffer,uint8_t trk,int byteSize,uint8_t * retError);
 static enum STATUS dsk2Nib(unsigned char *rawByte,unsigned char *buffer,uint8_t trk);
 
 static enum STATUS decodeAddr(unsigned char *buf, uint8_t * retSector,uint8_t * retTrack);
-static enum STATUS decodeGcr62(uint8_t * buffer,uint8_t * data_out,uint8_t *chksum_out, uint8_t *chksum_calc);
-
-static enum STATUS decodeGcr62b(unsigned char * src,unsigned char * dst);
+static enum STATUS decodeGCR6_2(uint8_t * buffer,uint8_t * data_out,uint8_t *chksum_out, uint8_t *chksum_calc);
 
 static const unsigned char signatureAddrStart[]	={0xD5,0xAA,0x96};
 static const unsigned char signatureDataStart[]	={0xD5,0xAA,0xAD};
 
-static uint8_t sectorCheckArray[32];
-static  uint8_t  dsk2nibSectorMap[]         = {0, 7, 14, 6, 13, 5, 12, 4, 11, 3, 10, 2, 9, 1, 8, 15};
-static  uint8_t  po2nibSectorMap[]         =  {0, 8,  1, 9, 2, 10, 3, 11, 4, 12, 5, 13, 6, 14, 7, 15};
+static uint8_t  sectorCheckArray[16];
+static uint8_t  dsk2nibSectorMap[]         = {0, 7, 14, 6, 13, 5, 12, 4, 11, 3, 10, 2, 9, 1, 8, 15};
+static uint8_t  po2nibSectorMap[]         =  {0, 8,  1, 9, 2, 10, 3, 11, 4, 12, 5, 13, 6, 14, 7, 15};
 
-static  uint8_t  nib2dskSectorMap[]         = {0, 13, 11, 9, 7, 5, 3, 1, 14, 12, 10,8, 6, 4, 2, 15};
-static uint8_t   nib2poSectorMap[]          = {0,  2,  4, 6,  8,10, 12,14,  1, 3,  5, 7, 9, 11,13,15};
+//static uint8_t  nib2dskSectorMap[]         = {0, 13, 11, 9, 7, 5, 3, 1, 14, 12, 10,8, 6, 4, 2, 15};
+//static uint8_t  nib2poSectorMap[]          = {0,  2,  4, 6,  8,10, 12,14,  1, 3,  5, 7, 9, 11,13,15};
 
 static const uint8_t from_gcr_6_2_byte[128] = {
     0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,     // 0x80-0x87
@@ -68,7 +66,7 @@ static const char encTable[] = {
 	0xED,0xEE,0xEF,0xF2,0xF3,0xF4,0xF5,0xF6,
 	0xF7,0xF9,0xFA,0xFB,0xFC,0xFD,0xFE,0xFF
 };
-
+/*
 static unsigned char decTable[] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -87,7 +85,7 @@ static unsigned char decTable[] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x29, 0x2a, 0x2b, 0x00, 0x2c, 0x2d, 0x2e, 0x2f, 0x30, 0x31, 0x32,
     0x00, 0x00, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x00, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f
 };
-
+*/
 
 // for bit flip
 
@@ -126,7 +124,8 @@ enum STATUS getDskTrackBitStream(int trk,unsigned char * buffer){
         log_error("unable to allocate tmp for 4096 Bytes");
         return RET_ERR;
     }
-
+    while (fsState!=READY){}
+    
     getDataBlocksBareMetal(addr,tmp,blockNumber);          // Needs to be improved and to remove the zeros
     while (fsState!=READY){}
     
@@ -185,49 +184,43 @@ static enum STATUS dsk2Nib(unsigned char *rawByte,unsigned char *buffer,uint8_t 
         return RET_ERR;
     }
         
-    for (i=0; i<0x16; i++) 
+    for (i=0; i<0x14; i++) 
         dst[i]=0xff;
 
     // sync header
-    dst[0x16]=0x03;
-    dst[0x17]=0xfc;
-    dst[0x18]=0xff;
-    dst[0x19]=0x3f;
-    dst[0x1a]=0xcf;
-    dst[0x1b]=0xf3;
-    dst[0x1c]=0xfc;
-    dst[0x1d]=0xff;
-    dst[0x1e]=0x3f;
-    dst[0x1f]=0xcf;
-    dst[0x20]=0xf3;
-    dst[0x21]=0xfc;	
+    dst[0x14]=0x03;
+    dst[0x15]=0xfc;
+    dst[0x16]=0xff;
+    dst[0x17]=0x3f;
+    dst[0x18]=0xcf;
+    dst[0x19]=0xf3;
+    dst[0x1a]=0xfc;
+    dst[0x1b]=0xff;
+    dst[0x1c]=0x3f;
+    dst[0x1d]=0xcf;
+    dst[0x1e]=0xf3;
+    dst[0x1f]=0xfc;	
 
     // address header
-    dst[0x22]=0xd5;
-    dst[0x23]=0xaa;
-    dst[0x24]=0x96;
-    dst[0x2d]=0xde;
-    dst[0x2e]=0xaa;
-    dst[0x2f]=0xeb;
+    dst[0x20]=0xd5;
+    dst[0x21]=0xaa;
+    dst[0x22]=0x96;
+    dst[0x2b]=0xde;
+    dst[0x2c]=0xaa;
+    dst[0x2d]=0xeb;
     
     // sync header
-    for (i=0x30; i<0x35; i++) 
+    for (i=0x2e; i<0x33; i++) 
         dst[i]=0xff;
 
     // data
-    dst[0x35]=0xd5;
-    dst[0x36]=0xaa;
-    dst[0x37]=0xad;
-    dst[0x18f]=0xde;
-    dst[0x190]=0xaa;
-    dst[0x191]=0xeb;
+    dst[0x33]=0xd5;
+    dst[0x34]=0xaa;
+    dst[0x35]=0xad;
+    dst[0x18d]=0xde;
+    dst[0x18e]=0xaa;
+    dst[0x18f]=0xeb;
     
-    for (i=0x192; i<0x1a0; i++) 
-        dst[i]=0xff;
-    
-    for (i=0x1a0; i<0x200; i++) 
-        dst[i]=0x00;
-
     for (uint8_t sector=0;sector<16;sector++){
         uint8_t sm=sectorMap[sector];
         memcpy(src,rawByte+sm * 256,256);
@@ -235,30 +228,30 @@ static enum STATUS dsk2Nib(unsigned char *rawByte,unsigned char *buffer,uint8_t 
 
         unsigned char c, x, ox = 0;
 
-        dst[0x25]=((volume>>1)|0xaa);
-        dst[0x26]=(volume|0xaa);
-        dst[0x27]=((trk>>1)|0xaa);
-        dst[0x28]=(trk|0xaa);
-        dst[0x29]=((sector>>1)|0xaa);
-        dst[0x2a]=(sector|0xaa);
+        dst[0x23]=((volume>>1)|0xaa);
+        dst[0x24]=(volume|0xaa);
+        dst[0x25]=((trk>>1)|0xaa);
+        dst[0x26]=(trk|0xaa);
+        dst[0x27]=((sector>>1)|0xaa);
+        dst[0x28]=(sector|0xaa);
 
         c = (volume^trk^sector);
-        dst[0x2b]=((c>>1)|0xaa);
-        dst[0x2c]=(c|0xaa);
+        dst[0x29]=((c>>1)|0xaa);
+        dst[0x2a]=(c|0xaa);
 
         for (i = 0; i < 86; i++) {
             x = (FlipBit1[src[i] & 3] | FlipBit2[src[i + 86] & 3] | FlipBit3[src[i + 172] & 3]);
-			dst[i+0x38] = encTable[(x^ox)&0x3f];
+			dst[i+0x36] = encTable[(x^ox)&0x3f];
             ox = x;
         }
 
         for (i = 0; i < 256; i++) {
             x = (src[i] >> 2);
-            dst[i+0x8e] = encTable[(x ^ ox) & 0x3f];
+            dst[i+0x8c] = encTable[(x ^ ox) & 0x3f];
             ox = x;
         }
         
-        dst[0x18e]=encTable[ox & 0x3f];
+        dst[0x18c]=encTable[ox & 0x3f];
         memcpy(buffer+sector*NIBBLE_BLOCK_SIZE,dst,NIBBLE_BLOCK_SIZE);
     }
     return RET_OK;
@@ -269,13 +262,15 @@ uint8_t wr_retry=0;                                                             
 enum STATUS setDskTrackBitStream(int trk,unsigned char * buffer){
     
     uint8_t retE=0x0;
-
-    unsigned char * dskData=(unsigned char *)malloc(4096*sizeof(unsigned char)); 
-    if (nib2dsk(dskData,buffer,trk,16*416,&retE)==RET_ERR){
-        log_error("nib2dsk error:%d",retE);
-        free(dskData);
-        return RET_ERR;
+    //GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);
+    //unsigned char * dskData=(unsigned char *)malloc(4096*sizeof(unsigned char));
+    unsigned char dskData[4096];;
+    if (nib2dsk((unsigned char *)&dskData,buffer,trk,16*NIBBLE_BLOCK_SIZE,&retE)==RET_ERR){
+        printf("dsk e:%d\n",retE);
+        //free(dskData);
+        //return RET_ERR;
     }
+    //GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);
     //free(dskData);  
     //return RET_OK;
     // if (trk==0){                                                                                // DEBUG ONLY 
@@ -292,10 +287,11 @@ enum STATUS setDskTrackBitStream(int trk,unsigned char * buffer){
     //}
 
     int addr=getDskSDAddr(trk,0,csize,database);
+    while (fsState!=READY){};
     setDataBlocksBareMetal(addr,dskData,8); 
     
     while (fsState!=READY){};
-    free(dskData);  
+    //free(dskData);  
     
     return RET_OK;
 
@@ -342,18 +338,14 @@ enum STATUS setDskTrackBitStream(int trk,unsigned char * buffer){
     f_close(&fil);
     free(dskData); 
     return RET_OK;
-    
     */
+    
 }
 
 static enum STATUS nib2dsk(unsigned char * dskData,unsigned char *buffer,uint8_t trk,int byteSize,uint8_t * retError){
 
    	unsigned char ch=0x0;
     unsigned char byteWindow=0x0;                                                               // byte window of the data stream
-   	unsigned char byteFrameIndx=0;                                                              // simple counter to check if a complete signature is found
-   	unsigned char byteStreamRecord=0;                                                           // flag to record block data
-   	int byteStreamRecordIndx=0;                                                                 // buffer index when recording addr data and gcr data
-
     unsigned char tmpBuffer[346];                                                               // temp buffer for Addr, data block & GCR decoding
 
    	int i=0;                                                                                    // Buffer index in the infinite while loop
@@ -365,32 +357,40 @@ static enum STATUS nib2dsk(unsigned char * dskData,unsigned char *buffer,uint8_t
    	uint8_t  dskTrack=0x0;                                                                      // track from the addr decoded block use to check with the function variable
     uint8_t  cksum_out, cksum_calc;                                                             // GCR 6_2 checksum value
 
-    /*
-    unsigned long t1,t2,diff1;
-    DWT->CYCCNT = 0;                                                                            // Reset cpu cycle counter
-    t1 = DWT->CYCCNT;
-    */
+    unsigned char byte1=0x0;
+    unsigned char byte2=0x0;
+    unsigned char byte3=0x0;
+    
+    uint8_t flgBreakloop=0;
+
+    int bitPos=0;
+    int counter=0;
+    int bufferLoop=0;
     unsigned char * sectorMap;                                                                  // Sector skewing from nibble to DSK or PO 
+    uint8_t ptrack=0;
+
+    if( dskData == NULL || buffer == NULL|| retError == NULL ){
+        log_error("nib2dsk: NULL pointer detected\n");
+        *retError=0xFF;
+        return RET_ERR;
+    }
+
     if (mountImageInfo.type==2)
-       sectorMap=nib2dskSectorMap;
+        sectorMap=dsk2nibSectorMap;
     else if (mountImageInfo.type==3)
-       sectorMap=nib2poSectorMap;
+        sectorMap=po2nibSectorMap;
     else{
-       log_error("Unable to match sectorMap with mountImageInfo.type");
-       return RET_ERR;
+        log_error("Unable to match sectorMap with mountImageInfo.type");
+        *retError=0x01;
+        return RET_ERR;
     }
 
-    const uint8_t checkSignatureLength=3;                                                       // length of the prologue to check changed it to const
-    enum BITSTREAM_PARSING_STAGE stage=ADDR_START;                                              // Current stage of the processing to find the right data signature                                                            
-    const unsigned char *ptrSearchSignature=&signatureAddrStart[0];                             // Start with the AddrSignature to be checked
-    int blockLength=11;
-
-    for (int8_t k=0;k<16;k++){                                                                  // Array to get which sector might be missing
-        sectorCheckArray[k]=0;
-    }
+    enum BITSTREAM_PARSING_STAGE stage=SEARCH_ADDR;                                              // Current stage of the processing to find the right data signature                                                            
+    
+    memset(sectorCheckArray,0,16*sizeof(uint8_t));
 
     while(1){
-   	
+        
    		ch=buffer[i];                                                                           // for code clarity
 
    		for (int8_t j=7;j>=0;j--){
@@ -399,49 +399,27 @@ static enum STATUS nib2dsk(unsigned char * dskData,unsigned char *buffer,uint8_t
             byteWindow|=ch >> j & 1;
 
             if (byteWindow & 0x80){
-            	
-            	if (byteStreamRecord==1){											            // Storing Addr or Data data 
-            		tmpBuffer[byteStreamRecordIndx]=byteWindow;
-            		byteStreamRecordIndx++;
-                    
-                    if (byteStreamRecordIndx==blockLength){                                     // end of the data block
-                        byteFrameIndx=checkSignatureLength;
-                    }
 
-            	}else{
-                    if (byteWindow==ptrSearchSignature[byteFrameIndx]){
-                        tmpBuffer[byteFrameIndx]=ptrSearchSignature[byteFrameIndx]; 
-                        byteFrameIndx++;
-                    }else{
-                        byteFrameIndx=0;
-                    }
-                }
+                byte3=byte2;
+                byte2=byte1;
+                byte1=byteWindow & 0xFF;
 
-            	if (byteFrameIndx==checkSignatureLength){                                       // if == 3 means that 3 succesive char of signature have been detected
-            		
-            		if (stage==ADDR_START){             
-                        //log_info("A-S byte:%d %04X bit:%d",i,i,j); 
-                        stage=ADDR_END;                                                         // Move to the next stage
-            			                                                         
-                        if (indxOfFirstAddr==-1)                                                // Capture the starting point of the first ADDRESS bloc to make a full loop in the buffer
-            				indxOfFirstAddr=i;
+                if (stage==SEARCH_ADDR && byte1==signatureAddrStart[2] && byte2==signatureAddrStart[1] && byte3==signatureAddrStart[0]){
+                    if (indxOfFirstAddr==-1)
+                        indxOfFirstAddr=bitPos;                                       // Capture the starting point of the first ADDRESS bloc to make a full loop in the buffer
 
-                        blockLength=11;                                                         // 11 char to capture 3 Prologue + 8 data char
-            			byteStreamRecord=1;
-                        byteStreamRecordIndx=3;
-                       // log_info("A-E byte:%d %04X bit:%d",i,i,j);
-            		}
+                    stage=READ_ADDR;
+                    counter=0;
 
-            		else if (stage==ADDR_END){
-                        //log_info("B-S byte:%d %04X bit:%d",i,i,j);                               // END ADDRESS bloc signature found
-            			stage=DATA_START;                                                       
-            			ptrSearchSignature=&signatureDataStart[0];
-            			
-                        if((decodeAddr(tmpBuffer,&logicalSector,&dskTrack))==RET_ERR){    // decode ADDRESS Bloc field
-                            log_error("decodeAddr error end of the process");
+                }else if (stage==READ_ADDR){
+                    tmpBuffer[counter]=byte1;
+                    counter++;
+
+                    if (counter==11){
+                        
+                        if (decodeAddr(tmpBuffer,&logicalSector,&dskTrack)==RET_ERR){    // decode ADDRESS Bloc field
+                            log_error("decodeAddr error trk:%02d",trk);
                             *retError=0x02;
-                         
-                            //dumpBuf(tmpBuffer,1,350);
                             return RET_ERR;    
                         }
 
@@ -450,96 +428,88 @@ static enum STATUS nib2dsk(unsigned char * dskData,unsigned char *buffer,uint8_t
                             *retError=0x03;
                             return RET_ERR;
                         }
-                        for (int8_t j=0;j<16;j++){
-                            if (sectorMap[j]==logicalSector){
-                                physicalSector=j;
-                                break;
-                            }
-                        }
-            			//physicalSector=sectorMap[logicalSector];                                  // Will be usefull to determine position in the dsk track buffer to vbe written in the file
-            			
-                        byteStreamRecord=0;                                                     // stop recording char in the buffer
-            			
-                        //log_info("B-E byte:%d %04X bit:%d",i,i,j);
-            		}
-            		
-                    else if (stage==DATA_START){                                                // START DATA Block signature is detected 
-            			//log_info("C-S byte:%d %04X bit:%d",i,i,j); 
-                        stage=DATA_END;
-                       
-                        blockLength=346;
-                        byteStreamRecord=1; 
-            			byteStreamRecordIndx=3;                                                 // move the temporary buffer position by the size of the signature
-    
-                       // log_info("C-E byte:%d %04X bit:%d",i,i,j);                            // start recording in the temp buffer
-            		}
 
-            		else if (stage==DATA_END){                                                  // End of the DATA Bloc
-            			//log_info("D-S byte:%d %04X bit:%d",i,i,j); 
-                        stage=ADDR_START;
-            			ptrSearchSignature=&signatureAddrStart[0];                              // Next signature search is ADDRESS BLOC
-            			                                                                        // Increment the sumSector as checksum with the value of the current sector number
-            			uint8_t * data_out=dskData+256*physicalSector;                               // send directly the right buffer address to avoid memcpy
+                        physicalSector=sectorMap[logicalSector];
                         
-                        //if (decodeGcr62b(tmpBuffer+3,(unsigned char *)data_out)==RET_ERR){
-                        if(decodeGcr62(tmpBuffer,(unsigned char *)data_out,&cksum_out,&cksum_calc)==RET_ERR){    // gcr6_2 decode and expect 256 Bytes in return;
-            				log_error("GCR decoding trk:%02d, sector:%02d, bytePos:%d %02X",trk,physicalSector,i,i);
-                            //dumpBuf(buffer,1,6657);
-                            /*char filename[32];
-                            sprintf(filename,"dmp_gcr_%d_%d_%d.bin",trk,physicalSector,i);
-                            dumpBufFile(filename,buffer,6657);
-                            */
+                        stage=SEARCH_DATA;
+                    }
+                }else if(stage==SEARCH_DATA && byte1==signatureDataStart[2] && byte2==signatureDataStart[1] && byte3==signatureDataStart[0]){
+                    stage=READ_DATA;
+                    counter=0;
+
+                }else if(stage==READ_DATA){
+                    tmpBuffer[counter]=byte1;
+                    counter++;
+                    if (counter==343){                                                                          // Full data block read                
+                        uint8_t * data_out=dskData+256*physicalSector;                                          // send directly the right buffer address to avoid memcpy
+                        
+                        if(decodeGCR6_2(tmpBuffer,(unsigned char *)data_out,&cksum_out,&cksum_calc)==RET_ERR){    // gcr6_2 decode and expect 256 Bytes in return;
+            				//log_error("GCR decoding trk:%02d, sector:%02d, bytePos:%04d",trk,physicalSector,i);
+                            printf("GCR %d\n",physicalSector);
+                            GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_SET);  
                             *retError=0x04;
-            			
+                            return RET_ERR;
                         }else{
-                            sectorCheckArray[logicalSector]=1;                                         // flag succesfull sector in the checkArray
+                            sectorCheckArray[logicalSector]=1;                                                  // flag succesfull sector in the checkArray
                             sumSector+=physicalSector+1;
                         }
-            			
-                        byteStreamRecord=0;                                                       // Stop recording data in the buffer;
-                        memset(tmpBuffer,0,346);
-                        //log_info("D-E byte:%d %04X bit:%d",i,i,j); 
-            		}
-
-            		byteFrameIndx=0;                                                            // reset the byteFrameIdx to 0 
-            	}
-
-            	byteWindow=0x0;
-            }
-   		}
-	   	
-	   	i++;
-          
-	    if (i==byteSize){                                                                       // Check the end of the  track stream data buffer
-	    	if (indxOfFirstAddr!=-1)                                                            // If the address of the first ADDR Block is found continue
-                i=0;                                                                            // the loop to this point
-            else{
-                *retError=0x05;                                                                               // otherwise break the loop and return with error
-                log_error("exiting the loop without track processed");
-                break;
-            }
+                        stage=SEARCH_ADDR;
+                    }
+                }
                 
-	    }else if (i==indxOfFirstAddr){                                                          // Back to the starting point of the first Block
-            //log_info("back to the starting point");                                             // break the loop
-	    	break;
-	    }
-    }
-    
-    if (sumSector!=136){ 
-        *retError=0x06;                                                                       // Check if we have successfuly process all sector
-        log_error("Missing sector: %d!=136",sumSector);          // a better approach as multiple sector would share the same number
-        for (int8_t j=0;j<16;j++){
-            if (sectorCheckArray[j]==0)
-                log_warn("sector NIB:%d is missing",j);
+                byteWindow=0x0;   
+            }
+
+            bitPos++;
+            
+            if (bitPos==indxOfFirstAddr){                                      // Check if we have done a full loop in the buffer starting from the first Address block found
+                flgBreakloop=1;
+                break;
+            }    
         }
-        //return RET_ERR;                                                                       // good enough
+
+        if (flgBreakloop==1){                                                   // exit the infinite while loop               
+            break;
+        }  
+        
+        i++;
+        
+        if (i>=byteSize){                                                       // loop back to the begining of the buffer
+            i=0;                                                                // reset buffer index
+            bitPos=0;                                                           // reset bit position                 
+
+            if (++bufferLoop>1){                                                // safety to avoid infinite loop
+                log_error("bufferLoop exceeded");                               // this should not happen as we check for full loop with indxOfFirstAddr
+                *retError=0x05;
+                return RET_ERR;
+            }
+        }
     }
-    
-    //t2 = DWT->CYCCNT;
-    //diff1=t2-t1;
-    //printf("cpu cycles:%ld\n",diff1);
+
+    if (sumSector!=136){ 
+                                                                               // Check if we have successfuly process all sector
+        //printf("Mis trk:%02d sec%d!=136\n",trk, sumSector);          // a better approach as multiple sector would share the same number
+        /*for (int8_t j=0;j<16;j++){
+            if (sectorCheckArray[j]==0)
+                log_error("sector NIB:%d is missing\n",j);
+        }*/
+        *retError=0x06;
+        return RET_ERR;  
+        
+    }
+    else{
+        if (trk==17 /*&& ptrack!=0*/){
+            dumpBuf(dskData,16,4096);
+        }
+        GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_RESET);  
+        //printf("OK %d\n",trk);
+        //ptrack=trk;
+        //log_info("OK WR trk:%02d\n",trk);
+    }
+
     *retError=0x00;
-    return RET_OK;
+    return RET_OK;            
+
 }
 
 static enum STATUS decodeAddr(unsigned char *buf, uint8_t * retSector,uint8_t * retTrack){
@@ -551,10 +521,10 @@ static enum STATUS decodeAddr(unsigned char *buf, uint8_t * retSector,uint8_t * 
 
 	unsigned char compute_checksum=0x0;
 
-	volume	=((buf[3] << 1) & 0xAA) | (buf[4]  & 0x55);
-	track	=((buf[5] << 1) & 0xAA) | (buf[6] & 0x55);
-	sector	=((buf[7] << 1) & 0xAA) | (buf[8] & 0x55);
-	checksum=((buf[9] << 1) & 0xAA) | (buf[10]  & 0x55);
+	volume	=((buf[0] << 1) & 0xAA) | (buf[1]  & 0x55);
+	track	=((buf[2] << 1) & 0xAA) | (buf[3] & 0x55);
+	sector	=((buf[4] << 1) & 0xAA) | (buf[5] & 0x55);
+	checksum=((buf[6] << 1) & 0xAA) | (buf[7]  & 0x55);
 
 	compute_checksum^=volume;
 	compute_checksum^=track;
@@ -563,7 +533,7 @@ static enum STATUS decodeAddr(unsigned char *buf, uint8_t * retSector,uint8_t * 
     *retTrack=track;
 	//printf("Address decoding volume:%d, track:%d, sector:%d, checksum:%02X, compute checksum:%02X\n",volume,track,sector,checksum,compute_checksum);
 	if (checksum!=compute_checksum){
-		log_error("Address field decoding checksum error %02X!=%02x\n",compute_checksum,checksum);
+		printf("Address field decoding checksum error %02X!=%02x\n",compute_checksum,checksum);
         return RET_ERR;
     }
 
@@ -571,54 +541,21 @@ static enum STATUS decodeAddr(unsigned char *buf, uint8_t * retSector,uint8_t * 
 
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-function"
-static enum STATUS decodeGcr62b(unsigned char * src,unsigned char * dst){
-   
-    int i, j;
-    unsigned char x, ox = 0;
-    static unsigned char FlipBit[4] = { 0, 2, 1, 3 };
-    uint8_t cksum=0x0;
-
-    for (j=0, i=0x03; i<0x59; i++, j++) {
-        x = ((ox^decTable[src[i]])&0x3f);
-        cksum^=decTable[src[i]]&0x3f;
-        dst[j+172] = FlipBit[(x>>4)&3];
-        dst[j+86] = FlipBit[(x>>2)&3];
-        dst[j] = FlipBit[(x)&3];
-        ox = x;
-    }
-
-    for (j=0, i=0x59; i<0x159; i++, j++) {
-        x = ((ox^decTable[src[i]])&0x3f);
-        cksum^=decTable[src[i]]&0x3f;
-        dst[j]|=(x<<2);
-        ox = x;
-    }
+static enum STATUS decodeGCR6_2(uint8_t * buffer,uint8_t * data_out,uint8_t *chksum_out, uint8_t *chksum_calc) {
     
-    if (cksum!=(decTable[src[345]]&0x3f)){
-        log_error("cgcrDeocding checksum error cksum:%02X byte343:%02X",cksum,decTable[src[345]]&0x3f);
-        return RET_ERR;
-    }
-
-    return RET_OK;
-}
-#pragma GCC diagnostic pop
-static enum STATUS decodeGcr62(uint8_t * buffer,uint8_t * data_out,uint8_t *chksum_out, uint8_t *chksum_calc) {
-    
-    const uint8_t *disk_bytes = buffer+3;
+    const uint8_t *disk_bytes = buffer;
     uint8_t enc2_unpacked[ENCODE_525_6_2_RIGHT_BUFFER_SIZE * 3];
     unsigned chksum, i2, i6;
     uint8_t rbyte;
-   // uint8_t tmp;
-
+    
     chksum = 0;
     
     for (i2 = 0; i2 < ENCODE_525_6_2_RIGHT_BUFFER_SIZE; i2++) {
     	rbyte=from_gcr_6_2_byte[(*disk_bytes++)-0x80];
         
         if (rbyte == 0x80){
-            log_error("rbyte1 error ==0x80");
+            //log_error("rbyte1 error ==0x80");
+            //dumpBuf((char *)buffer,1,343);
             return RET_ERR;
         }
         
@@ -632,7 +569,8 @@ static enum STATUS decodeGcr62(uint8_t * buffer,uint8_t * data_out,uint8_t *chks
     for (i6 = 0; i6 < 256; ++i6) {
     	rbyte=from_gcr_6_2_byte[(*disk_bytes++)-0x80];
         if (rbyte == 0x80){
-            log_error("rbyte2 error ==0x80");
+            //log_error("rbyte2 error ==0x80");
+            //dumpBuf((char *)buffer,1,343);
             return RET_ERR;
         }
         
@@ -652,7 +590,8 @@ static enum STATUS decodeGcr62(uint8_t * buffer,uint8_t * data_out,uint8_t *chks
     }
     *chksum_out = rbyte;
     if (*chksum_out!=*chksum_calc){
-        log_error("gcrDeocding checksum error %02X!=%02X",*chksum_out,*chksum_calc);
+        //printf("gcrDeocding checksum error %02X!=%02X",*chksum_out,*chksum_calc);
+        printf("GCR ck err\n");
         return RET_ERR;
     }
     return RET_OK;
