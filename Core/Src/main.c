@@ -716,14 +716,14 @@ void TIM4_IRQHandler(void){
 void TIM3_IRQHandler(void){
   
   if (TIM3->SR & TIM_SR_UIF){
-    //HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);
+    
     TIM3->SR &= ~TIM_SR_UIF;                              // Clear the overflow interrupt 
     ptrSendDataIRQ();
   
   }else if (TIM3->SR & TIM_SR_CC1IF){                     // Pulse compare interrrupt on Channel 1
     RD_DATA_GPIO_Port->BSRR=1U <<16;                      // Reset the RD_DATA GPIO
     TIM3->SR &= ~TIM_SR_CC1IF;                            // Clear the compare interrupt flag
-    //HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);
+
   }else
     TIM3->SR = 0;
 }
@@ -739,16 +739,13 @@ void TIM2_IRQHandler(void){
 
   if (TIM2->SR & TIM_SR_UIF){ 
 
-    TIM2->SR &= ~TIM_SR_UIF;                                                  // Reset the Interrupt
+    TIM2->SR &= ~TIM_SR_UIF;                                                  // clear the overflow interrupt        
+                                                      
   }else if (TIM2->SR & TIM_SR_CC2IF){
 
     ptrReceiveDataIRQ();
-
-    TIM2->SR &= ~TIM_SR_CC2IF;                                                // clear the count & compare interrupt
-                                                    
-  }/*else{
-    TIM2->SR=0;
-  }*/    
+    TIM2->SR &= ~TIM_SR_CC2IF;                                                // clear the count & compare interrupt                                                
+  }   
 }
 
 #if 1
@@ -1039,10 +1036,13 @@ void getDataBlocksBareMetal(long memoryAdr,volatile unsigned char * buffer,int c
   uint8_t i=0;
   HAL_SD_CardStateTypeDef state ;
   
+  //state = HAL_SD_GetCardState(&hsd);
+  //printf("st %d %lu\n",fsState, state);
+  while (HAL_SD_GetCardState(&hsd) != HAL_SD_CARD_TRANSFER);                                      // Wait until transfer state, previous operation must be completed
   while(HAL_SD_ReadBlocks_DMA(&hsd, (uint8_t *)buffer, memoryAdr, count) != HAL_OK && i<2){
     state = HAL_SD_GetCardState(&hsd);
     //log_error("Error HAL_SD_ReadBlocks_DMA state:%d, memoryAdr:%ld, numBlock:%d, error:%lu, retry:%d",state,memoryAdr,count,hsd.ErrorCode,i);
-    printf("DMA SD RD err:%lu\n",hsd.ErrorCode);
+    printf("DMA RD err:%lu %i\n",hsd.ErrorCode,i);
     i++;
   }
 }
@@ -1056,8 +1056,8 @@ void getDataBlocksBareMetal(long memoryAdr,volatile unsigned char * buffer,int c
   */
 void setDataBlocksBareMetal(long memoryAdr,volatile unsigned char * buffer,int count){
   fsState=WRITING;
-  DWT->CYCCNT = 0; 
-  t1 = DWT->CYCCNT;
+  //DWT->CYCCNT = 0; 
+  //t1 = DWT->CYCCNT;
   uint8_t i=0;
   while (HAL_SD_WriteBlocks_DMA(&hsd, (uint8_t *)buffer, memoryAdr, count) != HAL_OK && i<2){
     log_error("Error HAL_SD_WriteBlocks_DMA error:%d retry:%d",hsd.ErrorCode,i);
@@ -1579,6 +1579,10 @@ int main(void)
 
   /* USER CODE BEGIN 1 */
 
+  
+
+  
+
   FRESULT fres;
   /* USER CODE END 1 */
 
@@ -1595,11 +1599,13 @@ int main(void)
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
-
+  
   // --------------------------------------------------------------------
   // ptr declaration needs to be before NVIC init
   // --------------------------------------------------------------------
 
+
+  
   ptrPhaseIRQ=nothingHook;
   ptrReceiveDataIRQ=nothingHook;
   ptrSendDataIRQ=nothingHook;
@@ -1642,6 +1648,8 @@ int main(void)
   re_bChanged = false;
 #endif
 
+  //GPIOWritePin(WR_PROTECT_GPIO_Port, WR_PROTECT_Pin, GPIO_PIN_SET); 
+
   currentFullPathImageFilename[0]=0x0;
   currentFullPath[0]=0x0;
   tmpFullPathImageFilename[0]=0x0;
@@ -1661,7 +1669,8 @@ int main(void)
   csize=fs.csize;
   database=fs.database;
   
-  GPIO_InitTypeDef GPIO_InitStruct = {0};                                             // This Pin should be High on IIGS but connected to Ground Disk II 
+  //GPIO_InitTypeDef GPIO_InitStruct = {0};                                             // This Pin should be High on IIGS but connected to Ground Disk II 
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
   GPIO_InitStruct.Pin = SELECT_Pin;                                                   // 
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
@@ -2455,10 +2464,19 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(DEVICE_ENABLE_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : WR_DATA_Pin _35DSK_Pin */
-  GPIO_InitStruct.Pin = WR_DATA_Pin|_35DSK_Pin;
+  
+  GPIO_InitStruct.Pin = WR_DATA_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(WR_DATA_GPIO_Port, &GPIO_InitStruct);
+  
+  GPIO_InitStruct.Pin = _35DSK_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  
+  GPIOWritePin(_35DSK_GPIO_Port, _35DSK_Pin, GPIO_PIN_RESET);
+
 
   /*Configure GPIO pin : RD_DATA_Pin */
   GPIO_InitStruct.Pin = RD_DATA_Pin;
@@ -2468,11 +2486,13 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(RD_DATA_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : WR_PROTECT_Pin */
+  
   GPIO_InitStruct.Pin = WR_PROTECT_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(WR_PROTECT_GPIO_Port, &GPIO_InitStruct);
+  GPIOWritePin(WR_PROTECT_GPIO_Port, WR_PROTECT_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin : BTN_RET_Pin */
   GPIO_InitStruct.Pin = BTN_RET_Pin;
@@ -2487,11 +2507,14 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(SD_EJECT_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : DEBUG_Pin */
+  
   GPIO_InitStruct.Pin = DEBUG_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
   HAL_GPIO_Init(DEBUG_GPIO_Port, &GPIO_InitStruct);
+  GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_SET);
+  //HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_SET);
 
   GPIO_InitStruct.Pin = DEBUG2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;

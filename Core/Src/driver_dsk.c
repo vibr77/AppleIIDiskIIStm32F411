@@ -15,8 +15,7 @@ extern volatile enum FS_STATUS fsState;
 unsigned int fatDskCluster[20];
 extern image_info_t mountImageInfo;
 
-#define NIBBLE_BLOCK_SIZE  400 // 400 51 200
-#define NIBBLE_SECTOR_SIZE 512
+#define NIBBLE_BLOCK_SIZE  408 // Anything above 406 seems to work fine
 #define ENCODE_525_6_2_RIGHT_BUFFER_SIZE 86
 
 enum BITSTREAM_PARSING_STAGE{N,SEARCH_ADDR,READ_ADDR,SEARCH_DATA,READ_DATA};
@@ -33,9 +32,6 @@ static const unsigned char signatureDataStart[]	={0xD5,0xAA,0xAD};
 static uint8_t  sectorCheckArray[16];
 static uint8_t  dsk2nibSectorMap[]         = {0, 7, 14, 6, 13, 5, 12, 4, 11, 3, 10, 2, 9, 1, 8, 15};
 static uint8_t  po2nibSectorMap[]         =  {0, 8,  1, 9, 2, 10, 3, 11, 4, 12, 5, 13, 6, 14, 7, 15};
-
-//static uint8_t  nib2dskSectorMap[]         = {0, 13, 11, 9, 7, 5, 3, 1, 14, 12, 10,8, 6, 4, 2, 15};
-//static uint8_t  nib2poSectorMap[]          = {0,  2,  4, 6,  8,10, 12,14,  1, 3,  5, 7, 9, 11,13,15};
 
 static const uint8_t from_gcr_6_2_byte[128] = {
     0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,     // 0x80-0x87
@@ -66,26 +62,6 @@ static const char encTable[] = {
 	0xED,0xEE,0xEF,0xF2,0xF3,0xF4,0xF5,0xF6,
 	0xF7,0xF9,0xFA,0xFB,0xFC,0xFD,0xFE,0xFF
 };
-/*
-static unsigned char decTable[] = {
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x02, 0x03, 0x00, 0x04, 0x05, 0x06,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x07, 0x08, 0x00, 0x00, 0x00, 0x09, 0x0a, 0x0b, 0x0c, 0x0d,
-    0x00, 0x00, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x00, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1b, 0x00, 0x1c, 0x1d, 0x1e,
-    0x00, 0x00, 0x00, 0x1f, 0x00, 0x00, 0x20, 0x21, 0x00, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x29, 0x2a, 0x2b, 0x00, 0x2c, 0x2d, 0x2e, 0x2f, 0x30, 0x31, 0x32,
-    0x00, 0x00, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x00, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f
-};
-*/
 
 // for bit flip
 
@@ -102,7 +78,7 @@ unsigned int getDskTrackSize(int trk){
 }
 
 long getDskSDAddr(int trk,int block,int csize, long database){
-    int long_sector = trk*8;                    // DSK & PO are 256 long and not 512 a track is 4096
+    int long_sector = trk*8;                                                                    // DSK & PO are 256 long and not 512 a track is 4096
     int long_cluster = long_sector >> 6;
     int ft = fatDskCluster[long_cluster];
     long rSector=database+(ft-2)*csize+(long_sector & (csize-1));
@@ -110,8 +86,8 @@ long getDskSDAddr(int trk,int block,int csize, long database){
 }
 
 enum STATUS getDskTrackBitStream(int trk,unsigned char * buffer){
-    int addr=getDskSDAddr(trk,0,csize,database);
-    const unsigned int blockNumber=8; 
+    long addr=getDskSDAddr(trk,0,csize,database);
+    const unsigned int blockNumber=8;                                                           // 8 blocks of 512 bytes to read a full track          
 
     if (addr==-1){
         log_error("Error getting SDCard Address for DSK\n");
@@ -119,15 +95,14 @@ enum STATUS getDskTrackBitStream(int trk,unsigned char * buffer){
     }
 
     unsigned char * tmp=(unsigned char *)malloc(4096*sizeof(char));
-    
     if (tmp==NULL){
         log_error("unable to allocate tmp for 4096 Bytes");
         return RET_ERR;
     }
-    while (fsState!=READY){}
-    
-    getDataBlocksBareMetal(addr,tmp,blockNumber);          // Needs to be improved and to remove the zeros
-    while (fsState!=READY){}
+
+    while (fsState!=READY){}                                                                    // Wait for the FS to be READY                  
+    getDataBlocksBareMetal(addr,tmp,blockNumber);                                               // Needs to be improved and to remove the zeros
+    while (fsState!=READY){}                                                                    // Wait for the end of the read operation before processing data
     
     if (dsk2Nib(tmp,buffer,trk)==RET_ERR){
         log_error("dsk2nib return an error");
@@ -170,10 +145,10 @@ enum STATUS mountDskFile(char * filename){
 static enum STATUS dsk2Nib(unsigned char *rawByte,unsigned char *buffer,uint8_t trk){
 
     const unsigned char volume = 0xfe;
-
     int i=0;
     char dst[512];
     char src[256+2];
+    
     unsigned char * sectorMap;
     if (mountImageInfo.type==2)
         sectorMap=dsk2nibSectorMap;
@@ -184,42 +159,46 @@ static enum STATUS dsk2Nib(unsigned char *rawByte,unsigned char *buffer,uint8_t 
         return RET_ERR;
     }
         
-    for (i=0; i<0x14; i++) 
-        dst[i]=0xff;
-
-    // sync header
-    dst[0x14]=0x03;
-    dst[0x15]=0xfc;
-    dst[0x16]=0xff;
-    dst[0x17]=0x3f;
-    dst[0x18]=0xcf;
-    dst[0x19]=0xf3;
-    dst[0x1a]=0xfc;
-    dst[0x1b]=0xff;
-    dst[0x1c]=0x3f;
-    dst[0x1d]=0xcf;
-    dst[0x1e]=0xf3;
-    dst[0x1f]=0xfc;	
-
-    // address header
-    dst[0x20]=0xd5;
-    dst[0x21]=0xaa;
-    dst[0x22]=0x96;
-    dst[0x2b]=0xde;
-    dst[0x2c]=0xaa;
-    dst[0x2d]=0xeb;
+    for (i=0; i<0x16; i++){
+            dst[i]=0xff;
+    } 
     
     // sync header
-    for (i=0x2e; i<0x33; i++) 
+    dst[0x16]=0xf3;
+    dst[0x17]=0xfc;
+    dst[0x18]=0xff;
+    dst[0x19]=0x3f;
+    dst[0x1a]=0xcf;
+    dst[0x1b]=0xf3;
+    dst[0x1c]=0xfc;
+    dst[0x1d]=0xff;
+    dst[0x1e]=0x3f;
+    dst[0x1f]=0xcf;
+    dst[0x20]=0xf3;
+    dst[0x21]=0xfc;	
+
+    // address header
+    dst[0x22]=0xd5;
+    dst[0x23]=0xaa;
+    dst[0x24]=0x96;
+    dst[0x2d]=0xde;
+    dst[0x2e]=0xaa;
+    dst[0x2f]=0xeb;
+    
+    // sync header
+    for (i=0x30; i<0x35; i++) 
         dst[i]=0xff;
 
     // data
-    dst[0x33]=0xd5;
-    dst[0x34]=0xaa;
-    dst[0x35]=0xad;
-    dst[0x18d]=0xde;
-    dst[0x18e]=0xaa;
-    dst[0x18f]=0xeb;
+    dst[0x35]=0xd5;
+    dst[0x36]=0xaa;
+    dst[0x37]=0xad;
+    dst[0x18f]=0xde;
+    dst[0x190]=0xaa;
+    dst[0x191]=0xeb;
+    
+    for (i=0x192; i<NIBBLE_BLOCK_SIZE; i++) 
+        dst[i]=0xff;
     
     for (uint8_t sector=0;sector<16;sector++){
         uint8_t sm=sectorMap[sector];
@@ -228,30 +207,30 @@ static enum STATUS dsk2Nib(unsigned char *rawByte,unsigned char *buffer,uint8_t 
 
         unsigned char c, x, ox = 0;
 
-        dst[0x23]=((volume>>1)|0xaa);
-        dst[0x24]=(volume|0xaa);
-        dst[0x25]=((trk>>1)|0xaa);
-        dst[0x26]=(trk|0xaa);
-        dst[0x27]=((sector>>1)|0xaa);
-        dst[0x28]=(sector|0xaa);
+        dst[0x25]=((volume>>1)|0xaa);
+        dst[0x26]=(volume|0xaa);
+        dst[0x27]=((trk>>1)|0xaa);
+        dst[0x28]=(trk|0xaa);
+        dst[0x29]=((sector>>1)|0xaa);
+        dst[0x2a]=(sector|0xaa);
 
         c = (volume^trk^sector);
-        dst[0x29]=((c>>1)|0xaa);
-        dst[0x2a]=(c|0xaa);
+        dst[0x2b]=((c>>1)|0xaa);
+        dst[0x2c]=(c|0xaa);
 
         for (i = 0; i < 86; i++) {
             x = (FlipBit1[src[i] & 3] | FlipBit2[src[i + 86] & 3] | FlipBit3[src[i + 172] & 3]);
-			dst[i+0x36] = encTable[(x^ox)&0x3f];
+			dst[i+0x38] = encTable[(x^ox)&0x3f];
             ox = x;
         }
 
         for (i = 0; i < 256; i++) {
             x = (src[i] >> 2);
-            dst[i+0x8c] = encTable[(x ^ ox) & 0x3f];
+            dst[i+0x8e] = encTable[(x ^ ox) & 0x3f];
             ox = x;
         }
         
-        dst[0x18c]=encTable[ox & 0x3f];
+        dst[0x18e]=encTable[ox & 0x3f];
         memcpy(buffer+sector*NIBBLE_BLOCK_SIZE,dst,NIBBLE_BLOCK_SIZE);
     }
     return RET_OK;
@@ -262,84 +241,27 @@ uint8_t wr_retry=0;                                                             
 enum STATUS setDskTrackBitStream(int trk,unsigned char * buffer){
     
     uint8_t retE=0x0;
-    //GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);
-    //unsigned char * dskData=(unsigned char *)malloc(4096*sizeof(unsigned char));
-    unsigned char dskData[4096];;
-    if (nib2dsk((unsigned char *)&dskData,buffer,trk,16*NIBBLE_BLOCK_SIZE,&retE)==RET_ERR){
-        printf("dsk e:%d\n",retE);
-        //free(dskData);
-        //return RET_ERR;
-    }
-    //GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);
-    //free(dskData);  
-    //return RET_OK;
-    // if (trk==0){                                                                                // DEBUG ONLY 
-    /*    char filename[32];
-        sprintf(filename,"dmp_trk%d_%d.bin",trk,wr_retry);
-        //
-        dumpBufFile(filename,buffer,6657);
-        
-        sprintf(filename,"dmp_dsk_trk%d_%d.bin",trk,wr_retry);
-        dumpBufFile(filename,dskData,4096);
-        wr_retry++;
-    */
-    //
-    //}
-
-    int addr=getDskSDAddr(trk,0,csize,database);
-    while (fsState!=READY){};
-    setDataBlocksBareMetal(addr,dskData,8); 
     
-    while (fsState!=READY){};
-    //free(dskData);  
-    
-    return RET_OK;
-
-    /*
-    // --------------------------------------------------
-    // SAVING THE TRACK TO FILE USING FATFS
-    // --------------------------------------------------
-    FRESULT fres; 
-    FIL fil;  
-
-    while(fsState!=READY){};
-    fsState=BUSY;
-    char filename[]="/blank.dsk";
-    fres = f_open(&fil,filename , FA_WRITE | FA_OPEN_ALWAYS );    
-  
-    if(fres != FR_OK){
-        log_error("File open Error: (%i)",fres);
-        fsState=READY;
+    unsigned char * dskData=(unsigned char *)malloc(4096*sizeof(unsigned char));
+    if (dskData==NULL){
+        log_error("Unable to allocate dskData for 4096 Bytes");
         return RET_ERR;
+    } 
+    
+    if (nib2dsk((unsigned char *)dskData,buffer,trk,16*NIBBLE_BLOCK_SIZE,&retE)==RET_ERR){
+        printf("dsk e:%d\n",retE);
+        //free(dskData);                                                    // Memory is not freed at this stage as the process continues later
+        //return RET_ERR;                                                   // Even if there is an error the track is written partially
     }
 
-    UINT bytesWrote;
-    UINT totalBytes=0;
+    long addr=getDskSDAddr(trk,0,csize,database);
+    while (fsState!=READY){};
+
+    setDataBlocksBareMetal(addr,dskData,8); 
+    while (fsState!=READY){};                                               // wait for write end, to avoid freeing the buffer too early
+    free(dskData);  
     
-    f_lseek(&fil,trk*4096);
-    
-    for (int i=0;i<8;i++){
-        fsState=WRITING;
-        
-        fres = f_write(&fil, (unsigned char *)dskData+i*512, 512, &bytesWrote);
-        
-        if(fres == FR_OK) {
-          totalBytes+=bytesWrote;
-        }else{
-            log_error("f_write error (%i)\n",fres);
-          fsState=READY;
-          free(dskData); 
-          return RET_ERR;
-        }
-    
-        while(fsState!=READY){};
-    }
-    
-    f_close(&fil);
-    free(dskData); 
-    return RET_OK;
-    */
-    
+    return RET_OK; 
 }
 
 static enum STATUS nib2dsk(unsigned char * dskData,unsigned char *buffer,uint8_t trk,int byteSize,uint8_t * retError){
@@ -357,17 +279,16 @@ static enum STATUS nib2dsk(unsigned char * dskData,unsigned char *buffer,uint8_t
    	uint8_t  dskTrack=0x0;                                                                      // track from the addr decoded block use to check with the function variable
     uint8_t  cksum_out, cksum_calc;                                                             // GCR 6_2 checksum value
 
-    unsigned char byte1=0x0;
+    unsigned char byte1=0x0;                                                                    // last 3 bytes read from the bitstream              
     unsigned char byte2=0x0;
     unsigned char byte3=0x0;
     
-    uint8_t flgBreakloop=0;
+    uint8_t flgBreakloop=0;                                                                     // flag to exit the infinite while loop         
 
-    int bitPos=0;
-    int counter=0;
-    int bufferLoop=0;
+    int bitPos=0;                                                                               // bit position in the stream        
+    int counter=0;                                                                              // counter for the tempBuffer              
+    int bufferLoop=0;                                                                           // count the number of time we have looped the buffer
     unsigned char * sectorMap;                                                                  // Sector skewing from nibble to DSK or PO 
-    uint8_t ptrack=0;
 
     if( dskData == NULL || buffer == NULL|| retError == NULL ){
         log_error("nib2dsk: NULL pointer detected\n");
@@ -406,7 +327,7 @@ static enum STATUS nib2dsk(unsigned char * dskData,unsigned char *buffer,uint8_t
 
                 if (stage==SEARCH_ADDR && byte1==signatureAddrStart[2] && byte2==signatureAddrStart[1] && byte3==signatureAddrStart[0]){
                     if (indxOfFirstAddr==-1)
-                        indxOfFirstAddr=bitPos;                                       // Capture the starting point of the first ADDRESS bloc to make a full loop in the buffer
+                        indxOfFirstAddr=bitPos;                                                 // Capture the starting point of the first ADDRESS bloc to make a full loop in the buffer
 
                     stage=READ_ADDR;
                     counter=0;
@@ -417,7 +338,7 @@ static enum STATUS nib2dsk(unsigned char * dskData,unsigned char *buffer,uint8_t
 
                     if (counter==11){
                         
-                        if (decodeAddr(tmpBuffer,&logicalSector,&dskTrack)==RET_ERR){    // decode ADDRESS Bloc field
+                        if (decodeAddr(tmpBuffer,&logicalSector,&dskTrack)==RET_ERR){           // decode ADDRESS Bloc field
                             log_error("decodeAddr error trk:%02d",trk);
                             *retError=0x02;
                             return RET_ERR;    
@@ -444,11 +365,10 @@ static enum STATUS nib2dsk(unsigned char * dskData,unsigned char *buffer,uint8_t
                         uint8_t * data_out=dskData+256*physicalSector;                                          // send directly the right buffer address to avoid memcpy
                         
                         if(decodeGCR6_2(tmpBuffer,(unsigned char *)data_out,&cksum_out,&cksum_calc)==RET_ERR){    // gcr6_2 decode and expect 256 Bytes in return;
-            				//log_error("GCR decoding trk:%02d, sector:%02d, bytePos:%04d",trk,physicalSector,i);
                             printf("GCR %d\n",physicalSector);
                             GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_SET);  
                             *retError=0x04;
-                            return RET_ERR;
+                            //return RET_ERR;                                                                   // continue even if there is an error 
                         }else{
                             sectorCheckArray[logicalSector]=1;                                                  // flag succesfull sector in the checkArray
                             sumSector+=physicalSector+1;
@@ -468,7 +388,7 @@ static enum STATUS nib2dsk(unsigned char * dskData,unsigned char *buffer,uint8_t
             }    
         }
 
-        if (flgBreakloop==1){                                                   // exit the infinite while loop               
+        if (flgBreakloop==1){                                                   // Exit the infinite while loop               
             break;
         }  
         
@@ -481,14 +401,14 @@ static enum STATUS nib2dsk(unsigned char * dskData,unsigned char *buffer,uint8_t
             if (++bufferLoop>1){                                                // safety to avoid infinite loop
                 log_error("bufferLoop exceeded");                               // this should not happen as we check for full loop with indxOfFirstAddr
                 *retError=0x05;
-                return RET_ERR;
+                return RET_ERR;                                                 // Exit with error
             }
         }
     }
 
     if (sumSector!=136){ 
-                                                                               // Check if we have successfuly process all sector
-        //printf("Mis trk:%02d sec%d!=136\n",trk, sumSector);          // a better approach as multiple sector would share the same number
+                                                                                // Check if we have successfuly process all sector
+        //printf("Mis trk:%02d sec%d!=136\n",trk, sumSector);                   // a better approach as multiple sector would share the same number
         /*for (int8_t j=0;j<16;j++){
             if (sectorCheckArray[j]==0)
                 log_error("sector NIB:%d is missing\n",j);
@@ -497,16 +417,7 @@ static enum STATUS nib2dsk(unsigned char * dskData,unsigned char *buffer,uint8_t
         return RET_ERR;  
         
     }
-    else{
-        if (trk==17 /*&& ptrack!=0*/){
-            dumpBuf(dskData,16,4096);
-        }
-        GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_RESET);  
-        //printf("OK %d\n",trk);
-        //ptrack=trk;
-        //log_info("OK WR trk:%02d\n",trk);
-    }
-
+    
     *retError=0x00;
     return RET_OK;            
 

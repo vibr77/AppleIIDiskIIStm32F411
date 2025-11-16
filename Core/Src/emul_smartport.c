@@ -158,10 +158,20 @@ void SmartPortWrReqIRQ(){
         wrBytes=0;
         wrBitCounter=0;
         wrStartOffset=0;
-        HAL_TIM_PWM_Start_IT(&htim2,TIM_CHANNEL_3);
+        TIM2->DIER |= TIM_DIER_CC2IE;
+        TIM2->CR1 |= TIM_CR1_CEN;
+       
+
+        __DSB();
+
+        //HAL_TIM_PWM_Start_IT(&htim2,TIM_CHANNEL_2);
     }else{
         
-        HAL_TIM_PWM_Stop_IT(&htim2,TIM_CHANNEL_3);
+        TIM2->DIER &= ~TIM_DIER_CC2IE;
+        TIM2->CCER &= ~TIM_CCER_CC2E;
+        TIM2->CR1 &= ~TIM_CR1_CEN;
+
+        //HAL_TIM_PWM_Stop_IT(&htim2,TIM_CHANNEL_2);
         packet_buffer[wrBytes++]=0x0;
         messageId++;
         flgPacket=1;
@@ -229,20 +239,14 @@ static void pNextAction(){
   */
 void SmartPortReceiveDataIRQ(){
     
-    for (int i=0;i<10;i++);                                                  // <!> Important: adding timing for IIc
-    
-    if ((GPIOA->IDR & WR_DATA_Pin)==0)                                       // get WR_DATA DO NOT USE THE HAL function creating an overhead
-        wrData=0;
-    else
-        wrData=1;
-
-    wrData^= 0x01u;                                                           // get /WR_DATA
-    xorWrData=wrData ^ prevWrData;                                            // Compute Magnetic polarity inversion
-    prevWrData=wrData; 
-
-    byteWindow<<=1;
-    byteWindow|=xorWrData;
-    
+                                                                            // <!> Important: adding timing for IIc
+    GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);
+    uint8_t wrData = ((GPIOA->IDR & WR_DATA_Pin) == 0) ? 1 : 0;
+     
+    // Compute XOR and shift in one expression
+    byteWindow = (byteWindow << 1) | (wrData ^ prevWrData);
+    prevWrData = wrData;
+   
     if (byteWindow & 0x80){                                                 // Check if ByteWindow Bit 7 is 1 meaning we have a full bytes 0b1xxxxxxx 0x80
         
         packet_buffer[wrBytes]=byteWindow;
@@ -256,6 +260,7 @@ void SmartPortReceiveDataIRQ(){
 
     }
     wrBitCounter++;
+    GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);
     
 }
 
@@ -268,10 +273,15 @@ static volatile int byteSize=0;
 
 void SmartPortSendDataIRQ(){
     
-    if (nextBit==1)                                                                 // This has to be at the beginning otherwise timing of pulse will be reduced
-        RD_DATA_GPIO_Port->BSRR=RD_DATA_Pin;
-    else
-        RD_DATA_GPIO_Port->BSRR=RD_DATA_Pin << 16U;
+    nextBit=(packet_buffer[bytePtr]>>(7-bitPtr) ) & 1;
+    // Set RD_DATA early (branchless for speed)
+    RD_DATA_GPIO_Port->BSRR = nextBit ? RD_DATA_Pin : (RD_DATA_Pin << 16);
+
+    // Advance bit pointer; wrap at 8 and move to next byte
+    if (++bitPtr == 8) {
+        bitPtr = 0;
+        ++bytePtr;
+    }
 
     if (bitCounter>bitSize){
         nextBit=0;
@@ -279,19 +289,13 @@ void SmartPortSendDataIRQ(){
         bitPtr=0;
         flgPacket=1;
 
-        HAL_TIM_PWM_Stop_IT(&htim3,TIM_CHANNEL_4);   
+        //HAL_TIM_PWM_Stop_IT(&htim3,TIM_CHANNEL_4);
+        TIM3->DIER &= ~TIM_DIER_CC1IE;
+        TIM3->CCER &= ~TIM_CCER_CC1E;
+        TIM3->CR1 &= ~TIM_CR1_CEN;  
     }
-    
-    nextBit=(packet_buffer[bytePtr]>>(7-bitPtr) ) & 1;
-    
-    bitPtr++;
-    if (bitPtr>7){
-        bitPtr=0;
-        bytePtr++;
-    }
-
     bitCounter++;
-
+    //nextBit=(packet_buffer[bytePtr]>>(7-bitPtr) ) & 1;
 }
 
 void setRddataPort(uint8_t direction){
@@ -311,13 +315,14 @@ void setRddataPort(uint8_t direction){
 void setWPProtectPort(uint8_t direction){
     GPIO_InitTypeDef GPIO_InitStruct = {0};
     GPIO_InitStruct.Pin   = WR_PROTECT_Pin;
+    printf("here setWPProtectPort %d\r\n",direction);
     
     if (direction==0){
         GPIO_InitStruct.Mode  = GPIO_MODE_INPUT;
         GPIO_InitStruct.Pull  = GPIO_NOPULL;
     }else{
         GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP;
-        GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+        GPIO_InitStruct.Pull = GPIO_PULLUP;
         GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
     }
     HAL_GPIO_Init(WR_PROTECT_GPIO_Port, &GPIO_InitStruct);
@@ -404,6 +409,7 @@ void SmartPortInitWithImage(char * filename){
     HAL_TIMEx_PWMN_Stop(&htim1,TIM_CHANNEL_2);
 
     TIM3->ARR=(32*12)-1;
+    TIM3->CCR1=180;
     TIM2->ARR=(32*12)-5;
 
     for(uint8_t i=0; i< MAX_PARTITIONS; i++){
@@ -456,16 +462,23 @@ void SmartPortInit(){
     HAL_GPIO_Init(SELECT_GPIO_Port, &GPIO_InitStruct);
 */
     
-    //HAL_GPIO_WritePin(_35DSK_GPIO_Port,_35DSK_Pin,GPIO_PIN_RESET);
-    //HAL_Delay(500);
-  //  HAL_GPIO_WritePin(SELECT_GPIO_Port,SELECT_Pin,GPIO_PIN_RESET);
-    
-
-    HAL_TIM_PWM_Stop_IT(&htim2,TIM_CHANNEL_3);
+    // HAL_GPIO_WritePin(_35DSK_GPIO_Port,_35DSK_Pin,GPIO_PIN_RESET);
+    // HAL_Delay(500);
+    // HAL_GPIO_WritePin(SELECT_GPIO_Port,SELECT_Pin,GPIO_PIN_RESET);
+    // setRddataPort(1);
+    // GPIOWritePin(RD_DATA_GPIO_Port, RD_DATA_Pin, GPIO_PIN_SET);
+    // HAL_TIM_PWM_Stop_IT(&htim2,TIM_CHANNEL_3);
     HAL_TIMEx_PWMN_Stop(&htim1,TIM_CHANNEL_2);
 
+    TIM2->DIER &= ~TIM_DIER_CC2IE;
+    TIM2->CCER &= ~TIM_CCER_CC2E;
+    TIM2->CR1 &= ~TIM_CR1_CEN;
+
     TIM3->ARR=(32*12)-1;
+    TIM3->CCR1=140;
+
     TIM2->ARR=(32*12)-5;
+    TIM2->CCR2=10;
     
     ptrFileFilter=smartportImageExt;
 
@@ -519,38 +532,52 @@ void SmartPortSendPacket(volatile unsigned char* buffer){
     bitSize=packetLen*8;
     //log_warn("Outgoing response pkt dump: %d bytes",packetLen);
     //print_packet(packet_buffer,packetLen);
-    setRddataPort(1);
-    setWPProtectPort(1);                                                                        // Set ACK Port to output
+    //setRddataPort(1);
+    //setWPProtectPort(1);                                                                      // Set ACK Port to output
     assertAck();                                                                                // Set ACK high to signal we are ready to send
-    
+    RD_DATA_GPIO_Port->BSRR=RD_DATA_Pin <<16U; 
+
     while (!(phase & 0x1)){                                                                     // Wait for REQ to go high              
        pNextAction();
     }; 
                                                                                            
-    HAL_TIM_PWM_Start_IT(&htim3,TIM_CHANNEL_4);
+    //HAL_TIM_PWM_Start_IT(&htim3,TIM_CHANNEL_4);
+    TIM3->DIER |= TIM_DIER_CC1IE;
+    TIM3->CCER |= TIM_CCER_CC1E;
+    TIM3->CR1 |= TIM_CR1_CEN;
+
+
     flgPacket=0;                                                                                // This line need to be here <!>
     while (flgPacket!=1){
+        __NOP();
     }; 
     packet_buffer[0]=0x0;
     packetLen=0;
-    setRddataPort(0);
-    HAL_GPIO_WritePin(RD_DATA_GPIO_Port, RD_DATA_Pin,GPIO_PIN_RESET);    
+    //setRddataPort(0);
     
-    deAssertAck();                                                                              // set ACK(BSY) low to signal we have sent the pkt
-    HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);                                    // ACK LOW, indicates packet sent
-    while (phase & 0x01){
     
+    deAssertAck();                                                                                  // set ACK(BSY) low to signal we have sent the pkt
+                                                                                                        // ACK LOW, indicates packet sent
+    uint32_t spins = 0;
+    const uint32_t SMARTPORT_REQ_TIMEOUT_SPINS = 300000; // Approximate ~30ms; adjust to CPU speed
+    while (phase & 0x01) {
+        if (spins++ > SMARTPORT_REQ_TIMEOUT_SPINS) {
+            log_error("Timeout waiting for REQ to go low after packet send");
+            break;
+        }
+        __NOP();
     }
-    HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET); 
-
+    //RD_DATA_GPIO_Port->BSRR=RD_DATA_Pin <<16U;
+    
+     
     return;
 }
 
 static enum STATUS SmartportReceivePacket(){
     
-    setRddataPort(1);
+    //setRddataPort(1);
 
-    setWPProtectPort(1); 
+    //setWPProtectPort(1); 
     assertAck(); 
 
     //GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);                                    // ACK HIGH, indicates ready to receive
@@ -563,6 +590,7 @@ static enum STATUS SmartportReceivePacket(){
     //GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_SET);                                                                                // <!> This position is important
     while (flgPacket!=1){
         __NOP();
+        //printf("a\n");
     }  
     //GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);                                                                                         // Receive finish
     packetLen=wrBytes-1; 
@@ -570,16 +598,20 @@ static enum STATUS SmartportReceivePacket(){
     deAssertAck();                                                                              // ACK LOW indicates to the host we have received a packer
     
     while(phase & 0x01){
+        //printf("b\n");
+        __NOP();
     }
 
     return RET_OK;                                                                              // Wait for REQ to go low
 }
 
 void assertAck(){
-    WR_PROTECT_GPIO_Port->BSRR=WR_PROTECT_Pin;               
+    WR_PROTECT_GPIO_Port->BSRR=WR_PROTECT_Pin;
+    RD_DATA_GPIO_Port->BSRR=RD_DATA_Pin;                                                        // YellowStone card needs RD_DATA to be HIGH when waiting for data         
 }
 void deAssertAck(){
-    WR_PROTECT_GPIO_Port->BSRR=WR_PROTECT_Pin << 16U;             
+    WR_PROTECT_GPIO_Port->BSRR=WR_PROTECT_Pin << 16U;
+    RD_DATA_GPIO_Port->BSRR=RD_DATA_Pin <<16U;                                                   // YellowStone card needs RD_DATA to be LOW when not ready to send data
 }
 
 void SmartPortMainLoop(){
@@ -596,7 +628,6 @@ void SmartPortMainLoop(){
     0b1011  1+2+8=11    0x0B
     0b1110  2+4+8=13    0x0E
     0b1111  1+2+4+8=15  0x0F
-    
     */
 
     log_info("SmartPortMainLoop entering loop");
@@ -628,8 +659,8 @@ void SmartPortMainLoop(){
 
     unsigned char dest;
 
-    HAL_GPIO_WritePin(RD_DATA_GPIO_Port, RD_DATA_Pin,GPIO_PIN_RESET);  // set RD_DATA LOW
-
+    //HAL_GPIO_WritePin(RD_DATA_GPIO_Port, RD_DATA_Pin,GPIO_PIN_RESET);  // set RD_DATA LOW
+    
     if (bootImageIndex==0)
         bootImageIndex=1;
 
@@ -642,9 +673,11 @@ void SmartPortMainLoop(){
             case 0x00:
             case 0x01:
             case 0x04:
-
-                setWPProtectPort(0);                                                        // Set ack (wrprot) to input to avoid clashing with other devices when sp bus is not enabled 
-                break;                                                                      // ph3=0 ph2=1 ph1=0 ph0=1
+                 assertAck();
+                //setWPProtectPort(1);                                                        // Set ack (wrprot) to output to signal we are not present on the bus
+                //while (phase == 0x00 || phase == 0x01 || phase == 0x04);                    // Wait for phases to change
+                //setWPProtectPort(0);                                                        // Set ack (wrprot) to input to avoid clashing with other devices when sp bus is not enabled 
+                break;                                                                        // ph3=0 ph2=1 ph1=0 ph0=1
 
             case 0x05:
                                                                                             // Monitor phase lines for reset to clear
@@ -706,7 +739,7 @@ void SmartPortMainLoop(){
                         
                         log_info("Not our ID!");
                         
-                        setWPProtectPort(0);                                                // set ack to input, so lets not interfere
+                        //setWPProtectPort(0);                                                // set ack to input, so lets not interfere
                         
                         while (phase & 0x08);
                         
