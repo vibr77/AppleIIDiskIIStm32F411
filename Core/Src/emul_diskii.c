@@ -258,36 +258,43 @@ static volatile char     dbgchar1,dbgchar2,dbgchar3;
 ***/
 
 void DiskIIWrReqIRQ(){
-    // Read WR_REQ pin state once
-    uint8_t currentWrRequest = ((WR_REQ_GPIO_Port->IDR & WR_REQ_Pin) != 0);
     
-    // Early exit if device not enabled
-    if (flgDeviceEnable == 0)
+    /*
+    TIMNG NOTE:
+    Number of intstruction on the first part is very very critical to avoid
+    any delay between stopping the read timer and starting the write timer may generate I/O Error on IIGS
+    */
+
+    uint8_t currentWrRequest = ((WR_REQ_GPIO_Port->IDR & WR_REQ_Pin) != 0);
+                                                                                           
+    if (flgDeviceEnable == 0)                                                                   // Early exit if device not enabled                   
         return;
 
-    // Falling edge: Start write mode
-    if (currentWrRequest == 0 /*&& pFlgWRRequest == 1*/) {
-        GPIOWritePin(DEBUG2_GPIO_Port, DEBUG2_Pin, GPIO_PIN_SET); 
-        // Stop read timer (combined operations)
-        TIM3->DIER &= ~TIM_DIER_CC1IE;
-        TIM3->CCER &= ~TIM_CCER_CC1E;
-        TIM3->CR1 &= ~TIM_CR1_CEN;
+    if (currentWrRequest == 0 ) {                                                               // WR_REQ is active LOW               
+                                                                                   
+        TIM3->DIER &= ~TIM_DIER_CC1IE;                                                          // Stop read timer (combined operations)    
+        TIM3->CCER &= ~TIM_CCER_CC1E;                                                           // Disable Channel 1 output            
+        TIM3->CR1 &= ~TIM_CR1_CEN;                                                              // Stop TIM3      
 
-        wrBitPos = 0;
-        wrBitCounter = bytePtr * 8;
+        wrBitPos=0;                                                                             // Reset the BitPos
+        wrBitCounter=bytePtr*8;
+        prevWrData=((GPIOA->IDR & WR_DATA_Pin) == 0) ? 1 : 0;                                                                 // Compute the wrCounter from bytePtr 
+        
+        // Start write timer (Channel 2) directly via registers
+        TIM2->SR   &= ~TIM_SR_CC2IF;                                                            // Clear pending CC2 flag
+        TIM2->DIER |= TIM_DIER_CC2IE;                                                           // Enable CC2 interrupt
+        TIM2->CCER |= TIM_CCER_CC2E;                                                            // Enable Channel 2 output
+        TIM2->CR1  |= TIM_CR1_CEN;                                                              // Start TIM2 
+
         wrLastWriteStartPtr = bytePtr;
         wrDeltaLastWritePtr = 0;
-        prevWrData=((GPIOA->IDR & WR_DATA_Pin) == 0) ? 1 : 0;
         
-        __DSB();
-
-        // Start write timer (combined operations)
-        TIM2->DIER |= TIM_DIER_CC2IE;
-        TIM2->CR1 |= TIM_CR1_CEN;
+        //__DSB();
+ 
     }
     // Rising edge: End write mode, start read mode
     else if (currentWrRequest == 1 && pFlgWRRequest == 0) {
-        //GPIOWritePin(DEBUG2_GPIO_Port, DEBUG2_Pin, GPIO_PIN_SET); 
+        
         wrTrack=intTrk;  // Store the current track to write even if step change during write
         // Stop write timer (combined operations)
         TIM2->DIER &= ~TIM_DIER_CC2IE;
@@ -306,14 +313,13 @@ void DiskIIWrReqIRQ(){
         TIM3->DIER |= TIM_DIER_CC1IE;
         TIM3->CCER |= TIM_CCER_CC1E;
         TIM3->CR1 |= TIM_CR1_CEN;
-        
-        GPIOWritePin(DEBUG2_GPIO_Port, DEBUG2_Pin, GPIO_PIN_RESET);     
+
     }
     
     pFlgWRRequest = currentWrRequest;
     flgWrRequest = currentWrRequest;
-}
 
+}
 
 /*
 WRITE PART:
@@ -819,7 +825,7 @@ void DiskIIInit(){
     TIM3->CCR1= 145;
 
     TIM2->ARR=32*12-5;
-    TIM2->CCR2= 30;
+    TIM2->CCR2= 10;
 
 }
 
@@ -838,7 +844,7 @@ static void processWriteTrack(uint8_t rTrk){
     */
 
     //GPIOWritePin(DEBUG2_GPIO_Port, DEBUG2_Pin,GPIO_PIN_SET);
-    dumpBuf(DMA_BIT_TX_BUFFER,1,6656);                                                      // Dump raw data for the track
+    //dumpBuf(DMA_BIT_TX_BUFFER,1,6656);                                                      // Dump raw data for the track
     // updateDiskIIImageScr(1,rTrk);
     
     if (flgSoundEffect==1){
