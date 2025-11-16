@@ -195,7 +195,7 @@ void DiskIIPhaseIRQ(){
     
     volatile unsigned char stp=(GPIOA->IDR&0b0000000000001111);
     volatile int newPosition=magnet2Position[stp];
-    //printf("ph:%02d\n",ph_track);
+    
     if (newPosition>=0){
 
         if (flgDeviceEnable==1){
@@ -267,6 +267,7 @@ void DiskIIWrReqIRQ(){
 
     // Falling edge: Start write mode
     if (currentWrRequest == 0 /*&& pFlgWRRequest == 1*/) {
+        GPIOWritePin(DEBUG2_GPIO_Port, DEBUG2_Pin, GPIO_PIN_SET); 
         // Stop read timer (combined operations)
         TIM3->DIER &= ~TIM_DIER_CC1IE;
         TIM3->CCER &= ~TIM_CCER_CC1E;
@@ -276,6 +277,7 @@ void DiskIIWrReqIRQ(){
         wrBitCounter = bytePtr * 8;
         wrLastWriteStartPtr = bytePtr;
         wrDeltaLastWritePtr = 0;
+        prevWrData=((GPIOA->IDR & WR_DATA_Pin) == 0) ? 1 : 0;
         
         __DSB();
 
@@ -305,7 +307,7 @@ void DiskIIWrReqIRQ(){
         TIM3->CCER |= TIM_CCER_CC1E;
         TIM3->CR1 |= TIM_CR1_CEN;
         
-        //GPIOWritePin(DEBUG2_GPIO_Port, DEBUG2_Pin, GPIO_PIN_RESET);     
+        GPIOWritePin(DEBUG2_GPIO_Port, DEBUG2_Pin, GPIO_PIN_RESET);     
     }
     
     pFlgWRRequest = currentWrRequest;
@@ -475,7 +477,7 @@ int DiskIIDeviceEnableIRQ(uint16_t GPIO_Pin){
         
         TIM3->DIER &= ~TIM_DIER_CC1IE;                                                          // disable CC4 interrupt
         TIM3->CCER &= ~TIM_CCER_CC1E;                                                           // disable CC4 output
-        TIM3->CR1 &= ~TIM_CR1_CEN;                                                              // stop the timer
+        TIM3->CR1  &= ~TIM_CR1_CEN;                                                              // stop the timer
         
     }
 
@@ -813,8 +815,11 @@ void DiskIIInit(){
     DiskIISelectIRQ();                                                                       // Important at the end of Init
     flgSelect=1;
 
-    TIM2->ARR=32*12-1;
-    TIM2->CCR2= 5;
+    TIM3->ARR=32*12-1;
+    TIM3->CCR1= 145;
+
+    TIM2->ARR=32*12-5;
+    TIM2->CCR2= 30;
 
 }
 
@@ -832,8 +837,8 @@ static void processWriteTrack(uint8_t rTrk){
     irqDisableSDIO();
     */
 
-    GPIOWritePin(DEBUG2_GPIO_Port, DEBUG2_Pin,GPIO_PIN_SET);
-    
+    //GPIOWritePin(DEBUG2_GPIO_Port, DEBUG2_Pin,GPIO_PIN_SET);
+    dumpBuf(DMA_BIT_TX_BUFFER,1,6656);                                                      // Dump raw data for the track
     // updateDiskIIImageScr(1,rTrk);
     
     if (flgSoundEffect==1){

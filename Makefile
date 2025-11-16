@@ -23,7 +23,7 @@ TARGET = AppleIISDiskII_stm32f411_sdio
 DEBUG = 0
 # optimization
 OPT = -Og
-OPT=-O0
+#OPT=-O0
 
 
 #######################################
