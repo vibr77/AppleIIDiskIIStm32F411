@@ -31,8 +31,8 @@
 // --------------------------------------------------------------------
 
 extern TIM_HandleTypeDef htim1;                             // Timer1 is managing buzzer pwm
-extern TIM_HandleTypeDef htim2;                             // Timer2 is handling WR_DATA
-extern TIM_HandleTypeDef htim3;                             // Timer3 is handling RD_DATA
+//extern TIM_HandleTypeDef htim2;                             // Timer2 is handling WR_DATA
+//extern TIM_HandleTypeDef htim3;                             // Timer3 is handling RD_DATA
 
 extern SD_HandleTypeDef hsd;
 extern FATFS fs;                                            // fatfs global variable <!> do not remount witihn a function the fatfs otherwise it breaks the rest
@@ -145,24 +145,24 @@ int SmartPortDeviceEnableIRQ(uint16_t GPIO_Pin){                                
 
 void SmartPortWrReqIRQ(){
 
-    if ((WR_REQ_GPIO_Port->IDR & WR_REQ_Pin)==0)
-        WR_REQ_PHASE=0;
-    else
-        WR_REQ_PHASE=1;
-
-    if (WR_REQ_PHASE==0){
+    uint8_t currentWrRequest = ((WR_REQ_GPIO_Port->IDR & WR_REQ_Pin) != 0);
+                                                                                           
+    if (currentWrRequest == 0 ) { 
 
         flgPacket=0;
         wrData=0;
         prevWrData=0;
+        
+        TIM2->SR   &= ~TIM_SR_CC2IF;                                                            // Clear pending CC2 flag
+        TIM2->DIER |= TIM_DIER_CC2IE;                                                           // Enable CC2 interrupt
+        TIM2->CCER |= TIM_CCER_CC2E;                                                            // Enable Channel 2 output
+        TIM2->CR1  |= TIM_CR1_CEN; 
+
         wrBytes=0;
         wrBitCounter=0;
         wrStartOffset=0;
-        TIM2->DIER |= TIM_DIER_CC2IE;
-        TIM2->CR1 |= TIM_CR1_CEN;
-       
 
-        __DSB();
+        //__DSB();
 
         //HAL_TIM_PWM_Start_IT(&htim2,TIM_CHANNEL_2);
     }else{
@@ -405,12 +405,17 @@ const  char * smartportImageExt[]={"PO","po","2MG","2mg","HDV","hdv",NULL};
 
 void SmartPortInitWithImage(char * filename){
     
-    HAL_TIM_PWM_Stop_IT(&htim2,TIM_CHANNEL_3);
+    
+    TIM2->DIER &= ~TIM_DIER_CC2IE;
+    TIM2->CCER &= ~TIM_CCER_CC2E;
+    TIM2->CR1 &= ~TIM_CR1_CEN;
+    
     HAL_TIMEx_PWMN_Stop(&htim1,TIM_CHANNEL_2);
 
     TIM3->ARR=(32*12)-1;
     TIM3->CCR1=180;
     TIM2->ARR=(32*12)-5;
+     TIM2->CCR2=10;
 
     for(uint8_t i=0; i< MAX_PARTITIONS; i++){
         devices[i].filename=NULL;
@@ -540,14 +545,14 @@ void SmartPortSendPacket(volatile unsigned char* buffer){
     while (!(phase & 0x1)){                                                                     // Wait for REQ to go high              
        pNextAction();
     }; 
-                                                                                           
-    //HAL_TIM_PWM_Start_IT(&htim3,TIM_CHANNEL_4);
+    
+                                                                                    // Set the duty cycle for TIM3 Channel 1
+    TIM3->SR   &= ~TIM_SR_CC1IF;                                                                    // Clear pending CC1 flag
     TIM3->DIER |= TIM_DIER_CC1IE;
     TIM3->CCER |= TIM_CCER_CC1E;
     TIM3->CR1 |= TIM_CR1_CEN;
 
-
-    flgPacket=0;                                                                                // This line need to be here <!>
+    flgPacket=0;                                                                                    // This line need to be here <!>
     while (flgPacket!=1){
         __NOP();
     }; 
@@ -555,9 +560,8 @@ void SmartPortSendPacket(volatile unsigned char* buffer){
     packetLen=0;
     //setRddataPort(0);
     
-    
     deAssertAck();                                                                                  // set ACK(BSY) low to signal we have sent the pkt
-                                                                                                        // ACK LOW, indicates packet sent
+                                                                                                    // ACK LOW, indicates packet sent
     uint32_t spins = 0;
     const uint32_t SMARTPORT_REQ_TIMEOUT_SPINS = 300000; // Approximate ~30ms; adjust to CPU speed
     while (phase & 0x01) {
@@ -576,8 +580,8 @@ void SmartPortSendPacket(volatile unsigned char* buffer){
 static enum STATUS SmartportReceivePacket(){
     
     //setRddataPort(1);
+    //setWPProtectPort(1);
 
-    //setWPProtectPort(1); 
     assertAck(); 
 
     //GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);                                    // ACK HIGH, indicates ready to receive

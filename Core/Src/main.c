@@ -2481,11 +2481,12 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(WR_DATA_GPIO_Port, &GPIO_InitStruct);
   
   GPIO_InitStruct.Pin = _35DSK_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  //GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
   
-  GPIOWritePin(_35DSK_GPIO_Port, _35DSK_Pin, GPIO_PIN_RESET);
+  //GPIOWritePin(_35DSK_GPIO_Port, _35DSK_Pin, GPIO_PIN_RESET);
 
 
   /*Configure GPIO pin : RD_DATA_Pin */
