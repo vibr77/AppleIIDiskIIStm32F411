@@ -115,9 +115,17 @@ UART1
 // Changelog
 
 /*
-11.11.25 v0.80.30
+16.11.25 v0.80.31
   + Fixing issue with write process not working after several writes
   + Adding missing variable reset for write process
+  + Fixing issue with buzzer not stopping after play_buzzer_ms function
+  + Adding flgSoundEffectActive to avoid overlapping sound effect
+  + Fixing DOS Init process and rewrite of the write process
+  + Timing adjustment on write process to match better the Apple II timing
+  + Adjusting IIGS constraints
+  + YellowStone card tested OK with write process
+  + Fixing state of SDCard during switch from write to read mode (add a small delay to check state of the SD)
+
   WOZ test :
     + Blazing Paddles working OK
     + Borderzone KO
@@ -135,8 +143,6 @@ UART1
     + The Bilestoad working OK
     + Stickybear Town Builder working OK
     + Take 1 working OK
-
-
 
 Issue:
   [DiskII] after image mounting, boot is not happening, need to reset
@@ -513,7 +519,8 @@ char sTmp[256];
 uint8_t iTmp=0;
 
 uint8_t flgWeakBit=0;
-uint8_t flgSoundEffect=0;                                                                       // Activate Buzze
+uint8_t flgSoundEffect=0; 
+uint8_t flgSoundEffectActive=0;                                                                      // Activate Buzze
 volatile uint8_t flgScreenSaver=0;
 volatile uint8_t flgDisplaySleep=0;
 uint8_t bootMode=0;
@@ -768,7 +775,7 @@ void TIM5_IRQHandler(void){
     //TIM1->CCER &= ~TIM_CCER_CC2NE;
     TIM1->CCER &= ~TIM_CCER_CC2NE;
     
-    //HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin,GPIO_PIN_RESET);
+    flgSoundEffectActive=0;
     /* Disable timer and its update interrupt */
     TIM5->CR1 &= ~TIM_CR1_CEN;
     /* Disable update interrupt using timer register (clear UIE in DIER) */
@@ -1378,6 +1385,8 @@ void processBtnInterrupt(uint16_t GPIO_Pin){
  * tick (prescaler = 9599) so ticks = ms * 10.
  */
 void play_buzzer_ms(uint32_t ms){
+  if (flgSoundEffectActive==1) return;                                   // A sound effect is already active
+  flgSoundEffectActive=1;
   if (ms == 0) return;
 
   TIM1->PSC = 1000;                                                   // Change from 500 to have a lower tone

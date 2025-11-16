@@ -65,6 +65,7 @@ extern volatile enum FS_STATUS fsState;
 
 extern list_t * dirChainedList;
 extern uint8_t flgSoundEffect;
+
 extern volatile uint8_t flgScreenOff;
 
 extern uint8_t flgWeakBit;
@@ -382,7 +383,7 @@ volatile int zeroBits=0;                                                        
   * @brief 
   * @param None
   * @retval None
-  */
+    */
 
 
 void DiskIISendDataIRQ(){
@@ -845,7 +846,7 @@ static void processWriteTrack(uint8_t rTrk){
 
     //GPIOWritePin(DEBUG2_GPIO_Port, DEBUG2_Pin,GPIO_PIN_SET);
     //dumpBuf(DMA_BIT_TX_BUFFER,1,6656);                                                      // Dump raw data for the track
-    // updateDiskIIImageScr(1,rTrk);
+    //updateDiskIIImageScr(1,rTrk);
     
     if (flgSoundEffect==1){
         play_buzzer_ms(50);
