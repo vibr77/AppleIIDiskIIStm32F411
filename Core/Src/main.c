@@ -116,6 +116,7 @@ UART1
 
 /*
 16.11.25 v0.80.31
+  + add screen update with WR displayed during write process
   + Fixing issue with write process not working after several writes
   + Adding missing variable reset for write process
   + Fixing issue with buzzer not stopping after play_buzzer_ms function
