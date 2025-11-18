@@ -118,7 +118,8 @@ void pSdEject();
 
 /* Play buzzer for ms milliseconds (non-blocking). Uses TIM1 for PWM and TIM5 one-shot to stop it. */
 void play_buzzer_ms(uint32_t ms);
-
+void marquee_refresh_ms(uint32_t ms);
+void marquee_stop();
 
 enum STATUS makeSDFS();
 

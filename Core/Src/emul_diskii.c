@@ -12,6 +12,7 @@
 
 #include "emul_diskii.h"
 #include "display.h"
+#include "ssd1306.h"
 #include "favorites.h"
 #include "configFile.h"
 #include "main.h"
@@ -34,7 +35,7 @@ extern const  char** ptrFileFilter;
 uint8_t flgBitIndxCounter=0;                                                                    // Keep track of Bit Index Counter when changing track (only for WOZ)
 
 extern enum action nextAction;
-
+extern SSD1306_MARQUEE_t marqueeObj;
 volatile unsigned char flgDeviceEnable=0;
 unsigned char flgImageMounted=0;                                                                // Image file mount status flag
 unsigned char flgBeaming=0;                                                                     // DMA SDIO Beaming
@@ -65,6 +66,8 @@ extern volatile enum FS_STATUS fsState;
 
 extern list_t * dirChainedList;
 extern uint8_t flgSoundEffect;
+extern uint8_t flgUpdateMarquee;
+extern enum page currentPage;
 
 extern volatile uint8_t flgScreenOff;
 
@@ -1017,6 +1020,11 @@ void DiskIIMainLoop(){
         if (flgSwitchEmulationType==1){
             //flgSwitchEmulationType=0;
             break;
+        }
+
+        if (flgUpdateMarquee==1 && currentPage==FS){
+            flgUpdateMarquee=0;
+            updateMarquee();
         }
 
 

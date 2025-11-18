@@ -63,7 +63,7 @@ typedef struct FSDISPITEM{
   uint8_t type;
   uint8_t icon;
   uint8_t status;
-  char title[32];
+  char title[MAX_FILENAME_LENGTH];
   uint8_t chainedListPosition;
 }FSDISPITEM_t;
 
@@ -72,6 +72,8 @@ FSDISPITEM_t fsDispItem[SCREEN_MAX_LINE_ITEM];
 
 uint8_t selectedDiskImageFormat=0;
 
+extern SSD1306_MARQUEE_t marqueeObj;
+ 
 void initFsScr(char * path){
   
     primPrepNewScreen("File Listing");
@@ -92,6 +94,29 @@ void initFsScr(char * path){
     ptrbtnRet=pBtnRetFsScr;
     currentPage=FS;
 
+    
+
+    //marqueeObj.text=(char *)&demoText;
+log_info("initFsScr - selectedIndx:%d",selectedIndx);
+
+marqueeObj.x=0;
+marqueeObj.y=0;
+marqueeObj.visibleWidth=19*6;
+marqueeObj.Color=White;
+marqueeObj.inverted=1;
+
+ssd1306_marqueeInit(&marqueeObj,Font_6x8);
+memset(marqueeObj.renderBuffer,0x00,128);
+
+//ssd1306_marquee_build_text_bitmap(&marqueeObj);
+//ssd1306_marquee_display(&marqueeObj);
+//ssd1306_UpdateScreen();
+/*while(1){
+  ssd1306_marquee_display(&marqueeObj);
+  ssd1306_UpdateScreen();
+  HAL_Delay(15);
+}; */
+
   }
 
 void updateChainedListDisplay(int init, list_t * lst ){
@@ -105,20 +130,21 @@ void updateChainedListDisplay(int init, list_t * lst ){
   uint8_t fsIndx=0;
   uint8_t lstCount=lst->len;
 
-  log_debug("lst_count:%d init:%d",lstCount,init);
-
+  
   if (init!=-1){
     currentClistPos=init;
-    dispSelectedIndx=0;
+    dispSelectedIndx=-1;
   }
+
+  log_debug("lst_count:%d init:%d dispSelected:%d",lstCount,init,dispSelectedIndx);
 
   for (int i=0;i<SCREEN_MAX_LINE_ITEM;i++){
     
-    fsDispItem[i].status=1;                   // starting with item status =0, if an error then status = -1;
-    fsDispItem[i].displayPos=i;               // corresponding line on the screen
+    fsDispItem[i].status=1;                                   // starting with item status =0, if an error then status = -1;
+    fsDispItem[i].displayPos=i;                               // corresponding line on the screen
     fsDispItem[i].update=1;
     
-    if (i>lstCount-1){                          // End of the list before the MAX_LINE_ITEM
+    if (i>lstCount-1){                                        // End of the list before the MAX_LINE_ITEM
       fsDispItem[i].status=0;
       continue;
     }
@@ -128,7 +154,7 @@ void updateChainedListDisplay(int init, list_t * lst ){
     if (fsDispItem[i].selected==1 && i!=dispSelectedIndx){    // It was selected (inversed, thus we need to reinverse)
         fsDispItem[i].selected=0;
     }else if (i==dispSelectedIndx){
-      fsDispItem[i].selected=1;                // first item of the list is selected
+      fsDispItem[i].selected=1;                               // first item of the list is selected
       selectedIndx=fsIndx;
     }  
       
@@ -144,16 +170,16 @@ void updateChainedListDisplay(int init, list_t * lst ){
       if (value[0]=='D' && value[1]=='|'){
         fsDispItem[i].icon=0;   
         fsDispItem[i].type=0;                // 0 -> Directory
-        snprintf(fsDispItem[i].title,24,"%s",value+2); 
+        snprintf(fsDispItem[i].title,MAX_FILENAME_LENGTH,"%s",value+2); 
       }else if (value[0]=='F' && value[1]=='|'){
         fsDispItem[i].icon=1; 
         fsDispItem[i].type=1;                // 1 -> file
-        snprintf(fsDispItem[i].title,24,"%s",value+2);  
+        snprintf(fsDispItem[i].title,MAX_FILENAME_LENGTH,"%s",value+2);  
       }else{
         fsDispItem[i].icon=1; 
         fsDispItem[i].type=1;                // 1 -> file
         char * title=getImageNameFromFullPath(value);
-        snprintf(fsDispItem[i].title,24,"%s",title);  
+        snprintf(fsDispItem[i].title,MAX_FILENAME_LENGTH,"%s",title);  
       }
                   
     }else{
@@ -179,7 +205,24 @@ void updateChainedListDisplay(int init, list_t * lst ){
       ssd1306_SetColor(White);
       displayStringAtPosition(1+h_offset,(1+i)*SCREEN_LINE_HEIGHT+offset,fsDispItem[i].title);
       if (fsDispItem[i].selected==1){
-        inverseStringAtPosition(1+i,offset);
+        marqueeObj.x=1+h_offset;
+        marqueeObj.y=(1+i)*SCREEN_LINE_HEIGHT+offset;
+        //marqueeObj.inverted=1;
+        marqueeObj.fullLineInverted=1;
+        marqueeObj.inverted=0;
+        marqueeObj.Color=White;
+        marqueeObj.scrollType=1;
+        marqueeObj.scrollMaxBF=1;
+        marqueeObj.text=fsDispItem[i].title;
+        memset(marqueeObj.renderBuffer,0x00,128);
+        if (!marqueeObj.initialized){
+          ssd1306_marqueeInit(&marqueeObj,Font_6x8);
+        }
+        ssd1306_marquee_build_text_bitmap(&marqueeObj);
+        ssd1306_marquee_display(&marqueeObj);
+        marquee_refresh_ms(500);
+        //inverseStringAtPosition(1+i,offset);
+        
       }
     }
   }

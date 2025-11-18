@@ -19,8 +19,18 @@ extern FATFS fs;                                            // fatfs global vari
 extern volatile enum FS_STATUS fsState; 
 extern const char ** ptrFileFilter;
 enum page currentPage;
+SSD1306_MARQUEE_t marqueeObj;
 
 uint8_t scrI=0;
+
+void updateMarquee(){
+
+  ssd1306_marquee_display(&marqueeObj);
+  ssd1306_UpdateScreen();
+  if (marqueeObj.noUpdateDisp==1){
+    marquee_stop();                 // This will stop the marquee timer
+  }
+}
 
 void setDisplayONOFF(uint8_t state){
   if (state==0){

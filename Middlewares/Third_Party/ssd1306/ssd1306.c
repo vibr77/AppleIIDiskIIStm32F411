@@ -177,11 +177,228 @@ uint8_t ssd1306_Init(void)
   return 1;
 }
 
+static void ssd1306_marquee_DrawPixel(uint8_t x, uint8_t y,uint8_t *buffer,uint16_t buf_w,uint16_t buf_h, uint8_t inverted,SSD1306_COLOR color);
+static void ssd1306_marquee_render_char(SSD1306_MARQUEE_t* marquee,uint8_t x);
+
+
+void ssd1306_marqueeInit( SSD1306_MARQUEE_t* marquee, FontDef font) {
+    marquee->Font = &Font_6x8;
+    marquee->initialized = 1;
+    log_info("ssd1306_marqueeInit: Font height %d width %d",font.FontHeight,font.FontWidth);
+    marquee->renderBuffer = (uint8_t *)malloc(SSD1306_MARQUEE_MAXCHAR * font.FontWidth* ((font.FontHeight + 7) / 8));
+    marquee->width = SSD1306_MARQUEE_MAXCHAR * font.FontWidth;
+    marquee->scrollDirection=0;
+    marquee->scrollPos=0;
+    marquee->noUpdateDisp=0;
+    marquee->dispUpdateReady=0;
+    marquee->scrollCounter=0;
+    
+}
+
+void ssd1306_marqueeDeInit( SSD1306_MARQUEE_t* marquee) {
+    if (marquee->renderBuffer != NULL) {
+        free(marquee->renderBuffer);
+        marquee->renderBuffer = NULL;
+    }
+    marquee->initialized = 0;
+}
+
+
+static void ssd1306_marquee_render_char(SSD1306_MARQUEE_t* marquee,uint8_t x) {
+  
+  uint32_t i, b, j;
+
+  char c= marquee->text[x];
+  if (c < 32 || c > 127)
+    c = 32; // fallback to space
+  
+  // Check remaining space on current line
+  if (x >= SSD1306_MARQUEE_MAXCHAR ){
+    // Not enough space on current line
+    log_error("ssd1306_marquee_render_char: not enough space on line");
+    return ;
+  }
+  FontDef Font = *(marquee->Font);
+
+  uint8_t inverted = marquee->inverted; 
+  SSD1306_COLOR Color = marquee->Color;
+  uint8_t *dest = marquee->renderBuffer;
+  
+  for (i = 0; i < Font.FontHeight; i++){
+    b = Font.data[(c - 32) * Font.FontHeight + i];
+    for (j = 0; j < Font.FontWidth; j++){
+      if ((b << j) & 0x8000){
+        ssd1306_marquee_DrawPixel(x*Font.FontWidth+j, i,dest,marquee->width,Font.FontHeight,inverted,Color);
+      }
+      else{
+          Color = !Color;
+          ssd1306_marquee_DrawPixel(x*Font.FontWidth+j, i,dest,marquee->width,Font.FontHeight,inverted,Color);
+          Color = !Color;
+      }
+    }
+  }
+}
+
+
+static void ssd1306_marquee_DrawPixel(uint8_t x, uint8_t y,uint8_t *buffer,uint16_t buf_w,uint16_t buf_h, uint8_t inverted,SSD1306_COLOR color)
+{
+  //SSD1306_COLOR _color = color;
+
+  if (x >= buf_w || y >= buf_h)
+  {
+    // Don't write outside the buffer
+    log_info("ssd1306_marquee_DrawPixel: pixel out of bounds x=%d y=%d buf_w=%d buf_h=%d",x,y,buf_w,buf_h);
+    return;
+  }
+
+  // Check if pixel should be inverted
+  if (inverted){
+    color = (SSD1306_COLOR) !color;
+  }
+
+  // Draw in the right color
+  if (color == White)
+  {
+    //printf("Setting write pixel at x=%d y=%d\n",x,y);
+    buffer[x + (y / 8) * buf_w] |= 1 << (y % 8);
+  }
+  else
+  {
+   // printf("Setting blank pixel at x=%d y=%d\n",x,y);
+    buffer[x + (y / 8) * buf_w] &= ~(1 << (y % 8));
+  }
+}
+
+int marqueeTextBufferWidth;
+
+int scroll_pos = 0;
+
+
+void ssd1306_marquee_build_text_bitmap(SSD1306_MARQUEE_t* marquee) {
+    int pos = 0;
+    char *text = marquee->text;
+    FontDef Font = *marquee->Font;
+    marquee->noUpdateDisp=0;
+    
+    if (text==NULL){
+      log_error("ssd1306_marquee_build_text_bitmap: text is NULL");
+    }
+
+    for (int i = 0; text[i] != '\0'; i++) {
+      ssd1306_marquee_render_char(marquee, i);
+      //log_info("ssd1306_marquee_build_text_bitmap: rendered char '%c' at index %d %d",text[i],i,pos);
+      pos += Font.FontWidth;
+    }
+    marquee->renderTextWidth = pos;  // in pixels
+    marquee->txtrendered = 1;
+    marquee->scrollPos=0;
+    marquee->scrollCounter=0;
+    //log_info("ssd1306_marquee_build_text_bitmap: built text bitmap, width=%d",marquee->renderTextWidth);
+}
+
+void ssd1306_marquee_display(SSD1306_MARQUEE_t* marquee) {
+    
+  if (marquee->initialized == 0 ){
+    log_error("ssd1306_marquee_display: marquee not initialized");
+    return;
+  }
+
+  if (marquee->txtrendered == 0) {
+    ssd1306_marquee_build_text_bitmap(marquee);
+  }
+
+  if (marquee->noUpdateDisp==1){
+    // No update needed
+    return;
+  }
+  marquee->dispUpdateReady=0;
+  uint8_t scrollPos = marquee->scrollPos;
+  
+
+  uint8_t direction = marquee->scrollDirection;
+  FontDef Font = *marquee->Font;
+  //SSD1306_COLOR Color = marquee->Color;
+
+  
+  // Now copy the visible part to the display buffer
+  //Col 0x0 0x0 0x0 0x0 ... 0x0 0x0
+  //.   0     0   0   0 ...   0   0 Line 0 => 8 pixels height start at 0 => 127
+  //.   0     0   0   0 ...   0   0 Line   => 8 pixels height start at 128 => 255 
+  //.   ...
+  //.   0     0   0   0 ...   0   0 Line 7 => 8 pixels height start at 896 => 1023
+  
+  if (marquee->fullLineInverted==1){
+    ssd1306_SetColor(White);
+    if (marquee->y!=0){
+      ssd1306_FillRect(marquee->x,marquee->y-1,SSD1306_WIDTH-marquee->x-1,9);
+      marquee->Color=Black;
+    }
+  }
+  
+
+  int k=0;
+  for (int i=scrollPos;i<(scrollPos+ marquee->visibleWidth);i++){
+    
+    for (int j=0;j<Font.FontHeight;j++){
+
+      // Copy pixel from renderBuffer to SSD1306_Buffer
+      uint8_t pixel = (marquee->renderBuffer[i  + (j / 8)*marquee->renderTextWidth] >> (7 - (j% 8))) & 0x01;
+      
+      if (pixel){
+        SSD1306.Color = marquee->Color;
+        ssd1306_DrawPixel( marquee->x +k, (marquee->y + 7-j));
+      }else{
+        SSD1306.Color = (marquee->Color == White) ? Black : White;
+        ssd1306_DrawPixel( marquee->x+k, (marquee->y + 7-j));  
+      }
+    }
+    k++;
+  }
+  
+  if (marquee->renderTextWidth <= marquee->visibleWidth){
+    // No scrolling needed, text fits in the marquee area
+    scrollPos=0;
+    marquee->noUpdateDisp=1;
+     
+  }else{
+    //printf("ssd1306_marquee_display: scrollPos=%d direction=%d visibleWidth=%d\n",scrollPos,direction,marquee->visibleWidth);
+    if (direction == 0){                          // Scrolling from left to right
+      if ((marquee->renderTextWidth-scrollPos) > marquee->visibleWidth){
+        scrollPos++; 
+      }else  {
+        direction = 1;
+        marquee->scrollDirection = direction;
+        scrollPos--;
+      }
+     
+
+    }else if (direction == 1){                   // Scrolling from right to left
+      if (scrollPos > 0){
+        scrollPos--;
+      }else {
+          
+        if (marquee->scrollType==1){               // Back and forth scrolling
+            marquee->scrollCounter++;
+            if (marquee->scrollCounter >= marquee->scrollMaxBF){
+              marquee->noUpdateDisp=1;
+            }
+        }
+
+        direction = 0;
+        marquee->scrollDirection = direction;
+        scrollPos++;
+      }
+    }
+  }
+  marquee->scrollPos = scrollPos;
+}
+
+
+
 //
 //  Fill the whole screen with the given color
 //
-void ssd1306_Fill(void)
-{
+void ssd1306_Fill(void){
   /* Set memory */
   uint32_t i;
 
@@ -761,8 +978,7 @@ char ssd1306_WriteChar(char ch, FontDef Font)
   }
 
   // Use the font to write
-  for (i = 0; i < Font.FontHeight; i++)
-  {
+  for (i = 0; i < Font.FontHeight; i++){
     b = Font.data[(ch - 32) * Font.FontHeight + i];
     for (j = 0; j < Font.FontWidth; j++)
     {

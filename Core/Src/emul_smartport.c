@@ -9,6 +9,7 @@
 
 #include "main.h"
 #include "display.h"
+
 #include "log.h"
 
 #include "driver_2mg.h"
@@ -47,6 +48,9 @@ extern uint8_t preBootSmartport;
 extern uint8_t flgSoundEffect; 
 extern uint8_t bootImageIndex;
 extern enum action nextAction;
+extern enum page currentPage;
+extern uint8_t flgUpdateMarquee;
+
 
 extern const  char** ptrFileFilter;
 
@@ -1670,7 +1674,10 @@ void SmartPortMainLoop(){
                 log_info("Switching SmartPort Emulation Type to DISK II"); 
                 break;
             }*/
-            
+            if (flgUpdateMarquee==1 && currentPage==FS){
+                flgUpdateMarquee=0;
+                updateMarquee();
+            }
             cAlive++;
             if (cAlive==5000000){ 
                 HAL_SD_CardStateTypeDef state;

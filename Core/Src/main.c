@@ -522,6 +522,9 @@ uint8_t iTmp=0;
 uint8_t flgWeakBit=0;
 uint8_t flgSoundEffect=0; 
 uint8_t flgSoundEffectActive=0;                                                                      // Activate Buzze
+uint8_t flgUpdateMarquee=0;
+volatile uint8_t tim5ActiveChannel=0;
+
 volatile uint8_t flgScreenSaver=0;
 volatile uint8_t flgDisplaySleep=0;
 uint8_t bootMode=0;
@@ -771,19 +774,38 @@ void TIM5_IRQHandler(void){
   //log_info("A");
   if (TIM5->SR & TIM_SR_UIF){
     
-    
-  } if (TIM5->SR & TIM_SR_CC1IF){                         // Pulse compare interrrupt on Channel 1
-    //TIM1->CCER &= ~TIM_CCER_CC2NE;
+    TIM5->SR = ~TIM_SR_UIF;                              // Clear the overflow interrupt 
+  } 
+  
+  if ((tim5ActiveChannel & 1) && TIM5->SR & TIM_SR_CC1IF){                         // Pulse compare interrrupt on Channel 1
+    TIM5->SR &= ~TIM_SR_CC1IF;  
     TIM1->CCER &= ~TIM_CCER_CC2NE;
     
     flgSoundEffectActive=0;
+    tim5ActiveChannel &= ~1;
+
     /* Disable timer and its update interrupt */
-    TIM5->CR1 &= ~TIM_CR1_CEN;
+    if (tim5ActiveChannel & 2==0){
+      TIM5->CR1 &= ~TIM_CR1_CEN;
+      TIM5->DIER &= ~TIM_DIER_UIE;
+    }
+    //TIM5->CR1 &= ~TIM_CR1_CEN;
     /* Disable update interrupt using timer register (clear UIE in DIER) */
-    TIM5->DIER &= ~TIM_DIER_UIE;
-    TIM5->SR &= ~TIM_SR_CC1IF;                            // Clear the compare interrupt flag
-  }else
-    TIM5->SR = 0;
+    //TIM5->DIER &= ~TIM_DIER_UIE;
+    TIM5->DIER &= ~TIM_DIER_CC1IE;
+    //printf("i\n");
+    // Clear the compare interrupt flag
+  }
+  
+  if ((tim5ActiveChannel & 0x2) && TIM5->SR & TIM_SR_CC2IF){
+    TIM5->SR = ~TIM_SR_CC2IF;
+    flgUpdateMarquee=1;
+    
+    //TIM1->CCER &= ~TIM_CCER_CC2NE;
+    //flgSoundEffectActive=0;
+    //printf("h\n");
+  }
+
 }
 
 #endif
@@ -1386,6 +1408,8 @@ void processBtnInterrupt(uint16_t GPIO_Pin){
  * tick (prescaler = 9599) so ticks = ms * 10.
  */
 void play_buzzer_ms(uint32_t ms){
+  tim5ActiveChannel|=1;
+  //log_info("play_buzzer_ms %lu ms",ms);
   if (flgSoundEffectActive==1) return;                                   // A sound effect is already active
   flgSoundEffectActive=1;
   if (ms == 0) return;
@@ -1412,9 +1436,41 @@ void play_buzzer_ms(uint32_t ms){
   TIM5->CNT = 0;
   //HAL_TIM_Base_Start_IT(&htim5);
   /* Enable update interrupt and start one-shot timer */
+  TIM5->CR1 |=  TIM_CR1_OPM;                    // One pulse mode
   TIM5->DIER |= TIM_DIER_UIE;
   TIM5->CR1 |= TIM_CR1_CEN;
 
+}
+
+void marquee_refresh_ms(uint32_t ms){
+  
+  tim5ActiveChannel|=2;
+  uint32_t ticks = ms * 10U; /* 10 kHz tick -> 10 ticks per ms */
+  if (ticks == 0) ticks = 1;
+
+  TIM5->CR1 &= ~TIM_CR1_CEN;                                      // Stop timer while we change ARR/counter          
+  TIM5->ARR = (uint32_t)(ticks - 1U)*10;                          // Set Auto-reload register
+  TIM5->CCR2 = (uint32_t)(ticks - 1U)*10;                         // Channel 2 for marquee update
+  TIM5->CNT = 0;
+
+  TIM5->SR &= ~(TIM_SR_CC1IF | TIM_SR_CC2IF | TIM_SR_UIF);
+  
+  TIM5->DIER = TIM_DIER_CC2IE;
+  TIM5->CR1 &= ~TIM_CR1_OPM;
+  TIM5->CR1 |= TIM_CR1_CEN;                                       // Start the timer
+  
+
+// Do NOT enable interrupt for Channel 2 compare (no OC2IE bit set in DIER)
+
+  
+  //printf("marquee refresh set to %lu ms\n",ms);
+  
+
+}
+
+void marquee_stop(){
+  TIM5->SR &= ~(TIM_SR_CC1IF | TIM_SR_CC2IF | TIM_SR_UIF);
+  TIM5->CR1 &= ~TIM_CR1_CEN; 
 }
 
 /**
@@ -1689,6 +1745,36 @@ int main(void)
   initSplash();
                                   
   HAL_Delay(100);
+
+#include "ssd1306.h"
+ssd1306_Clear();
+ssd1306_UpdateScreen();
+
+
+/*
+SSD1306_MARQUEE_t marqueeObj;
+char demoText[]="SmartDisk II - The sound of sea ! ";
+marqueeObj.text=(char *)&demoText;
+
+marqueeObj.x=15;
+marqueeObj.y=10;
+marqueeObj.visibleWidth=100;
+marqueeObj.Color=White;
+marqueeObj.inverted=1;
+
+ssd1306_marqueeInit(&marqueeObj,Font_6x8);
+memset(marqueeObj.renderBuffer,0x00,128);
+
+ssd1306_marquee_build_text_bitmap(&marqueeObj);
+ssd1306_marquee_display(&marqueeObj);
+ssd1306_UpdateScreen();
+while(1){
+  ssd1306_marquee_display(&marqueeObj);
+  ssd1306_UpdateScreen();
+  HAL_Delay(15);
+};
+*/
+
  
   EnableTiming();                                                           // Enable WatchDog to get precise CPU Cycle counting
  
@@ -1842,8 +1928,8 @@ while(1){
     ptrMainLoop();
   }
 }
+  
 
-  while(1){};
 
 
   /* USER CODE END 2 */
@@ -2327,8 +2413,11 @@ static void MX_TIM5_Init(void)
   sConfigOC.Pulse = 500;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-  if (HAL_TIM_OC_ConfigChannel(&htim5, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
-  {
+  if (HAL_TIM_OC_ConfigChannel(&htim5, &sConfigOC, TIM_CHANNEL_1) != HAL_OK){
+    Error_Handler();
+  }
+
+  if (HAL_TIM_OC_ConfigChannel(&htim5, &sConfigOC, TIM_CHANNEL_2) != HAL_OK){
     Error_Handler();
   }
   /* USER CODE BEGIN TIM5_Init 2 */

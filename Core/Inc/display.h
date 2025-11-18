@@ -23,7 +23,8 @@ enum page{FS,MOUNT,MENU,DISKIIIMAGE,FAVORITES,SETTINGS,EMULATIONTYPE,IMAGEMENU,S
 typedef struct lstItem_s{
     uint8_t type;             // 0 -> simpleLabel; 1-> boolean; 2-> value
     uint8_t icon;
-    char title[24];
+    //char title[24];
+    char title[MAX_FILENAME_LENGTH];
     void (* triggerfunction)();
     uint8_t arg;
     uint8_t ival;
@@ -55,7 +56,7 @@ typedef struct listWidget_s{
 } listWidget_t;
 
 typedef struct rollingWidget_s{
-    char  label[32];
+    char  label[MAX_FILENAME_LENGTH]; // instead of 32
     uint8_t labelMaxLen;
     uint8_t index;
     uint8_t hOffset;                        
@@ -80,7 +81,7 @@ typedef struct pgBarWidget_s{
     int vstart;
     int value;
 }pgBarWidget_t;
-
+void updateMarquee();
 void setDisplayONOFF(uint8_t state);
 char * getImageNameFromFullPath(char * fullPathImageName);
 enum STATUS switchPage(enum page newPage,void * arg);

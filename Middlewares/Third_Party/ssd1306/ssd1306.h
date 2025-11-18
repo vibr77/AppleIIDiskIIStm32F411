@@ -36,6 +36,8 @@
 #define SSD1306_WIDTH          128
 // SSD1306 LCD height in pixels
 #define SSD1306_HEIGHT         64
+#define SSD1306_PAGES          8
+#define SSD1306_MARQUEE_MAXCHAR 64
 #elif defined(SSD1306_128X32)
 #define SSD1306_GEOMETRY       GEOMETRY_128_32
 // SSD1306 width in pixels
@@ -92,6 +94,41 @@ typedef enum {
 //
 //  Struct to store transformations
 //
+
+typedef struct {
+  uint8_t x;                                 // X position of the marquee on the screen          
+  uint8_t y;                                 // Y position of the marquee on the screen
+  int8_t width;                              // Width of the marquee area in pixels visible+hidden
+  uint8_t visibleWidth;                      // Width of the visible area in pixels    
+  int8_t scrollPos;                          // Current scroll position (active column)
+  uint8_t scrollSpeed;                       // Scroll speed (number of updates before moving)
+  uint8_t scrollDirection;                   // Scroll direction: 0 = left to right, 1 = right to left
+  uint8_t scrollCounter;                     // Scroll counter to manage back and forth scrolling
+  uint8_t scrollMaxBF;                       // Maximum Back & Forth rotations
+  uint8_t scrollType;                        // Scroll type: 0 = continuous, 1 back and forth
+ 
+  uint8_t inverted;                          // Inversion flag 
+  uint8_t fullLineInverted;
+  
+  char *text;                                // Text to be displayed in the marquee    
+  uint8_t *renderBuffer;                     // Buffer to hold the rendered text bitmap
+  int renderTextWidth;                   // Width of the rendered text bitmap in pixels 
+  uint8_t noUpdateDisp;
+  uint8_t dispUpdateReady;
+  SSD1306_COLOR Color;
+  FontDef *Font;
+  uint8_t initialized;
+  uint8_t txtrendered;
+
+} SSD1306_MARQUEE_t;
+
+
+void ssd1306_marqueeInit( SSD1306_MARQUEE_t* marquee, FontDef Font);
+void ssd1306_marqueeDeInit( SSD1306_MARQUEE_t* marquee);
+void ssd1306_marquee_build_text_bitmap(SSD1306_MARQUEE_t* marquee);
+void ssd1306_marquee_display(SSD1306_MARQUEE_t* marquee);
+
+
 typedef struct {
   uint16_t      CurrentX;
   uint16_t      CurrentY;
