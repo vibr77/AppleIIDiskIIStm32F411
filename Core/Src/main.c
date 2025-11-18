@@ -666,13 +666,28 @@ void EXTI9_5_IRQHandler(void)
   /* USER CODE END EXTI9_5_IRQn 1 */
 }
 
+void TIM1_UP_TIM10_IRQHandler(void){
+    if ((TIM10->SR & TIM_SR_CC1IF) != 0){
+      TIM10->SR &= ~TIM_SR_CC1IF;                                       // Clear flag  
+      TIM1->CCER &= ~TIM_CCER_CC2NE;                                    // Disable complementary channel 2 (buzzer output)       
+      TIM1->CR1 &= ~TIM_CR1_CEN;                                        // Stop Timer
+    
+      flgSoundEffectActive=0;                                            // Deactivate sound effect flag        
+    
+      TIM10->CR1 &= ~TIM_CR1_CEN;                                         // Disable Timer      
+      TIM10->DIER &= ~TIM_DIER_UIE;                                       // Disable Update Interrupt     
+      TIM10->DIER &= ~TIM_DIER_CC1IE;                                     // Disable Compare Interrupt on Channel 1
+    
+    }
+}
+
 void TIM1_BRK_TIM9_IRQHandler(void){
 
   if (TIM9->SR & TIM_SR_UIF){
     TIM9->SR &= ~TIM_SR_UIF;        
   } 
   
-  else if (TIM9->SR & TIM_SR_CC1IF){                     // Pulse compare interrrupt on Channel 1
+  if (TIM9->SR & TIM_SR_CC1IF){                     // Pulse compare interrrupt on Channel 1
     TIM9->SR &= ~TIM_SR_CC1IF;
     TIM9->SR=0;
     if (flgScreenSaver==1)
@@ -727,11 +742,11 @@ void TIM4_IRQHandler(void){
 void TIM3_IRQHandler(void){
   
   if (TIM3->SR & TIM_SR_UIF){
-    
     TIM3->SR &= ~TIM_SR_UIF;                              // Clear the overflow interrupt 
     ptrSendDataIRQ();
+  }
   
-  }else if (TIM3->SR & TIM_SR_CC1IF){                     // Pulse compare interrrupt on Channel 1
+  if (TIM3->SR & TIM_SR_CC1IF){                     // Pulse compare interrrupt on Channel 1
     RD_DATA_GPIO_Port->BSRR=1U <<16;                      // Reset the RD_DATA GPIO
     TIM3->SR &= ~TIM_SR_CC1IF;                            // Clear the compare interrupt flag
 
@@ -749,11 +764,9 @@ volatile enum FS_STATUS fsState=READY;
 void TIM2_IRQHandler(void){
 
   if (TIM2->SR & TIM_SR_UIF){ 
-
-    TIM2->SR &= ~TIM_SR_UIF;                                                  // clear the overflow interrupt        
-                                                      
-  }else if (TIM2->SR & TIM_SR_CC2IF){
-
+    TIM2->SR &= ~TIM_SR_UIF;                                                  // clear the overflow interrupt                                                         
+  }
+  if (TIM2->SR & TIM_SR_CC2IF){
     ptrReceiveDataIRQ();
     TIM2->SR &= ~TIM_SR_CC2IF;                                                // clear the count & compare interrupt                                                
   }   
@@ -771,41 +784,20 @@ void TIM2_IRQHandler(void){
   */
 
 void TIM5_IRQHandler(void){
-  //log_info("A");
+  
   if (TIM5->SR & TIM_SR_UIF){
-    
     TIM5->SR = ~TIM_SR_UIF;                              // Clear the overflow interrupt 
   } 
   
   if ((tim5ActiveChannel & 1) && TIM5->SR & TIM_SR_CC1IF){                         // Pulse compare interrrupt on Channel 1
     TIM5->SR &= ~TIM_SR_CC1IF;  
-    TIM1->CCER &= ~TIM_CCER_CC2NE;
-    
-    flgSoundEffectActive=0;
     tim5ActiveChannel &= ~1;
-
-    /* Disable timer and its update interrupt */
-    if (tim5ActiveChannel & 2==0){
-      TIM5->CR1 &= ~TIM_CR1_CEN;
-      TIM5->DIER &= ~TIM_DIER_UIE;
-    }
-    //TIM5->CR1 &= ~TIM_CR1_CEN;
-    /* Disable update interrupt using timer register (clear UIE in DIER) */
-    //TIM5->DIER &= ~TIM_DIER_UIE;
-    TIM5->DIER &= ~TIM_DIER_CC1IE;
-    //printf("i\n");
-    // Clear the compare interrupt flag
   }
   
   if ((tim5ActiveChannel & 0x2) && TIM5->SR & TIM_SR_CC2IF){
     TIM5->SR = ~TIM_SR_CC2IF;
     flgUpdateMarquee=1;
-    
-    //TIM1->CCER &= ~TIM_CCER_CC2NE;
-    //flgSoundEffectActive=0;
-    //printf("h\n");
   }
-
 }
 
 #endif
@@ -829,7 +821,6 @@ void irqReadTrack(){
 void irqWriteTrack(){
 
   HAL_NVIC_EnableIRQ(TIM2_IRQn);
-  
   HAL_NVIC_DisableIRQ(TIM3_IRQn);
   HAL_NVIC_DisableIRQ(TIM4_IRQn);
 }
@@ -1430,15 +1421,23 @@ void play_buzzer_ms(uint32_t ms){
   if (ticks == 0) ticks = 1;
 
   /* Stop timer while we change ARR/counter */
-  TIM5->CR1 &= ~TIM_CR1_CEN;
-  TIM5->ARR = (uint32_t)(ticks - 1U)*10;
-  TIM5->CCR1 = (uint32_t)(ticks - 1U)*10;
-  TIM5->CNT = 0;
+  TIM10->CR1 &= ~TIM_CR1_CEN;
+  RCC->APB2ENR |= RCC_APB2ENR_TIM10EN;
+  TIM10->CCMR1 &= ~TIM_CCMR1_CC1S;
+  TIM10->CCMR1 &= ~TIM_CCMR1_OC1M;
+  TIM10->CCMR1 |= (0x3 << TIM_CCMR1_OC1M_Pos);
+
+  TIM10->CCER |= TIM_CCER_CC1E;
+  TIM10->PSC=96;
+  TIM10->ARR = (uint32_t)(ticks - 1U)*10;
+  TIM10->CCR1 = (uint32_t)(ticks - 1U)*10;
+  TIM10->CNT = 0;
   //HAL_TIM_Base_Start_IT(&htim5);
   /* Enable update interrupt and start one-shot timer */
-  TIM5->CR1 |=  TIM_CR1_OPM;                    // One pulse mode
-  TIM5->DIER |= TIM_DIER_UIE;
-  TIM5->CR1 |= TIM_CR1_CEN;
+  
+  TIM10->DIER |= TIM_DIER_UIE;
+  TIM10->DIER |= TIM_DIER_CC1IE;
+  TIM10->CR1 |= TIM_CR1_CEN;
 
 }
 
@@ -2043,6 +2042,9 @@ static void MX_NVIC_Init(void)
   /* TIM4_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(TIM4_IRQn, 10, 0);
   HAL_NVIC_EnableIRQ(TIM4_IRQn);
+
+  HAL_NVIC_SetPriority(TIM1_UP_TIM10_IRQn, 15,0);
+  NVIC_EnableIRQ(TIM1_UP_TIM10_IRQn); 
 }
 
 /**
