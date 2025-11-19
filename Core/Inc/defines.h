@@ -20,10 +20,10 @@
 
 #define SCREENSHOT                  0
 
-#define RAW_SD_TRACK_SIZE           8192                          // Maximuum track size on NIC & WOZ to load from SD
+#define RAW_SD_TRACK_SIZE           8192                            // Maximuum track size on NIC & WOZ to load from SD
 #define WEAKBIT                     0
 
-#define MAX_TRACK                   59                                    // Max Number of track for a given Apple II Floppy,
+#define MAX_TRACK                   59                              // Max Number of track for a given Apple II Floppy,
 
 #define MAX_PARTITIONS              4                               // Number of 32MB Prodos partions supported
 #define SP_PKT_SIZE                 604

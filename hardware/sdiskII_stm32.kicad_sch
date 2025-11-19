@@ -6,8 +6,8 @@
 	(paper "A4")
 	(title_block
 		(title "SMARTDISK II  STM32F411")
-		(date "2025-08-11")
-		(rev "7")
+		(date "2025-11-19")
+		(rev "8")
 		(company "Vincent BESSON")
 		(comment 1 "vincent@besson.be")
 	)
@@ -8618,6 +8618,33 @@
 				(hide yes)
 			)
 		)
+		(property "Supply" "LCSC C84410"
+			(at 36.83 156.845 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Cost" "$0.014"
+			(at 36.83 156.845 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Mandatory" "YES or D2"
+			(at 36.83 156.845 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "9d9e029e-d1c8-47bb-b5d1-967dc0a1251b")
 		)
@@ -8813,6 +8840,33 @@
 			)
 		)
 		(property "Description" "800mA Low-Dropout Linear Regulator, 3.3V fixed output, SOT-223"
+			(at 95.25 156.21 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Supply" "LCSC C9662"
+			(at 95.25 156.21 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Cost" "$0.91"
+			(at 95.25 156.21 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Mandatory" "NO"
 			(at 95.25 156.21 0)
 			(effects
 				(font
@@ -9017,7 +9071,7 @@
 				(hide yes)
 			)
 		)
-		(property "Description" ""
+		(property "Description" "0.96 128x64 SSD1315 I2C LCD, OLED, Graphic RoHS"
 			(at 191.77 146.05 0)
 			(effects
 				(font
@@ -9116,7 +9170,7 @@
 				(hide yes)
 			)
 		)
-		(property "Description_1" "\n0.96” 128 X 64 MONOCHROME GRAPHIC OLED DISPLAY MODULE - I2C\n"
+		(property "Description_1" "0.96 128x64 SSD1315 I2C LCD, OLED, Graphic RoHS"
 			(at 191.77 146.05 0)
 			(effects
 				(font
@@ -9143,6 +9197,33 @@
 					(size 1.27 1.27)
 				)
 				(justify bottom)
+				(hide yes)
+			)
+		)
+		(property "Supply" "LCSC C5248080"
+			(at 191.77 146.05 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Mandatory" "YES"
+			(at 191.77 146.05 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Cost" "$2"
+			(at 191.77 146.05 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
 				(hide yes)
 			)
 		)
@@ -9204,7 +9285,7 @@
 				(hide yes)
 			)
 		)
-		(property "Datasheet" "~"
+		(property "Datasheet" "https://www.lcsc.com/datasheet/C15850.pdf"
 			(at 84.455 163.83 0)
 			(effects
 				(font
@@ -9213,7 +9294,34 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "Unpolarized capacitor"
+		(property "Description" "SMD 25V 10uF X5R ±10% 0805 Ceramic Capacitors"
+			(at 84.455 163.83 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Supply" "LCSC C15850"
+			(at 84.455 163.83 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Mandatory" "NO"
+			(at 84.455 163.83 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Cost" "$0.01"
 			(at 84.455 163.83 0)
 			(effects
 				(font
@@ -9405,7 +9513,7 @@
 				(hide yes)
 			)
 		)
-		(property "Datasheet" "~"
+		(property "Datasheet" "https://www.lcsc.com/datasheet/C17630.pdf"
 			(at 41.91 91.44 0)
 			(effects
 				(font
@@ -9414,8 +9522,35 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "Resistor"
+		(property "Description" "SMD 125mW 330Ω 150V ±100ppm/℃ Thick Film Resistor ±1% 0805 Chip Resistor"
 			(at 41.91 91.44 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Supply" "LCSC C17630"
+			(at 41.91 91.44 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Cost" "$0.0019"
+			(at 41.91 91.44 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Mandatory" "NO"
+			(at 41.91 91.44 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9624,6 +9759,33 @@
 				(hide yes)
 			)
 		)
+		(property "Supply" "LCSC C393938"
+			(at 137.16 38.1 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Mandatory" "YES"
+			(at 137.16 38.1 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Cost" "$0.016"
+			(at 137.16 38.1 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "7e5a5ff2-a3b1-49f5-b5bb-5a572ae707cc")
 		)
@@ -9790,7 +9952,7 @@
 				)
 			)
 		)
-		(property "Value" "1N4148WT"
+		(property "Value" "SS16"
 			(at 38.1 149.86 0)
 			(effects
 				(font
@@ -9816,7 +9978,7 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "75V 0.15A Fast switching Diode, SOD-123"
+		(property "Description" "60V Independent 700mV@1A 1A SMA(DO-214AC) Single Diodes"
 			(at 36.83 146.685 0)
 			(effects
 				(font
@@ -9835,6 +9997,33 @@
 			)
 		)
 		(property "Sim.Pins" "1=K 2=A"
+			(at 36.83 146.685 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Supply" "LCSC C908233"
+			(at 36.83 146.685 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Cost" "$0.59"
+			(at 36.83 146.685 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Mandatory" "YES or D1"
 			(at 36.83 146.685 0)
 			(effects
 				(font
@@ -10043,8 +10232,35 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "Resistor"
+		(property "Description" "SMD 125mW 330Ω 150V ±100ppm/℃ Thick Film Resistor ±1% 0805 Chip Resistor"
 			(at 41.91 79.375 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Supply" "LCSC C17630"
+			(at 41.91 79.375 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Cost" "$0.0019"
+			(at 41.91 79.375 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Mandatory" "NO"
+			(at 41.91 79.375 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -10104,7 +10320,7 @@
 				(hide yes)
 			)
 		)
-		(property "Datasheet" "~"
+		(property "Datasheet" "https://www.lcsc.com/datasheet/C252917.pdf"
 			(at 155.575 146.05 90)
 			(effects
 				(font
@@ -10113,7 +10329,34 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "Buzzer, polarized"
+		(property "Description" "Passive buzzer 12 x 6.0MM P6.5"
+			(at 156.21 148.59 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Supply" "LCSC C252917"
+			(at 156.21 148.59 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Cost" "$0.94"
+			(at 156.21 148.59 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Mandatory" "NO"
 			(at 156.21 148.59 0)
 			(effects
 				(font
@@ -10513,7 +10756,34 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "Unpolarized capacitor"
+		(property "Description" "SMD 25V 10uF X5R ±10% 0805 Ceramic Capacitors"
+			(at 105.41 163.83 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Supply" "LCSC C15850"
+			(at 105.41 163.83 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Cost" "$0.01"
+			(at 105.41 163.83 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Mandatory" "NO"
 			(at 105.41 163.83 0)
 			(effects
 				(font
@@ -10656,6 +10926,33 @@
 				(hide yes)
 			)
 		)
+		(property "Supply" "LCSC C393938"
+			(at 146.05 38.1 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Mandatory" "YES"
+			(at 146.05 38.1 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Cost" "$0.016"
+			(at 146.05 38.1 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "27ced240-6ac2-45d2-a38d-55932879f165")
 		)
@@ -10717,12 +11014,39 @@
 				(hide yes)
 			)
 		)
-		(property "Description" ""
+		(property "Description" "6V 500mA 100A 1A 150mΩ 0805 PTC Resettable Fuses"
 			(at 50.165 156.845 0)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
+			)
+		)
+		(property "Supply" "LCSC C66452"
+			(at 50.165 156.845 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Cost" "$0.45"
+			(at 50.165 156.845 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Mandatory" "NO"
+			(at 50.165 156.845 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
 			)
 		)
 		(pin "1"
@@ -10996,6 +11320,33 @@
 				(hide yes)
 			)
 		)
+		(property "Supply" "LCSC C115249"
+			(at 97.79 110.49 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Mandatory" "YES"
+			(at 97.79 110.49 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Cost" "$0.26"
+			(at 97.79 110.49 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "12"
 			(uuid "74e18b29-a3a7-4c3b-b326-a63f01f7c9b9")
 		)
@@ -11111,6 +11462,33 @@
 			)
 		)
 		(property "Description" "Push button switch, generic, two pins"
+			(at 115.57 38.1 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Supply" "LCSC C393938"
+			(at 115.57 38.1 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Mandatory" "YES"
+			(at 115.57 38.1 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Cost" "$0.016"
 			(at 115.57 38.1 0)
 			(effects
 				(font
@@ -11327,8 +11705,35 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "Resistor"
+		(property "Description" "SMD 125mW 330Ω 150V ±100ppm/℃ Thick Film Resistor ±1% 0805 Chip Resistor"
 			(at 42.545 66.04 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Supply" "LCSC C17630"
+			(at 42.545 66.04 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Cost" "$0.0019"
+			(at 42.545 66.04 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Mandatory" "NO"
+			(at 42.545 66.04 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -11369,7 +11774,7 @@
 				)
 			)
 		)
-		(property "Value" "BlackPill STMF4X1"
+		(property "Value" "STM32F411 (BlackPill) 25Mhz"
 			(at 238.76 57.15 0)
 			(effects
 				(font
@@ -11395,7 +11800,25 @@
 				(hide yes)
 			)
 		)
-		(property "Description" ""
+		(property "Description" "WeAct Studio 3.0 STM32F411CEU6  |"
+			(at 238.76 83.82 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Supply" "WeAct Studio 3.0 STM32F411CEU6"
+			(at 238.76 83.82 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Cost" "$2.99"
 			(at 238.76 83.82 0)
 			(effects
 				(font
@@ -12525,7 +12948,7 @@
 				(hide yes)
 			)
 		)
-		(property "Datasheet" "~"
+		(property "Datasheet" "https://www.lcsc.com/datasheet/C114555.pdf"
 			(at 41.91 52.705 0)
 			(effects
 				(font
@@ -12534,8 +12957,35 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "Resistor"
+		(property "Description" "SMD 125mW 1.5kΩ 150V ±100ppm/℃ Thick Film Resistor ±1% 0805 Chip Resistor"
 			(at 41.91 52.705 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Supply" "LCSC C114555"
+			(at 41.91 52.705 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Mandatory" "NO"
+			(at 41.91 52.705 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Cost" "$0.0021"
+			(at 41.91 52.705 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -12601,7 +13051,34 @@
 				)
 			)
 		)
-		(property "Description" "MicroSD slot with card detect signal"
+		(property "Description" "Push-Push 2mm Connector and Ejector MicroSD Card (TF Card) SMD"
+			(at 247.65 34.29 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Supply" "Mouser 640-MEM20750014001A / LCSC C381084"
+			(at 247.65 34.29 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Mandatory" "YES"
+			(at 247.65 34.29 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Cost" "$0.08"
 			(at 247.65 34.29 0)
 			(effects
 				(font
@@ -12686,7 +13163,7 @@
 				(hide yes)
 			)
 		)
-		(property "Datasheet" "~"
+		(property "Datasheet" "https://www.lcsc.com/datasheet/C114555.pdf"
 			(at 41.91 46.355 0)
 			(effects
 				(font
@@ -12695,8 +13172,35 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "Resistor"
+		(property "Description" "SMD 125mW 1.5kΩ 150V ±100ppm/℃ Thick Film Resistor ±1% 0805 Chip Resistor"
 			(at 41.91 46.355 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Supply" "LCSC C114555"
+			(at 41.91 46.355 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Mandatory" "NO"
+			(at 41.91 46.355 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Cost" "$0.0021"
+			(at 41.91 46.355 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -12765,6 +13269,33 @@
 			)
 		)
 		(property "Description" "Push button switch, generic, two pins"
+			(at 125.73 38.1 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Supply" "LCSC C393938"
+			(at 125.73 38.1 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Mandatory" "YES"
+			(at 125.73 38.1 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Cost" "$0.016"
 			(at 125.73 38.1 0)
 			(effects
 				(font

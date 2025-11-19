@@ -9,8 +9,8 @@
 	(paper "A4")
 	(title_block
 		(title "SmartDisk II")
-		(date "2025-08-11")
-		(rev "7")
+		(date "2025-11-19")
+		(rev "8")
 		(company "Vincent Besson")
 	)
 	(layers
@@ -230,6 +230,45 @@
 			(effects
 				(font
 					(size 1.27 1.27)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Supply" "LCSC C115249"
+			(at 0 0 90)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "20f60016-72af-4060-9019-689916dd3c15")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Mandatory" "YES"
+			(at 0 0 90)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "2e8dcf90-ea9a-4f09-9bd1-c2768fbfac03")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Cost" "$0.26"
+			(at 0 0 90)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "7e03c641-21ae-4c6f-9f15-81740824cb44")
+			(effects
+				(font
+					(size 1 1)
 					(thickness 0.15)
 				)
 			)
@@ -878,6 +917,45 @@
 			(layer "F.Fab")
 			(hide yes)
 			(uuid "4c2b54f2-fae5-494e-9a9b-0bca76516890")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Supply" "LCSC C84410"
+			(at 0 0 270)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "a5cd58eb-5cc7-4bb7-9e98-6d03f2fa0bdb")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Cost" "$0.014"
+			(at 0 0 270)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "b1c67922-e966-4ff7-9245-cfe1c9bc3d6d")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Mandatory" "YES or D2"
+			(at 0 0 270)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "85d2b0a5-09ed-4e93-99d1-5aa207ec4061")
 			(effects
 				(font
 					(size 1 1)
@@ -1767,6 +1845,45 @@
 				)
 			)
 		)
+		(property "Supply" "LCSC C393938"
+			(at 0 0 180)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "b245e768-0bec-41c6-94c5-1b94144d0328")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Mandatory" "YES"
+			(at 0 0 180)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "ed1837a1-eeae-4f70-a797-7564264f5f3b")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Cost" "$0.016"
+			(at 0 0 180)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "957bbab2-fca8-4dd4-acd7-063624d2ed8e")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
 		(path "/fb150bd5-d29d-42d7-91cd-18aa76ffefed")
 		(sheetname "/")
 		(sheetfile "sdiskII_stm32.kicad_sch")
@@ -2077,7 +2194,7 @@
 				)
 			)
 		)
-		(property "Value" "1N4148WT"
+		(property "Value" "SS16"
 			(at 0 2.6 90)
 			(layer "F.Fab")
 			(uuid "82e91420-e094-4e76-8043-3805ac17eb08")
@@ -2101,7 +2218,7 @@
 				)
 			)
 		)
-		(property "Description" "75V 0.15A Fast switching Diode, SOD-123"
+		(property "Description" "60V Independent 700mV@1A 1A SMA(DO-214AC) Single Diodes"
 			(at 0 0 270)
 			(unlocked yes)
 			(layer "F.Fab")
@@ -2133,6 +2250,45 @@
 			(layer "F.Fab")
 			(hide yes)
 			(uuid "94e58614-b6b4-4930-a1cd-236293e6d902")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Supply" "LCSC C908233"
+			(at 0 0 270)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "ca6cd667-bc72-4def-9a66-5537a205529a")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Cost" "$0.59"
+			(at 0 0 270)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "f828eafb-420d-4af7-af23-2b628ad9a320")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Mandatory" "YES or D1"
+			(at 0 0 270)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "c20bb179-5519-402c-9d19-836a10fcd8d8")
 			(effects
 				(font
 					(size 1 1)
@@ -2401,7 +2557,7 @@
 				)
 			)
 		)
-		(property "Description" ""
+		(property "Description" "6V 500mA 100A 1A 150mΩ 0805 PTC Resettable Fuses"
 			(at 0 0 90)
 			(layer "F.Fab")
 			(hide yes)
@@ -2409,6 +2565,45 @@
 			(effects
 				(font
 					(size 1.27 1.27)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Supply" "LCSC C66452"
+			(at 0 0 270)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "3a1caa69-a7f2-498f-b6cc-d7c6d4d7b512")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Cost" "$0.45"
+			(at 0 0 270)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "73272509-258a-4107-8c76-065836d87453")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Mandatory" "NO"
+			(at 0 0 270)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "a3e7370a-f60d-420b-8555-f31df8b1a44d")
+			(effects
+				(font
+					(size 1 1)
 					(thickness 0.15)
 				)
 			)
@@ -2589,7 +2784,7 @@
 				)
 			)
 		)
-		(property "Datasheet" "~"
+		(property "Datasheet" "https://www.lcsc.com/datasheet/C15850.pdf"
 			(at 0 0 90)
 			(layer "F.Fab")
 			(hide yes)
@@ -2601,7 +2796,7 @@
 				)
 			)
 		)
-		(property "Description" "Unpolarized capacitor"
+		(property "Description" "SMD 25V 10uF X5R ±10% 0805 Ceramic Capacitors"
 			(at 0 0 90)
 			(layer "F.Fab")
 			(hide yes)
@@ -2609,6 +2804,45 @@
 			(effects
 				(font
 					(size 1.27 1.27)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Supply" "LCSC C15850"
+			(at 0 0 90)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "8354c2b1-bbc8-465d-bc3e-645990325cf3")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Mandatory" "NO"
+			(at 0 0 90)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "29e94fd1-1a3c-4ac6-aee6-5a4e7cee6fdd")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Cost" "$0.01"
+			(at 0 0 90)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "6fe97f95-66ec-4f32-b051-540a7ff22bb4")
+			(effects
+				(font
+					(size 1 1)
 					(thickness 0.15)
 				)
 			)
@@ -2788,7 +3022,7 @@
 				)
 			)
 		)
-		(property "Datasheet" "~"
+		(property "Datasheet" "https://www.lcsc.com/datasheet/C252917.pdf"
 			(at 0 0 0)
 			(unlocked yes)
 			(layer "F.Fab")
@@ -2801,12 +3035,51 @@
 				)
 			)
 		)
-		(property "Description" "Buzzer, polarized"
+		(property "Description" "Passive buzzer 12 x 6.0MM P6.5"
 			(at 0 0 0)
 			(unlocked yes)
 			(layer "F.Fab")
 			(hide yes)
 			(uuid "4f803a73-2a55-4054-b958-ba56a6795927")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Supply" "LCSC C252917"
+			(at 0 0 0)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "c0ad4fb8-d4e0-4d94-b8f0-f668ed42cf25")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Cost" "$0.94"
+			(at 0 0 0)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "280e6540-2fea-48f2-8bc7-96fe48b0bba2")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Mandatory" "NO"
+			(at 0 0 0)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "84001c91-a096-410a-b7d2-6009bcdef9c5")
 			(effects
 				(font
 					(size 1 1)
@@ -3192,6 +3465,7 @@
 		(property "Reference" "JP2"
 			(at 2.34 0.06 180)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "658a96cc-c738-4ec0-8c68-3c8596441ea6")
 			(effects
 				(font
@@ -3469,7 +3743,7 @@
 				)
 			)
 		)
-		(property "Value" "BlackPill STMF4X1"
+		(property "Value" "STM32F411 (BlackPill) 25Mhz"
 			(at 0 0 0)
 			(unlocked yes)
 			(layer "F.Fab")
@@ -3495,7 +3769,7 @@
 				)
 			)
 		)
-		(property "Description" ""
+		(property "Description" "WeAct Studio 3.0 STM32F411CEU6  |"
 			(at 0 0 0)
 			(unlocked yes)
 			(layer "F.Fab")
@@ -3504,6 +3778,32 @@
 			(effects
 				(font
 					(size 1.27 1.27)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Supply" "WeAct Studio 3.0 STM32F411CEU6"
+			(at 0 0 0)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "67693327-0f9b-4091-90c2-08b637454db0")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Cost" "$2.99"
+			(at 0 0 0)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "25a9113a-6b53-4404-8316-db01db7dd145")
+			(effects
+				(font
+					(size 1 1)
 					(thickness 0.15)
 				)
 			)
@@ -4371,6 +4671,45 @@
 			(effects
 				(font
 					(size 1.27 1.27)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Supply" "LCSC C9662"
+			(at 0 0 90)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "ab977fae-f73a-47c5-be9b-9b3d82f50882")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Cost" "$0.91"
+			(at 0 0 90)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "1917b95c-f353-4db1-a267-d052712d5b80")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Mandatory" "NO"
+			(at 0 0 90)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "55d7df56-d07c-4e5d-8bf9-e80311221210")
+			(effects
+				(font
+					(size 1 1)
 					(thickness 0.15)
 				)
 			)
@@ -5418,6 +5757,45 @@
 				)
 			)
 		)
+		(property "Supply" "LCSC C393938"
+			(at 0 0 270)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "af4a023f-103c-40c0-9416-0b7d921d9d69")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Mandatory" "YES"
+			(at 0 0 270)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "6d912df0-01dd-49be-9ba2-f4cf433313ea")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Cost" "$0.016"
+			(at 0 0 270)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "35b9c780-04e6-4fe3-9548-e595efe42c12")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
 		(path "/948a6fa6-08f3-476a-9d4e-6c30c70c5017")
 		(sheetname "/")
 		(sheetfile "sdiskII_stm32.kicad_sch")
@@ -6356,7 +6734,7 @@
 				)
 			)
 		)
-		(property "Description" ""
+		(property "Description" "0.96 128x64 SSD1315 I2C LCD, OLED, Graphic RoHS"
 			(at 0 0 0)
 			(unlocked yes)
 			(layer "F.Fab")
@@ -6486,7 +6864,7 @@
 				)
 			)
 		)
-		(property "Description_1" "\n0.96” 128 X 64 MONOCHROME GRAPHIC OLED DISPLAY MODULE - I2C\n"
+		(property "Description_1" "0.96 128x64 SSD1315 I2C LCD, OLED, Graphic RoHS"
 			(at 0 0 0)
 			(unlocked yes)
 			(layer "F.Fab")
@@ -6518,6 +6896,45 @@
 			(layer "F.Fab")
 			(hide yes)
 			(uuid "5ced572b-061a-4f72-a4ba-345d0c650f39")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Supply" "LCSC C5248080"
+			(at 0 0 0)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "5cdac0ce-3b88-4b8c-931f-3f83d0af8ca8")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Mandatory" "YES"
+			(at 0 0 0)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "df410c7e-3d53-4caa-82dd-fca3a3cddd62")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Cost" "$2"
+			(at 0 0 0)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "70183262-c711-4d76-adb8-e9a5dc8def48")
 			(effects
 				(font
 					(size 1 1)
@@ -6889,7 +7306,7 @@
 				)
 			)
 		)
-		(property "Description" "Unpolarized capacitor"
+		(property "Description" "SMD 25V 10uF X5R ±10% 0805 Ceramic Capacitors"
 			(at 0 0 90)
 			(layer "F.Fab")
 			(hide yes)
@@ -6897,6 +7314,45 @@
 			(effects
 				(font
 					(size 1.27 1.27)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Supply" "LCSC C15850"
+			(at 0 0 90)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "1ca9340b-8162-4d02-befa-2e4a4f8e4002")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Cost" "$0.01"
+			(at 0 0 90)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "0e795e48-4bf3-49b8-b5ba-654ae174b23a")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Mandatory" "NO"
+			(at 0 0 90)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "67a7103f-30f4-484a-be9c-87cb9c05a4ce")
+			(effects
+				(font
+					(size 1 1)
 					(thickness 0.15)
 				)
 			)
@@ -7090,7 +7546,7 @@
 				)
 			)
 		)
-		(property "Description" "MicroSD slot with card detect signal"
+		(property "Description" "Push-Push 2mm Connector and Ejector MicroSD Card (TF Card) SMD"
 			(at 0 0 0)
 			(unlocked yes)
 			(layer "F.Fab")
@@ -7099,6 +7555,45 @@
 			(effects
 				(font
 					(size 1.27 1.27)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Supply" "Mouser 640-MEM20750014001A / LCSC C381084"
+			(at 0 0 0)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "5fb58fe4-ed3c-4281-b126-d2eb202e3999")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Mandatory" "YES"
+			(at 0 0 0)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "144d4ffd-3262-49d3-b82b-7087f6730bd0")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Cost" "$0.08"
+			(at 0 0 0)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "142aba5a-4673-45c3-b215-a632ff9a80f3")
+			(effects
+				(font
+					(size 1 1)
 					(thickness 0.15)
 				)
 			)
@@ -7552,7 +8047,7 @@
 				)
 			)
 		)
-		(property "Datasheet" "~"
+		(property "Datasheet" "https://www.lcsc.com/datasheet/C114555.pdf"
 			(at 0 0 0)
 			(layer "F.Fab")
 			(hide yes)
@@ -7564,7 +8059,7 @@
 				)
 			)
 		)
-		(property "Description" "Resistor"
+		(property "Description" "SMD 125mW 1.5kΩ 150V ±100ppm/℃ Thick Film Resistor ±1% 0805 Chip Resistor"
 			(at 0 0 0)
 			(layer "F.Fab")
 			(hide yes)
@@ -7572,6 +8067,45 @@
 			(effects
 				(font
 					(size 1.27 1.27)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Supply" "LCSC C114555"
+			(at 0 0 0)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "c0b3071e-8e94-48e8-a81f-54413a910401")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Mandatory" "NO"
+			(at 0 0 0)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "c5301f69-b3f8-4467-9be3-53dfc4f214c0")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Cost" "$0.0021"
+			(at 0 0 0)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "fe2ebeff-9f3e-4ac2-a488-d278da061986")
+			(effects
+				(font
+					(size 1 1)
 					(thickness 0.15)
 				)
 			)
@@ -7763,6 +8297,45 @@
 			(effects
 				(font
 					(size 1.27 1.27)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Supply" "LCSC C393938"
+			(at 0 0 270)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "6921b6cc-85ec-4659-9709-d03d19873273")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Mandatory" "YES"
+			(at 0 0 270)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "2ca44965-1706-4a5e-be84-eb45cd15efbe")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Cost" "$0.016"
+			(at 0 0 270)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "ad26ea8d-7b53-4c44-848f-4f1b2914d088")
+			(effects
+				(font
+					(size 1 1)
 					(thickness 0.15)
 				)
 			)
@@ -8370,6 +8943,58 @@
 				)
 			)
 		)
+		(property "Supply" "LCSC C393938"
+			(at 0 0 0)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "8d4e7b74-b6ab-4d8d-bfce-1410c91c113a")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Mandtory" "YES"
+			(at 0 0 0)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "278e274d-89cc-411b-9292-d679673d2f17")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Cost" "$0.016"
+			(at 0 0 0)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "de3d420a-b0d5-49eb-a918-a0b8738e0c3d")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Mandatory" "YES"
+			(at 0 0 0)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "17ef6a74-fcb3-43fa-b7fc-ba13cb0535fd")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
 		(path "/2ccf63fe-a6bf-4acd-8b6b-7dd048f38e74")
 		(sheetname "/")
 		(sheetfile "sdiskII_stm32.kicad_sch")
@@ -8694,7 +9319,7 @@
 				(justify mirror)
 			)
 		)
-		(property "Datasheet" "~"
+		(property "Datasheet" "https://www.lcsc.com/datasheet/C114555.pdf"
 			(at 0 0 180)
 			(layer "B.Fab")
 			(hide yes)
@@ -8707,7 +9332,7 @@
 				(justify mirror)
 			)
 		)
-		(property "Description" "Resistor"
+		(property "Description" "SMD 125mW 1.5kΩ 150V ±100ppm/℃ Thick Film Resistor ±1% 0805 Chip Resistor"
 			(at 0 0 180)
 			(layer "B.Fab")
 			(hide yes)
@@ -8715,6 +9340,48 @@
 			(effects
 				(font
 					(size 1.27 1.27)
+					(thickness 0.15)
+				)
+				(justify mirror)
+			)
+		)
+		(property "Supply" "LCSC C114555"
+			(at 0 0 180)
+			(unlocked yes)
+			(layer "B.Fab")
+			(hide yes)
+			(uuid "b58997c6-2a1b-4794-8ed5-bc811eaed30a")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+				(justify mirror)
+			)
+		)
+		(property "Mandatory" "NO"
+			(at 0 0 180)
+			(unlocked yes)
+			(layer "B.Fab")
+			(hide yes)
+			(uuid "5b27ec25-7eab-42b8-a421-fb638dd78b7d")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+				(justify mirror)
+			)
+		)
+		(property "Cost" "$0.0021"
+			(at 0 0 180)
+			(unlocked yes)
+			(layer "B.Fab")
+			(hide yes)
+			(uuid "1049890f-d3eb-455a-a702-df490cb31eb3")
+			(effects
+				(font
+					(size 1 1)
 					(thickness 0.15)
 				)
 				(justify mirror)
@@ -8899,7 +9566,7 @@
 				(justify mirror)
 			)
 		)
-		(property "Description" "Resistor"
+		(property "Description" "SMD 125mW 330Ω 150V ±100ppm/℃ Thick Film Resistor ±1% 0805 Chip Resistor"
 			(at 0 0 0)
 			(layer "B.Fab")
 			(hide yes)
@@ -8907,6 +9574,48 @@
 			(effects
 				(font
 					(size 1.27 1.27)
+					(thickness 0.15)
+				)
+				(justify mirror)
+			)
+		)
+		(property "Supply" "LCSC C17630"
+			(at 0 0 180)
+			(unlocked yes)
+			(layer "B.Fab")
+			(hide yes)
+			(uuid "e169812a-fc4e-42ea-bce1-d71bde2ab2d5")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+				(justify mirror)
+			)
+		)
+		(property "Cost" "$0.0019"
+			(at 0 0 180)
+			(unlocked yes)
+			(layer "B.Fab")
+			(hide yes)
+			(uuid "001fe5ab-c9f7-441d-bec3-96a55f5545f5")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+				(justify mirror)
+			)
+		)
+		(property "Mandatory" "NO"
+			(at 0 0 180)
+			(unlocked yes)
+			(layer "B.Fab")
+			(hide yes)
+			(uuid "19706875-26f8-43dc-9d57-58e34cd5cbb1")
+			(effects
+				(font
+					(size 1 1)
 					(thickness 0.15)
 				)
 				(justify mirror)
@@ -9090,7 +9799,7 @@
 				(justify mirror)
 			)
 		)
-		(property "Datasheet" "~"
+		(property "Datasheet" "https://www.lcsc.com/datasheet/C17630.pdf"
 			(at 0 0 0)
 			(layer "B.Fab")
 			(hide yes)
@@ -9103,7 +9812,7 @@
 				(justify mirror)
 			)
 		)
-		(property "Description" "Resistor"
+		(property "Description" "SMD 125mW 330Ω 150V ±100ppm/℃ Thick Film Resistor ±1% 0805 Chip Resistor"
 			(at 0 0 0)
 			(layer "B.Fab")
 			(hide yes)
@@ -9111,6 +9820,48 @@
 			(effects
 				(font
 					(size 1.27 1.27)
+					(thickness 0.15)
+				)
+				(justify mirror)
+			)
+		)
+		(property "Supply" "LCSC C17630"
+			(at 0 0 180)
+			(unlocked yes)
+			(layer "B.Fab")
+			(hide yes)
+			(uuid "0159f863-4d6c-4a1e-8a67-6d787208a60a")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+				(justify mirror)
+			)
+		)
+		(property "Cost" "$0.0019"
+			(at 0 0 180)
+			(unlocked yes)
+			(layer "B.Fab")
+			(hide yes)
+			(uuid "88e8da04-0cfd-4385-9e8a-d77e4abdf867")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+				(justify mirror)
+			)
+		)
+		(property "Mandatory" "NO"
+			(at 0 0 180)
+			(unlocked yes)
+			(layer "B.Fab")
+			(hide yes)
+			(uuid "5ddde09b-9163-4cec-a945-cd0a44321e55")
+			(effects
+				(font
+					(size 1 1)
 					(thickness 0.15)
 				)
 				(justify mirror)
@@ -10280,7 +11031,7 @@
 				(justify mirror)
 			)
 		)
-		(property "Description" "Resistor"
+		(property "Description" "SMD 125mW 330Ω 150V ±100ppm/℃ Thick Film Resistor ±1% 0805 Chip Resistor"
 			(at 0 0 0)
 			(layer "B.Fab")
 			(hide yes)
@@ -10288,6 +11039,48 @@
 			(effects
 				(font
 					(size 1.27 1.27)
+					(thickness 0.15)
+				)
+				(justify mirror)
+			)
+		)
+		(property "Supply" "LCSC C17630"
+			(at 0 0 180)
+			(unlocked yes)
+			(layer "B.Fab")
+			(hide yes)
+			(uuid "e728a4d8-4efd-4e26-961b-798c293affe7")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+				(justify mirror)
+			)
+		)
+		(property "Cost" "$0.0019"
+			(at 0 0 180)
+			(unlocked yes)
+			(layer "B.Fab")
+			(hide yes)
+			(uuid "9a5b848a-c35e-4848-9893-f5fa053f1811")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+				(justify mirror)
+			)
+		)
+		(property "Mandatory" "NO"
+			(at 0 0 180)
+			(unlocked yes)
+			(layer "B.Fab")
+			(hide yes)
+			(uuid "6c067742-f646-4039-8656-4d22d6aea14c")
+			(effects
+				(font
+					(size 1 1)
 					(thickness 0.15)
 				)
 				(justify mirror)
@@ -11858,6 +12651,17 @@
 		)
 		(layer "Edge.Cuts")
 		(uuid "f10f9a2e-f53a-4e27-b617-29ebeac0d8ad")
+	)
+	(gr_text "3V"
+		(at 138.23 123.93 0)
+		(layer "F.SilkS")
+		(uuid "055c21f0-7449-40fb-b488-651c93215a96")
+		(effects
+			(font
+				(size 0.8 0.8)
+				(thickness 0.15)
+			)
+		)
 	)
 	(gr_text "WARNING: \nONLY 1 PWR SRC\n- 3V\n- 5V\n- SDIO 3V\n\nDEBUG PINOUT:\n- TIM2CH3\n- TIM3CH4\n- DEBUG (A10)\n- GND\n"
 		(at 174.57 117.92 0)

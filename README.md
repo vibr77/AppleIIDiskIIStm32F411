@@ -21,8 +21,9 @@ In this repository, all information are available to enable DIY build (Kicad PCB
 If you do not want to build yourself a board, you can order direcly a [ready to use prebuild and flashed board on eBay](
 https://www.ebay.fr/itm/306152710617)
 
-The current production board revision is 4, 
-the beta revision is 8, It has not yet been fully tested. If you decide to build it yourself, it is higly recommanded to use production revision.
+The current production board revision is 8, 
+The is the last release and It has been fully tested. If you decide to build it yourself, it is higly recommanded to use production revision.
+
 
 A discord server is available if you need support and discuss the product [discords server](
 https://discord.gg/6y2Zdazy)

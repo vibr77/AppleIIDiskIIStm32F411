@@ -67,16 +67,16 @@ Current status: READ PARTIALLY WORKING / WRITE Experimental
 			},
 
 Architecture:
-- TIM1 Timer 1 : Use to Manage passive buzzer on PIN 14 (Channel 2N), via a PWM 
+- TIM1 Timer 1 : Use to Manage passive buzzer PWM on PIN 14 (Channel 2N), via a PWM 
 - TIM2 Timer 2 : Use to Manage the WR_DATA, ETR1 Slave Reset mode to resync with the A2 Write Pulse that is 3.958 uS instead of 4uS. Every Rising Edge resync
 - TIM3 Timer 3 : Use to Manage the RD_DATA, 
 - TIM4 Timer 4 : Internal no PWM, debouncer for the control button
-- TIM5 Timer 5 : Deadlock timer check
+- TIM5 Timer 5 : Marquee Text Management on the OLED Screen
 - TIM9 Timer 9 : Screen Saver timer (if enable)
-
+- TIM10 Timer 10 : Buzzer start / stop management
 GPIO
   - PA10 DEBUG 
-
+  
 BTN
   - PC13 BTN_DOWN
   - PC14 BTN_UP
@@ -745,7 +745,7 @@ void TIM3_IRQHandler(void){
     TIM3->SR &= ~TIM_SR_UIF;                              // Clear the overflow interrupt 
     ptrSendDataIRQ();
   }
-  
+
   if (TIM3->SR & TIM_SR_CC1IF){                     // Pulse compare interrrupt on Channel 1
     RD_DATA_GPIO_Port->BSRR=1U <<16;                      // Reset the RD_DATA GPIO
     TIM3->SR &= ~TIM_SR_CC1IF;                            // Clear the compare interrupt flag
