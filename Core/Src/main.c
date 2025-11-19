@@ -76,7 +76,7 @@ Architecture:
 - TIM10 Timer 10 : Buzzer start / stop management
 GPIO
   - PA10 DEBUG 
-  
+
 BTN
   - PC13 BTN_DOWN
   - PC14 BTN_UP
@@ -126,6 +126,9 @@ UART1
   + Adjusting IIGS constraints
   + YellowStone card tested OK with write process
   + Fixing state of SDCard during switch from write to read mode (add a small delay to check state of the SD)
+  + Adding Marquee text effect, scrolling text on the OLED screen
+  + Fixing minor issue on marquee text rendering
+  + Changing Buzzer timer to 10
 
   WOZ test :
     + Blazing Paddles working OK
@@ -162,8 +165,6 @@ Issue:
   + Adding Smartloader auto boot sequence 5s
   + add specific boot sequence for IIGS 
 
-  
-  
 27.10.25
   + Board v8 final version
   + [Smartport] fixing timing issue on IIc

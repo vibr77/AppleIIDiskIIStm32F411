@@ -1,4 +1,4 @@
-26001971670972100
+25963749532210914
 Audio_Module
 Reverb_BTDR-1H
 Digital Reverberation Unit, http://www.belton.co.kr/inc/downfile.php?seq=17&file=pdf (footprint from http://www.uk-electronic.de/PDF/BTDR-1.pdf)
@@ -57469,13 +57469,6 @@ ceramic
 0
 3
 3
-DM-OLED096-636
-MODULE_DM-OLED096-636
-
-
-0
-8
-8
 Diode_SMD
 D_0201_0603Metric
 Diode SMD 0201 (0603 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: https://www.vishay.com/docs/20052/crcw0201e3.pdf), generated with kicad-footprint-generator
@@ -103719,6 +103712,13 @@ AMPHENOL_GMSB0522102Y7EU
 9
 7
 ViBR Kidcad Library
+MODULE_DM-OLED096-636
+
+
+0
+8
+8
+ViBR Kidcad Library
 Molex USB Mini B 56579-0519_MOL
 
 
@@ -103739,157 +103739,3 @@ Untitled
 0
 0
 0
-acheron_Hardware.pretty-master
-3313J
-Surface mount trimmer
-
-0
-3
-3
-acheron_Hardware.pretty-master
-9774010243
-SMT steel spacer, M2 internal thread
-
-0
-2
-1
-acheron_Hardware.pretty-master
-9774030243R
-SMT steel spacer, M2 internal thread
-
-0
-2
-1
-acheron_Hardware.pretty-master
-9774035243R
-SMT steel spacer, M2 internal thread
-
-0
-2
-1
-acheron_Hardware.pretty-master
-ALPS_EC11E
-
-
-0
-14
-6
-acheron_Hardware.pretty-master
-Bivar_LPV2-0450FP
-
-
-0
-0
-0
-acheron_Hardware.pretty-master
-Bluepill_STM32F103
-
-
-0
-50
-49
-acheron_Hardware.pretty-master
-HOLYIOT_18010_nRF52840
-
-
-0
-55
-55
-acheron_Hardware.pretty-master
-K2-1187SQ-A4SW-06
-ALPS 5.2mm Square Low-profile Type (Surface Mount) SKQG Series, Without stem, http://www.alps.com/prod/info/E/HTML/Tact/SurfaceMount/SKQG/SKQGAEE010.html
-SPST Button Switch
-0
-4
-2
-acheron_Hardware.pretty-master
-KEYSTONE-3030
-
-
-0
-3
-2
-acheron_Hardware.pretty-master
-MDBT40-256RV3
-8-Lead Plastic Small Outline (SN) - Narrow, 3.90 mm Body [SOIC] (see Microchip Packaging Specification 00000049BS.pdf)
-SOIC 1.27
-0
-42
-38
-acheron_Hardware.pretty-master
-Mini_F4X1_STM32
-
-
-0
-44
-44
-acheron_Hardware.pretty-master
-Mini_F4X1_STM32_VIB
-
-
-0
-44
-44
-acheron_Hardware.pretty-master
-MouseBite_IPC7351
-
-
-0
-0
-0
-acheron_Hardware.pretty-master
-MouseBite_IPC7351_connected
-
-
-0
-3
-3
-acheron_Hardware.pretty-master
-QFN-60-1EP_7x7mm_P0.4mm_EP5.4x5.4mm
-QFN-60 7x7mm with 0.4mm pitch
-QFN 60 no lead
-0
-86
-61
-acheron_Hardware.pretty-master
-QFN-60-1EP_7x7mm_P0.4mm_EP5.4x5.4mm_ThermalReliefs
-QFN-60 7x7mm with 0.4mm pitch
-QFN 60 no lead
-0
-112
-61
-acheron_Hardware.pretty-master
-RKJXT1F
-
-
-0
-10
-10
-sdisk_stm32
-GCT-MEM2055-00-190-01-A
-http://www.farnell.com/datasheets/1917242.pdf
-MicroSD card socket
-0
-13
-11
-sdisk_stm32
-GCT-MEM2055-00-190-01-A_VIB
-http://www.farnell.com/datasheets/1917242.pdf
-MicroSD card socket
-0
-13
-11
-sdisk_stm32
-YAAJ_BlackPill_SWD_1
-BlackPill module with pin headers / sockets. SWD broken out to PCB.
-module BlackPill Black Pill header SWD breakout
-0
-38
-38
-sdisk_stm32
-YAAJ_BlackPill_SWD_2
-BlackPill module with pin headers / sockets. SWD broken out to PCB.
-module BlackPill Black Pill header SWD breakout
-0
-38
-38
