@@ -756,8 +756,7 @@ void TIM3_IRQHandler(void){
     TIM3->SR &= ~TIM_SR_UIF;                              // Clear the overflow interrupt 
     ptrSendDataIRQ();
   }
-
-  if (TIM3->SR & TIM_SR_CC1IF){                     // Pulse compare interrrupt on Channel 1
+  else if (TIM3->SR & TIM_SR_CC1IF){                     // Pulse compare interrrupt on Channel 1
     RD_DATA_GPIO_Port->BSRR=1U <<16;                      // Reset the RD_DATA GPIO
     TIM3->SR &= ~TIM_SR_CC1IF;                            // Clear the compare interrupt flag
 
@@ -777,7 +776,7 @@ void TIM2_IRQHandler(void){
   if (TIM2->SR & TIM_SR_UIF){ 
     TIM2->SR &= ~TIM_SR_UIF;                                                  // clear the overflow interrupt                                                         
   }
-  if (TIM2->SR & TIM_SR_CC2IF){
+  else if (TIM2->SR & TIM_SR_CC2IF){
     ptrReceiveDataIRQ();
     TIM2->SR &= ~TIM_SR_CC2IF;                                                // clear the count & compare interrupt                                                
   }   
