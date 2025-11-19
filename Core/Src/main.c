@@ -155,6 +155,7 @@ Question:
   Do we still need the checkstatus on the SD at the end of the loop to avoid deadlock ?
 
 
+
 30.10.25 V0.80.29
   + Modify TIM5 to be used with Buzzer
   + Unblocking code for Buzzer Management
@@ -1727,7 +1728,7 @@ int main(void)
   log_info("**     This is the sound of sea !    **");
   //log_info("***************************************");
     
-  printf("%02X",smartloader_bin[1]);
+  //printf("%02X",smartloader_bin[1]);
 
   fres = f_mount(&fs, "", 1);                                                 // <!> Warning Mount opt 1 very important or it does not work                                     
   
@@ -1749,9 +1750,9 @@ int main(void)
                                   
   HAL_Delay(100);
 
-#include "ssd1306.h"
-ssd1306_Clear();
-ssd1306_UpdateScreen();
+//#include "ssd1306.h"
+//ssd1306_Clear();
+//ssd1306_UpdateScreen();
 
 
 /*
@@ -1781,7 +1782,7 @@ while(1){
  
   EnableTiming();                                                           // Enable WatchDog to get precise CPU Cycle counting
  
-  TIM1->PSC=1000;
+  //TIM1->PSC=1000;
 
   int T4_DIER=0x0;
   T4_DIER|=TIM_DIER_CC2IE;

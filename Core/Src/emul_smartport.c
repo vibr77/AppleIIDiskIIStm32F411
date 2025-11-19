@@ -71,7 +71,7 @@ int initPartition;
 
 static volatile unsigned char phase=0x0;
 uint16_t messageId=0x0;
-static unsigned long cAlive=0;
+//static unsigned long cAlive=0;
 // ------------------------------------------------------
 // STATIC FUNCTION DEFINITION
 // ------------------------------------------------------
@@ -414,12 +414,13 @@ void SmartPortInitWithImage(char * filename){
     TIM2->CCER &= ~TIM_CCER_CC2E;
     TIM2->CR1 &= ~TIM_CR1_CEN;
     
-    HAL_TIMEx_PWMN_Stop(&htim1,TIM_CHANNEL_2);
+    TIM1->CCER &= ~TIM_CCER_CC2E;
+    TIM1->CR1 &= ~TIM_CR1_CEN;
 
     TIM3->ARR=(32*12)-1;
     TIM3->CCR1=180;
     TIM2->ARR=(32*12)-5;
-     TIM2->CCR2=10;
+    TIM2->CCR2=10;
 
     for(uint8_t i=0; i< MAX_PARTITIONS; i++){
         devices[i].filename=NULL;
@@ -477,7 +478,10 @@ void SmartPortInit(){
     // setRddataPort(1);
     // GPIOWritePin(RD_DATA_GPIO_Port, RD_DATA_Pin, GPIO_PIN_SET);
     // HAL_TIM_PWM_Stop_IT(&htim2,TIM_CHANNEL_3);
-    HAL_TIMEx_PWMN_Stop(&htim1,TIM_CHANNEL_2);
+    // HAL_TIMEx_PWMN_Stop(&htim1,TIM_CHANNEL_2);
+
+    TIM1->CCER &= ~TIM_CCER_CC2E;
+    TIM1->CR1 &= ~TIM_CR1_CEN;
 
     TIM2->DIER &= ~TIM_DIER_CC2IE;
     TIM2->CCER &= ~TIM_CCER_CC2E;
@@ -1678,13 +1682,13 @@ void SmartPortMainLoop(){
                 flgUpdateMarquee=0;
                 updateMarquee();
             }
-            cAlive++;
+            /*cAlive++;                                                         // DO a test to check if it is really needed
             if (cAlive==5000000){ 
                 HAL_SD_CardStateTypeDef state;
                 state = HAL_SD_GetCardState(&hsd);
                 printf(".%d %lu\n",fsState,state);
                 cAlive=0;
-            }
+            }*/
             
             pSdEject();
             if (nextAction!=NONE){                                                             // Manage by pNextAction

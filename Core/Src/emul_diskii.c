@@ -136,7 +136,7 @@ static volatile int bitSize=0;                                                  
 static volatile int ByteSize=0;                                                                 // Number of Bytes for the current track 
 volatile unsigned char rByte=0x0;                                                               // Current Read Byte
 static int wr_attempt=0;                                                                        // DEBUG only temp variable to keep incremental counter of the debug dump to file
-static unsigned long cAlive=0;
+//static unsigned long cAlive=0;
 static volatile uint8_t wrBitPos=0; 
 const uint8_t weakBitTank[]   ={1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0,
                                 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0,
@@ -309,7 +309,7 @@ void DiskIIWrReqIRQ(){
         rdBitCounter = bytePtr * 8;
         rByte = DMA_BIT_TX_BUFFER[bytePtr];
         pendingWriteTrk = 1;
-        cAlive = 0;
+        //cAlive = 0;
         
         __DSB();
 
@@ -837,7 +837,7 @@ static void processWriteTrack(uint8_t rTrk){
     // Placeholder for future write processing logic
     wrLoopFlg=0;
     pendingWriteTrk=0;
-    cAlive=0;
+    //cAlive=0;
 
     /*
     char filename[32];
@@ -898,7 +898,7 @@ void DiskIIMainLoop(){
             if (prevTrk!=intTrk && flgBeaming==1){                                                  
 
                 trk=intTrk;                                                                         // Track has changed, but avoid new change during the process                            
-                cAlive=0;
+                //cAlive=0;
             
                 if (pendingWriteTrk==1){                                                            // pending track to be written before reading new track         
                     processWriteTrack(wrTrack);
@@ -1005,7 +1005,7 @@ void DiskIIMainLoop(){
 
 
         if (flgWrRequest==1){
-            cAlive++;
+            /*cAlive++;
 
             if (cAlive==5000000){ 
                 HAL_SD_CardStateTypeDef state;
@@ -1013,6 +1013,7 @@ void DiskIIMainLoop(){
                 printf(".%d %lu\n",fsState,state);                                              // This is ugly but no better way
                 cAlive=0;
             }
+            */
         }
 
         pSdEject();
