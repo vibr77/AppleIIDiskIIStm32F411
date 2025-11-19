@@ -213,25 +213,7 @@ TIMERS:
 
 ## BOM ## 
 
-
-| Board Revision | Ref.      | Mandatory |Type.     |  Ref Supplier  |
-|:---------------|:----------|:----------|:---------------|:---------|
-| All            | Uc1       | YES        | STM32F411 (BlackPill)   | Aliexpress WeAct Studio 3.0 STM32F411CEU6  |
-| All            | U2        | YES        | SDCard PushPush GCT MEM2055 / GCT MEM2075  | Mouser 640-MEM20750014001A / LCSC C381084  |
-| All            | U8        | YES        | SSD1315 I2C 128x64 0.96 OLED   |  LCSC C5248080   |
-| All            | J1        | NO         | PWR Pin Header_1x02 P2.54mm  |
-| All            | J2        | YES        | Apple IDC 2x10P P2.54| LCSC C115249|
-| All            | J3        | NO         | DEBUG Pin Header_1x05 P2.54mm  |
-| All            | J4        | NO         | UART Pin Header_1x03 P2.54mm  |
-| All            | J5        | NO         | TIM Pin Header_1x03 P2.54mm  |
-| All            | J6        | NO         | STLINK|Pin Header_1x04 P2.54mm  |
-| All            | DOWN1, ENTR1, RET1, UP1| YES | 6mm 5mm Round Button 50mA Direct Insert 6mm SPST 12V| LCSC C393938
-| All            | BZ1       | NO         | Passive buzzer 12 x 6.0MM P6.5| LCSC C252917
-| Rev.7           | R1,R2,R3  | NO        | Resistor 330R (Optional) SMD footprint 805 | LCSC C17630|
-| Rev.7           | R4,R5     | NO        | Resistor 1K5 (Optional) SMD footprint 805 | LCSC C114555|
-| Rev.7           | U1        | NO        | LM1117MPX-3.3/NOPB| LCSC C9662
-| Rev.7			      | C1, C2		| NO		    | Ceramic / Tantalum Capacitor 10uf SMD footprint 805 | LCSC C15850
-
+The interactive bom can be found here: [SmartDiskII Bill of Material]( https://vibr77.github.io/AppleIIDiskIIStm32F411/hardware/bom/ibom.html).
 
 
 ## Software design main principles: ##
