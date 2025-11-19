@@ -22,8 +22,8 @@ TARGET = AppleIISDiskII_stm32f411_sdio
 # debug build?
 DEBUG = 0
 # optimization
-OPT = -Og
-OPT= -O0
+#OPT = -Og
+OPT= -O0							# <------------------- <!> Important ortherwise Memory issue on Interrupts <!>
 
 
 #######################################
