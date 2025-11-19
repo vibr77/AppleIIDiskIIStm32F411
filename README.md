@@ -1,7 +1,10 @@
 # SmartDisk II for Apple II
 
-The SmartDisk II is an Apple II floppy disk emulator based on the STM32F411 (known as the blackPill)
+The SmartDisk II is an Apple II floppy disk emulator based on the STM32F411 (known as the blackPill). It replicates the behaviour of the DISKII and UNIDISK3.5 devices and provide a modern solution to read Apple II Images using various format: PO, DSK, WOZ, HDV, 2MG,...
 
+It has been made to allow copy protection disk to work like original disk.
+
+This project is still active a regular Software release release
 
 <img src="https://github.com/vibr77/AppleIIDiskIIStm32F411/blob/main/resources/readmeMainPhoto.png?raw=true" width="400px" />
 
@@ -22,7 +25,7 @@ If you do not want to build yourself a board, you can order direcly a [ready to 
 https://www.ebay.fr/itm/306152710617)
 
 The current production board revision is 8, 
-The is the last release and It has been fully tested. If you decide to build it yourself, it is higly recommanded to use production revision.
+The is the last release and it has been fully tested. If you decide to build it yourself, it is higly recommanded to use production revision.
 
 
 A discord server is available if you need support and discuss the product [discords server](

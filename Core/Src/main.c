@@ -150,6 +150,9 @@ UART1
 
 Issue:
   [DiskII] after image mounting, boot is not happening, need to reset
+  
+Question:
+  Do we still need the checkstatus on the SD at the end of the loop to avoid deadlock ?
 
 
 30.10.25 V0.80.29
