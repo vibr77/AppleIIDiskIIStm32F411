@@ -673,17 +673,23 @@ void EXTI9_5_IRQHandler(void)
 
 void TIM1_UP_TIM10_IRQHandler(void){
     if ((TIM10->SR & TIM_SR_CC1IF) != 0){
-      TIM10->SR &= ~TIM_SR_CC1IF;                                       // Clear flag  
+                                                                        // Clear flag  
+      
       TIM1->CCER &= ~TIM_CCER_CC2NE;                                    // Disable complementary channel 2 (buzzer output)       
       TIM1->CR1 &= ~TIM_CR1_CEN;                                        // Stop Timer
     
       flgSoundEffectActive=0;                                            // Deactivate sound effect flag        
     
       TIM10->CR1 &= ~TIM_CR1_CEN;                                         // Disable Timer      
-      TIM10->DIER &= ~TIM_DIER_UIE;                                       // Disable Update Interrupt     
-      TIM10->DIER &= ~TIM_DIER_CC1IE;                                     // Disable Compare Interrupt on Channel 1
-    
+      //TIM10->DIER &= ~TIM_DIER_UIE;                                     // Disable Update Interrupt     
+      //TIM10->DIER &= ~TIM_DIER_CC1IE;                                   // Disable Compare Interrupt on Channel 1
+      //printf("Buzzer OFF\r\n");
+      //TIM10->SR &= ~TIM_SR_CC1IF; 
+    }else if (TIM10->SR & TIM_SR_UIF){
+      TIM10->SR &= ~TIM_SR_UIF;                                         // Clear flag  
     }
+    TIM10->SR = 0;
+     
 }
 
 void TIM1_BRK_TIM9_IRQHandler(void){
@@ -1428,6 +1434,7 @@ void play_buzzer_ms(uint32_t ms){
   /* Stop timer while we change ARR/counter */
   TIM10->CR1 &= ~TIM_CR1_CEN;
   RCC->APB2ENR |= RCC_APB2ENR_TIM10EN;
+
   TIM10->CCMR1 &= ~TIM_CCMR1_CC1S;
   TIM10->CCMR1 &= ~TIM_CCMR1_OC1M;
   TIM10->CCMR1 |= (0x3 << TIM_CCMR1_OC1M_Pos);
@@ -1806,7 +1813,6 @@ while(1){
   // Load configuration variable
   // --------------------------------------------------------------------
 
-  
   if (fres == FR_OK){
 
     if (loadConfigFile()==RET_ERR){
