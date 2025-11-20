@@ -1754,7 +1754,7 @@ int main(void)
     */
   initSplash();
                                   
-  HAL_Delay(100);
+  HAL_Delay(50);
 
 //#include "ssd1306.h"
 //ssd1306_Clear();

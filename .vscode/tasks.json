@@ -37,6 +37,25 @@
                 "$gcc"
             ]
         },
+         {
+            "label": "Build Bootloader Flash",
+            "type": "shell",
+            "command": "make -f Makefile flash USE_BOOTLOADER=1",
+            "presentation": {
+                "reveal": "never"
+            },
+            "dependsOn": "Build Bootloader DiskII",
+            "options": {
+                "cwd": "${workspaceRoot}"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
         {
             "label": "Build Bootloader and A2F mode DiskII",
             "type": "shell",
