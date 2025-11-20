@@ -1746,12 +1746,12 @@ int main(void)
   database=fs.database;
   
   //GPIO_InitTypeDef GPIO_InitStruct = {0};                                             // This Pin should be High on IIGS but connected to Ground Disk II 
-  GPIO_InitTypeDef GPIO_InitStruct = {0};
+  /*GPIO_InitTypeDef GPIO_InitStruct = {0};
   GPIO_InitStruct.Pin = SELECT_Pin;                                                   // 
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(SELECT_GPIO_Port, &GPIO_InitStruct);
-    
+    */
   initSplash();
                                   
   HAL_Delay(100);
@@ -2604,7 +2604,7 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(WR_PROTECT_GPIO_Port, &GPIO_InitStruct);
-  GPIOWritePin(WR_PROTECT_GPIO_Port, WR_PROTECT_Pin, GPIO_PIN_SET);
+  //GPIOWritePin(WR_PROTECT_GPIO_Port, WR_PROTECT_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin : BTN_RET_Pin */
   GPIO_InitStruct.Pin = BTN_RET_Pin;
@@ -2625,7 +2625,7 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
   HAL_GPIO_Init(DEBUG_GPIO_Port, &GPIO_InitStruct);
-  GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_SET);
+  //GPIOWritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_SET);
   //HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_SET);
 
   GPIO_InitStruct.Pin = DEBUG2_Pin;

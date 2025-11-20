@@ -280,7 +280,7 @@ static void pBtnDownFsScr(){
 }
 
 static void pBtnRetFsScr(){
-  
+  marquee_stop();
   if (currentFullPath[0]==0x0){
     // we are at the ROOT -> Disp General Menu
     switchPage(MENU,NULL);
@@ -305,7 +305,7 @@ static void pBtnRetFsScr(){
   
 static void pBtnEntrFsScr(){
   // Warning Interrupt can not trigger Filesystem action otherwise deadlock can occured !!!
-  
+  marquee_stop();
   if (nextAction==FSDISP)     // we need to wait for the previous action to complete (a deadlock might have happened)
     return;
 
