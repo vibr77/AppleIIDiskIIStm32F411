@@ -62,7 +62,7 @@ char* smartPortHookFilename=NULL;
 //bool is_valid_image(File imageFile);
 
 volatile unsigned char packet_buffer[SP_PKT_SIZE];                                          // smartport packet buffer for Request / Response
-int packetLen=0;
+volatile int packetLen=0;
 //unsigned char status/*,packet_byte*/;
 
 int count;
@@ -2108,7 +2108,7 @@ static void encodeUnidiskStatReplyPacket(prodosPartition_t d){
     packet_buffer[26] = 0xc8;                                                                       //PEND
     packet_buffer[27] = 0x00;                                                                       //end of packet in buffer
 
-    packetLen=28;
+    packetLen=27;
 }
 
 
@@ -2345,7 +2345,7 @@ static void encodeReplyPacket(unsigned char source,unsigned char type,unsigned c
     packet_buffer[16] = 0xC8;                                                                       //PEND
     packet_buffer[17] = 0x00;                                                                       //end of packet in buffer
     
-    packetLen=18;
+    packetLen=17;
     
 }
 
