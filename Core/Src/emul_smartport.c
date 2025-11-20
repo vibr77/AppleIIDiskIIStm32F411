@@ -456,30 +456,6 @@ void SmartPortInitWithImage(char * filename){
 void SmartPortInit(){
 
 
-    /*
-    GPIO_InitTypeDef GPIO_InitStruct = {0};                                             // This Pin should be High on IIGS but connected to Ground Disk II 
-    GPIO_InitStruct.Pin = SELECT_Pin;                                                   // 
-    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-    GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-    HAL_GPIO_Init(SELECT_GPIO_Port, &GPIO_InitStruct);
-    */
-
-   /*
-    GPIO_InitTypeDef GPIO_InitStruct = {0};                                             // This Pin should be High on IIGS but connected to Ground Disk II 
-    GPIO_InitStruct.Pin = SELECT_Pin;                                                   // 
-    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-    GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-    HAL_GPIO_Init(SELECT_GPIO_Port, &GPIO_InitStruct);
-*/
-    
-    // HAL_GPIO_WritePin(_35DSK_GPIO_Port,_35DSK_Pin,GPIO_PIN_RESET);
-    // HAL_Delay(500);
-    // HAL_GPIO_WritePin(SELECT_GPIO_Port,SELECT_Pin,GPIO_PIN_RESET);
-    // setRddataPort(1);
-    // GPIOWritePin(RD_DATA_GPIO_Port, RD_DATA_Pin, GPIO_PIN_SET);
-    // HAL_TIM_PWM_Stop_IT(&htim2,TIM_CHANNEL_3);
-    // HAL_TIMEx_PWMN_Stop(&htim1,TIM_CHANNEL_2);
-
     TIM1->CCER &= ~TIM_CCER_CC2E;
     TIM1->CR1 &= ~TIM_CR1_CEN;
 
@@ -531,8 +507,7 @@ void SmartPortInit(){
         fileTab[i]=devices[i].filename;                                                         // Display the name of the PO according to the position
     }
     setImageTabSmartPortHD(fileTab,bootImageIndex);
-    SmartPortDeviceEnableIRQ(DEVICE_ENABLE_Pin);
-
+   
 }
 
 

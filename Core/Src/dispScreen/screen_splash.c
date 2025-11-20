@@ -131,18 +131,19 @@ void initSplash(){
   ssd1306_SetColor(White);
 
   ssd1306_UpdateScreen();
-
+  
   for (int i=65; i>1; i-=4){
     ssd1306_Clear();
+    displayStringAtPosition(78,6*SCREEN_LINE_HEIGHT,_VERSION);
     ssd1306_DrawBitmap(1,i,128,65-i,splashLogo128x64);
     ssd1306_UpdateScreen();
-    HAL_Delay(50);
+    HAL_Delay(40);
   }  
 
   
   //dispIcon32x32(1,15,0);
   //displayStringAtPosition(35,3*SCREEN_LINE_HEIGHT,"SmartDisk ][");
-  displayStringAtPosition(78,6*SCREEN_LINE_HEIGHT,_VERSION);
+
 
   primUpdScreen();
 }

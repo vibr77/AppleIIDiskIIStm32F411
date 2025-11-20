@@ -1754,7 +1754,7 @@ int main(void)
     */
   initSplash();
                                   
-  HAL_Delay(50);
+  HAL_Delay(100);
 
 //#include "ssd1306.h"
 //ssd1306_Clear();
@@ -1909,6 +1909,7 @@ while(1){
   //switchPage(FSSELECTIMAGE,0);
   //while(1);
   ptrInit();
+  
   //SmartPortInitWithImage("/smartport/Total.Replay 240909.po");
   // --------------------------------------------------------------------
   // Execute emulation
