@@ -19,6 +19,8 @@ unsigned int fatSmartloaderCluster[20];
 extern image_info_t mountImageInfo;
 extern char smartloader_bin[];
 
+extern uint8_t bootMode;
+
 extern const  char * smartportImageExt[];
 extern const  char * diskIIImageExt[];
 
@@ -34,17 +36,14 @@ static enum STATUS dsk2Nib(unsigned char *rawByte,unsigned char *buffer,uint8_t 
 static enum STATUS decodeAddr(unsigned char *buf, uint8_t * retSector,uint8_t * retTrack);
 static enum STATUS decodeGcr62(uint8_t * buffer,uint8_t * data_out,uint8_t *chksum_out, uint8_t *chksum_calc);
 
-static enum STATUS decodeGcr62b(unsigned char * src,unsigned char * dst);
-
 static const unsigned char signatureAddrStart[]	={0xD5,0xAA,0x96};
 static const unsigned char signatureDataStart[]	={0xD5,0xAA,0xAD};
 
 static uint8_t sectorCheckArray[32];
-static  uint8_t  dsk2nibSectorMap[]         = {0, 7, 14, 6, 13, 5, 12, 4, 11, 3, 10, 2, 9, 1, 8, 15};
-static  uint8_t  po2nibSectorMap[]         =  {0, 8,  1, 9, 2, 10, 3, 11, 4, 12, 5, 13, 6, 14, 7, 15};
 
+static  uint8_t  dsk2nibSectorMap[]         = {0, 7, 14, 6, 13, 5, 12, 4, 11, 3, 10, 2, 9, 1, 8, 15};
 static  uint8_t  nib2dskSectorMap[]         = {0, 13, 11, 9, 7, 5, 3, 1, 14, 12, 10,8, 6, 4, 2, 15};
-static uint8_t   nib2poSectorMap[]          = {0,  2,  4, 6,  8,10, 12,14,  1, 3,  5, 7, 9, 11,13,15};
+
 
 static const uint8_t from_gcr_6_2_byte[128] = {
     0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,     // 0x80-0x87
@@ -76,25 +75,14 @@ static const char encTable[] = {
 	0xF7,0xF9,0xFA,0xFB,0xFC,0xFD,0xFE,0xFF
 };
 
-static unsigned char decTable[] = {
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x02, 0x03, 0x00, 0x04, 0x05, 0x06,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x07, 0x08, 0x00, 0x00, 0x00, 0x09, 0x0a, 0x0b, 0x0c, 0x0d,
-    0x00, 0x00, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x00, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1b, 0x00, 0x1c, 0x1d, 0x1e,
-    0x00, 0x00, 0x00, 0x1f, 0x00, 0x00, 0x20, 0x21, 0x00, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x29, 0x2a, 0x2b, 0x00, 0x2c, 0x2d, 0x2e, 0x2f, 0x30, 0x31, 0x32,
-    0x00, 0x00, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x00, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f
-};
 
+
+// TODO
+/*
+I was thinking your thoughts on having the smartloader go directly into file manager list rather than always the main screen and moving the main screen menu options as hotkeys at bottom like [E] emulation [H] help [F] Fav etc,
+
+Also in smartloader adding a [R] Reset option would be good to reset the stm32 via software instead of needing to always physically pressing the reset button , think its NVIC_SystemReset();
+*/
 
 // for bit flip
 
@@ -114,16 +102,13 @@ extern uint8_t smartloaderEmulationType;
 extern uint8_t flgSwitchEmulationType;
 extern const  char** ptrFileFilter;  
 
-static uint8_t  smtlCommand=0x0;                        // Command from Smartloader
-static uint8_t  smtlValue=0x0;                          // Param from Smartloader
-static uint8_t  smtlCurrentCategory=0x0;                // See list below
-static uint8_t  smtlCurrentPage=0x0;                    // a page is a list of 16 (0x0F) items, Page 01 => Item from 17 -> 32                
-
 enum SMTL_CATEGORY{CAT_ROOT,CAT_FAVORITE,CAT_FILE,CAT_SETTINGS,CAT_HELP};
 
-//static uint8_t  smtlLevel=0x0;
-static uint8_t  smtlReturnCode=0x0;
-//static uint8_t  smtlErrorCode=0x0;
+static uint8_t  smtlCurrentCategory=CAT_FILE;           // Current Category 
+static uint8_t  smtlReturnCode=0x0;                     // Return code to Smartloader
+static uint8_t  smtlCommand=0x0;                        // Command from Smartloader
+static uint8_t  smtlValue=0x0;                          // Param from Smartloader
+static uint8_t  smtlCurrentPage=0x0;                    // a page is a list of 16 (0x0F) items, Page 01 => Item from 17 -> 32   
 
 int getSmartloaderTrackFromPh(int phtrack){
     return phtrack >> 2;
@@ -168,6 +153,8 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
             
             switch (smtlCommand){
                 
+                             
+
                 case 0x09:                                              // Managing back to Main
                 case 0x10:
                 case 0x00:                                              // Listing
@@ -236,7 +223,7 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
                     sprintf(item[7],"X[LEFT]  PREV PAGEpage");
                     sprintf(item[8],"X[ENTER] SELECT ITEM");
                     sprintf(item[9],"X[M]     BACK TO MAIN");
-                    sprintf(item[10],"X[R]     REFRESH PAGE");
+                    sprintf(item[10],"X[R]     RESET SYSTEM");
                     sprintf(item[11],"X[B]     BOOT");
                     sprintf(item[12],"X");
                     sprintf(item[13],"M<- BACK TO MAIN");
@@ -292,9 +279,9 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
                         pItem=list_at(favoritesChainedList, i);
                         if (pItem!=NULL && pItem->val!=NULL){
                             listItem_t * li=pItem->val;
-                            snprintf((char *)(tmp+offset),23,"F%s",li->title);
+                            snprintf((char *)(tmp+offset),24,"F%.22s",li->title);
                         }else{
-                            snprintf((char *)(tmp+offset),23,"(NULL)");
+                            snprintf((char *)(tmp+offset),24,"(NULL)");
                         }
                         jj++;  
                     }
@@ -310,7 +297,8 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
                     }
 
                     walkDir(currentFullPath,ptrFileFilter);             // Build new File chained List
-
+                    setConfigParamStr("currentPath",currentFullPath);
+                    saveConfigFile();
                     header[0]=0x20;                                     // Byte [1]+0: Return code
 
                     int len=strlen(currentFullPath);
@@ -321,7 +309,7 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
                             break;
                         }
                     }
-                    snprintf(header+6,23,"%s",currentPath);
+                    snprintf(header+6,23,"%.22s",currentPath);
 
                     const uint8_t maxItemPerPage=16;
                     uint8_t lstCount=dirChainedList->len;
@@ -430,7 +418,7 @@ enum STATUS setSmartloaderTrackBitStream(int trk,unsigned char * buffer){
 
         if (smtlCommand==0x15){                            // Refresh command
             smtlReturnCode=0x20;
-            char * filename=getConfigParamStr("smartloaderLastBootImage");
+            char * filename=(char *)getConfigParamStr("smartloaderLastBootImage");
             if (filename!=NULL && strlen(filename)>0){
                 sprintf(tmpFullPathImageFilename,"%s",filename);
 
@@ -452,17 +440,38 @@ enum STATUS setSmartloaderTrackBitStream(int trk,unsigned char * buffer){
                 }
             }
 
+        }else if (smtlCommand==0x60){                               // Reset Command
+            log_info("Software Reset issued by Smartloader");
+            NVIC_SystemReset();
+        }else if(smtlCommand==0x70){                                // Change the Emulation type
+            log_info("Change the emulation");
+            
+            
+            if (smartloaderEmulationType==DISKII){
+                smartloaderEmulationType=SMARTPORTHD;
+            }else{
+                smartloaderEmulationType=DISKII;
+            }
+            setConfigParamInt("smartloaderEmulationType",smartloaderEmulationType);
+            saveConfigFile();
+            smtlValue=0;
+            smtlReturnCode=0x20;
+            smtlCommand=0x10;
+           
+        }else if (smtlCommand==0x80){                               // Move to Favorite Menu 
+            smtlCommand=0x10;
+            smtlCurrentCategory=CAT_FAVORITE;
+            smtlReturnCode=0x20;
         }
-       
         else if (smtlCommand==0x09){
             smtlCurrentCategory=CAT_ROOT;
             smtlReturnCode=0x20;
         }
-        else if (smtlCurrentCategory==CAT_HELP){                // Selection in Help menu lead to MAIN
+        else if (smtlCurrentCategory==CAT_HELP){                    // Selection in Help menu lead to MAIN
             smtlCommand=0x09;
             smtlCurrentCategory=CAT_ROOT;
             smtlReturnCode=0x20;
-        }                                                       // We go to Main Menu
+        }                                                           // We go to Main Menu
         else if (smtlCurrentCategory==CAT_ROOT){
             
             if (smtlCommand==0x10 && smtlValue==4){
@@ -488,9 +497,18 @@ enum STATUS setSmartloaderTrackBitStream(int trk,unsigned char * buffer){
             }
 
             if (smtlCommand==0x10 && smtlValue==2){             // We go to File Listing
-                log_info("getting root file");
+                log_info("Go to the File Manage");
                 smtlCurrentCategory=CAT_FILE;
-                currentFullPath[0]=0x0;
+                
+                if (bootMode==1){
+                    char * tmp=(char*)getConfigParamStr("currentPath");
+                    if (tmp)
+                        sprintf(currentFullPath,"%s",tmp);
+                    else
+                        currentFullPath[0]=0x0;
+                }else
+                    currentFullPath[0]=0x0;
+               
 
             }else if (smtlCommand==0x10 && smtlValue==1){
                 smtlCurrentCategory=CAT_FAVORITE;
@@ -540,9 +558,7 @@ enum STATUS setSmartloaderTrackBitStream(int trk,unsigned char * buffer){
                 log_info("tmp2:%s %d",tmp,ilen);
 
                 sprintf(currentFullPath+ilen,"/%s",tmp+2);
-            
-                //list_destroy(dirChainedList);
-                //walkDir(currentFullPath,ptrFileFilter);                                                         // TODO Check if needed as WalkDir is done on the reading side
+
             
             }else if (tmp[0]=='F'){
 
@@ -562,16 +578,13 @@ enum STATUS setSmartloaderTrackBitStream(int trk,unsigned char * buffer){
                     free(dskData);
                     return RET_OK;
                 }else if (smartloaderEmulationType==SMARTPORTHD){
-                    //setEmulationPtr(SMARTPORTHD);
-                    
+
                     setConfigParamStr("smartloaderLastBootImage",tmpFullPathImageFilename);
                     saveConfigFile();
 
                     SmartPortInitWithImage(tmpFullPathImageFilename);
                     flgSwitchEmulationType=1;
                     
-
-                    // Now we need to break current 
                     free(dskData);
                     return RET_OK;
                 }
@@ -742,16 +755,8 @@ static enum STATUS nib2dsk(unsigned char * dskData,unsigned char *buffer,uint8_t
     DWT->CYCCNT = 0;                                                                            // Reset cpu cycle counter
     t1 = DWT->CYCCNT;
     */
-    unsigned char * sectorMap;                                                                  // Sector skewing from nibble to DSK or PO 
-    //if (mountImageInfo.type==2)
-       sectorMap=nib2dskSectorMap;
-    //else if (mountImageInfo.type==3)
-    //   sectorMap=nib2poSectorMap;
-    //else{
-    //   log_error("Unable to match sectorMap with mountImageInfo.type");
-    //   return RET_ERR;
-    //}
-
+    unsigned char * sectorMap=nib2dskSectorMap;                                                                  // Sector skewing from nibble to DSK or PO 
+    
     const uint8_t checkSignatureLength=3;                                                       // length of the prologue to check changed it to const
     enum BITSTREAM_PARSING_STAGE stage=ADDR_START;                                              // Current stage of the processing to find the right data signature                                                            
     const unsigned char *ptrSearchSignature=&signatureAddrStart[0];                             // Start with the AddrSignature to be checked
@@ -853,7 +858,7 @@ static enum STATUS nib2dsk(unsigned char * dskData,unsigned char *buffer,uint8_t
             			                                                                        // Increment the sumSector as checksum with the value of the current sector number
             			uint8_t * data_out=dskData+256*physicalSector;                               // send directly the right buffer address to avoid memcpy
                         
-                        //if (decodeGcr62b(tmpBuffer+3,(unsigned char *)data_out)==RET_ERR){
+                        
                         if(decodeGcr62(tmpBuffer,(unsigned char *)data_out,&cksum_out,&cksum_calc)==RET_ERR){    // gcr6_2 decode and expect 256 Bytes in return;
             				log_error("GCR decoding trk:%02d, sector:%02d, bytePos:%d %02X",trk,physicalSector,i,i);
                             //dumpBuf(buffer,1,6657);
@@ -943,39 +948,6 @@ static enum STATUS decodeAddr(unsigned char *buf, uint8_t * retSector,uint8_t * 
 
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-function"
-static enum STATUS decodeGcr62b(unsigned char * src,unsigned char * dst){
-   
-    int i, j;
-    unsigned char x, ox = 0;
-    static unsigned char FlipBit[4] = { 0, 2, 1, 3 };
-    uint8_t cksum=0x0;
-
-    for (j=0, i=0x03; i<0x59; i++, j++) {
-        x = ((ox^decTable[src[i]])&0x3f);
-        cksum^=decTable[src[i]]&0x3f;
-        dst[j+172] = FlipBit[(x>>4)&3];
-        dst[j+86] = FlipBit[(x>>2)&3];
-        dst[j] = FlipBit[(x)&3];
-        ox = x;
-    }
-
-    for (j=0, i=0x59; i<0x159; i++, j++) {
-        x = ((ox^decTable[src[i]])&0x3f);
-        cksum^=decTable[src[i]]&0x3f;
-        dst[j]|=(x<<2);
-        ox = x;
-    }
-    
-    if (cksum!=(decTable[src[345]]&0x3f)){
-        log_error("cgcrDeocding checksum error cksum:%02X byte343:%02X",cksum,decTable[src[345]]&0x3f);
-        return RET_ERR;
-    }
-
-    return RET_OK;
-}
-#pragma GCC diagnostic pop
 static enum STATUS decodeGcr62(uint8_t * buffer,uint8_t * data_out,uint8_t *chksum_out, uint8_t *chksum_calc) {
     
     const uint8_t *disk_bytes = buffer+3;

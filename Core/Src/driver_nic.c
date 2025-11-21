@@ -24,11 +24,11 @@ static const unsigned char signatureAddrStart[]	={0xD5,0xAA,0x96};
 static const unsigned char signatureDataStart[]	={0xD5,0xAA,0xAD};
 
 static  uint8_t sectorCheckArray[32];
-static  uint8_t dsk2nibSectorMap[]         = {0, 7, 14, 6, 13, 5, 12, 4, 11, 3, 10, 2, 9, 1, 8, 15};
-static  uint8_t po2nibSectorMap[]          = {0, 8,  1, 9, 2, 10, 3, 11, 4, 12, 5, 13, 6, 14, 7, 15};
+//static  uint8_t dsk2nibSectorMap[]         = {0, 7, 14, 6, 13, 5, 12, 4, 11, 3, 10, 2, 9, 1, 8, 15};
+//static  uint8_t po2nibSectorMap[]          = {0, 8,  1, 9, 2, 10, 3, 11, 4, 12, 5, 13, 6, 14, 7, 15};
 
 static  uint8_t nib2dskSectorMap[]         = {0, 13, 11, 9, 7, 5, 3, 1, 14, 12, 10,8, 6, 4, 2, 15};
-static  uint8_t nib2poSectorMap[]          = {0,  2,  4, 6,  8,10, 12,14,  1, 3,  5, 7, 9, 11,13,15};
+//static  uint8_t nib2poSectorMap[]          = {0,  2,  4, 6,  8,10, 12,14,  1, 3,  5, 7, 9, 11,13,15};
 
 static const uint8_t from_gcr_6_2_byte[128] = {
   0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,     // 0x80-0x87

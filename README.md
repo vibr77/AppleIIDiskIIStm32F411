@@ -28,10 +28,15 @@ The current production board revision is 8,
 The is the last release and it has been fully tested. If you decide to build it yourself, it is higly recommanded to use production revision.
 
 
+
 A discord server is available if you need support and discuss the product [discords server](
 https://discord.gg/6y2Zdazy)
 
-The current firmware revision supports the followwing 
+### Firmware
+The last firmware (on the right hand side of this page), requires bootloader v0.14 or v0.16, version 0.15 is not compatible and cause generates issue on IIGS Smartport. 
+It recommanded to update the bootloader version to the last one. 
+
+
 
 ### Supported Emulation:
 | Emulation  | Status
@@ -89,9 +94,12 @@ This project relies on a STM32F411(BlackPill) with SDIO Port.
 
 | Directory | Description  |
 |:----------|:----------|
-| ./gerber  | gerber release to produce PCB    |
+
 | ./hardware    | kicad project   |
+| ./hardware/gerber  | gerber release to produce PCB    |
+| ./hardware/bom  | Bill of material    |
 | ./core   | firmware source code    |
+|./bootloader  | Bootloader   |
 | ./Middleware    | libraries used   |
 | ./FATFS   | fatfs wrapper  |
 | ./doc   | documentation used as reference  |

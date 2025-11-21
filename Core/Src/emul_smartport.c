@@ -1790,7 +1790,7 @@ static void encodeExtendedDataPacket (unsigned char source){
     // grps of 7
 
     for (grpcount = 72; grpcount >= 0; grpcount--){ //73
-        memcpy(group_buffer, packet_buffer + 1 + (grpcount * 7), 7);
+        memcpy(group_buffer, (const unsigned char*)(packet_buffer + 1 + (grpcount * 7)), 7);
         grpmsb = 0;                                                                                  // add group msb byte
 
         for (grpbyte = 0; grpbyte < 7; grpbyte++)
@@ -1930,7 +1930,7 @@ static int decodeDataPacket (void){
     }
 
     for (grpcount = 0; grpcount < numgrps; grpcount++){                                             // 73 grps of 7 in a 512 byte packet
-        memcpy(group_buffer, packet_buffer + 8+oddOffset + (grpcount * 8), 8);
+        memcpy(group_buffer, (const unsigned char*)(packet_buffer + 8+oddOffset + (grpcount * 8)), 8);
         for (grpbyte = 0; grpbyte < 7; grpbyte++) {
             bit7 = (group_buffer[0] << (grpbyte + 1)) & 0x80;
             bit0to6 = (group_buffer[grpbyte + 1]) & 0x7f;

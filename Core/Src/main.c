@@ -679,14 +679,12 @@ void TIM1_UP_TIM10_IRQHandler(void){
       TIM1->CR1 &= ~TIM_CR1_CEN;                                        // Stop Timer
     
       flgSoundEffectActive=0;                                            // Deactivate sound effect flag        
-    
+      
+      TIM10->SR &= ~TIM_SR_CC1IF; 
       TIM10->CR1 &= ~TIM_CR1_CEN;                                         // Disable Timer      
-      //TIM10->DIER &= ~TIM_DIER_UIE;                                     // Disable Update Interrupt     
-      //TIM10->DIER &= ~TIM_DIER_CC1IE;                                   // Disable Compare Interrupt on Channel 1
-      //printf("Buzzer OFF\r\n");
-      //TIM10->SR &= ~TIM_SR_CC1IF; 
+     
     }else if (TIM10->SR & TIM_SR_UIF){
-      TIM10->SR &= ~TIM_SR_UIF;                                         // Clear flag  
+      TIM10->SR &= ~TIM_SR_UIF;                                                                 // Clear flag  
     }
     TIM10->SR = 0;
      
@@ -698,16 +696,18 @@ void TIM1_BRK_TIM9_IRQHandler(void){
     TIM9->SR &= ~TIM_SR_UIF;        
   } 
   
-  if (TIM9->SR & TIM_SR_CC1IF){                     // Pulse compare interrrupt on Channel 1
+  if (TIM9->SR & TIM_SR_CC1IF){                                                                 // Pulse compare interrrupt on Channel 1
     TIM9->SR &= ~TIM_SR_CC1IF;
-    TIM9->SR=0;
-    if (flgScreenSaver==1)
-      nextAction=DISPLAY_OFF;
+    TIM9->SR=0;                                                                                 // Clear the compare interrupt flag         
+    if (flgScreenSaver==1)                                                                      
+      nextAction=DISPLAY_OFF;                                                                   // Request to turn off the display as next action      
     return;
-                                   // Clear the compare interrupt flag
-  }else
+                                                                          
+  }else{
     TIM9->SR = 0;
-    return;
+  }
+    
+  return;
 }
 
 /**
@@ -1062,16 +1062,16 @@ void Custom_SD_ReadCpltCallback(void){
   */
 void getDataBlocksBareMetal(long memoryAdr,volatile unsigned char * buffer,int count){
   fsState=READING;
-  DWT->CYCCNT = 0; 
-  t1 = DWT->CYCCNT;
+  //DWT->CYCCNT = 0; 
+  //t1 = DWT->CYCCNT;
   uint8_t i=0;
-  HAL_SD_CardStateTypeDef state ;
+  //HAL_SD_CardStateTypeDef state ;
   
   //state = HAL_SD_GetCardState(&hsd);
   //printf("st %d %lu\n",fsState, state);
   while (HAL_SD_GetCardState(&hsd) != HAL_SD_CARD_TRANSFER);                                      // Wait until transfer state, previous operation must be completed
   while(HAL_SD_ReadBlocks_DMA(&hsd, (uint8_t *)buffer, memoryAdr, count) != HAL_OK && i<2){
-    state = HAL_SD_GetCardState(&hsd);
+    //state = HAL_SD_GetCardState(&hsd);
     //log_error("Error HAL_SD_ReadBlocks_DMA state:%d, memoryAdr:%ld, numBlock:%d, error:%lu, retry:%d",state,memoryAdr,count,hsd.ErrorCode,i);
     printf("DMA RD err:%lu %i\n",hsd.ErrorCode,i);
     i++;
