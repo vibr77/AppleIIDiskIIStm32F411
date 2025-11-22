@@ -1252,7 +1252,10 @@ enum STATUS walkDir(char * path, const  char ** extFilter){
   FRESULT fres;
   FILINFO fno; 
 
-  
+  if (path==NULL){
+    log_error("path is null");
+  }
+
   log_info("walkdir() path:%s",path);
   HAL_NVIC_EnableIRQ(SDIO_IRQn);
   HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
@@ -1266,7 +1269,14 @@ enum STATUS walkDir(char * path, const  char ** extFilter){
 
   if (fres != FR_OK){
     log_error("f_opendir error (%i)\n",fres);
-    return RET_ERR;
+    sprintf(path,"/");
+    fres = f_opendir(&dir, path);
+    if (fres != FR_OK){
+      log_error("Fatal error on walkdir!");
+      while(1);
+    }
+
+    //return RET_ERR;
   }
     
   char * fileName;

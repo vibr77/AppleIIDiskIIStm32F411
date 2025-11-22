@@ -235,7 +235,7 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
                     }
                 }
                 else if (smtlCurrentCategory==CAT_FAVORITE){
-
+                    
 
                     header[0]=0x20;                                     // Byte [1]+0: Return code
                 //  header[1]=0x05;                                     // Byte [1]+1: Number of Item in the current page
@@ -249,6 +249,22 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
                     
                     const uint8_t maxItemPerPage=16;
                     uint8_t lstCount=favoritesChainedList->len;
+
+                    if (lstCount==0){
+                        log_info("favorites empty");
+                        listItem_t * favItem=(listItem_t *)malloc(sizeof(listItem_t));
+                        snprintf(favItem->title,23,".");
+                        favItem->type=0;
+                        favItem->icon=10;
+                        favItem->triggerfunction=NULL;
+                        favItem->ival=0;
+                        favItem->arg=0;
+                        
+                        list_rpush(favoritesChainedList, list_node_new(favItem));
+                        lstCount=1;
+
+                    }
+
                     uint8_t maxPage=lstCount/maxItemPerPage;
                     if ((lstCount % maxItemPerPage) !=0){
                         maxPage++;
@@ -279,6 +295,9 @@ enum STATUS getSmartloaderTrackBitStream(int trk,unsigned char * buffer){
                         pItem=list_at(favoritesChainedList, i);
                         if (pItem!=NULL && pItem->val!=NULL){
                             listItem_t * li=pItem->val;
+                            if (!strcmp(li->title,"."))
+                            snprintf((char *)(tmp+offset),24,"TEMPTY");
+                            else
                             snprintf((char *)(tmp+offset),24,"F%.22s",li->title);
                         }else{
                             snprintf((char *)(tmp+offset),24,"(NULL)");
@@ -517,8 +536,20 @@ enum STATUS setSmartloaderTrackBitStream(int trk,unsigned char * buffer){
         }else if  (smtlCurrentCategory==CAT_FAVORITE && smtlCommand==0x10){
             
             pItem=list_at(favoritesChainedList, smtlValue);
+            
+
             if (pItem && pItem->val!=NULL){
                 listItem_t * pFavItem=pItem->val;
+
+                if (!strcmp(pFavItem->title,"TEMPTY")){
+                    
+                    smtlCurrentCategory=CAT_ROOT;
+                    smtlReturnCode=0x20;
+                    smtlCommand=0x10;
+                    free(dskData);
+                    return RET_OK;
+                }
+
                 DiskIIMountImagefile(pFavItem->cval);
                 free(dskData);
                 return RET_OK;
@@ -537,8 +568,12 @@ enum STATUS setSmartloaderTrackBitStream(int trk,unsigned char * buffer){
             log_info("tmp:%s",tmp);
             
             smtlReturnCode=0x20;
-
-            if (!strcmp(tmp,"D|..")){   
+            if (!strcmp(tmp,"D|.")){
+                smtlValue=0;
+                smtlReturnCode=0x20;
+                smtlCommand=0x10;
+            }
+            else if (!strcmp(tmp,"D|..")){   
                 log_info("updir %s",currentFullPath);                                                           // selectedItem is [UpDir];
                 for (int i=ilen-1;i!=-1;i--){
                     if (currentFullPath[i]=='/'){
