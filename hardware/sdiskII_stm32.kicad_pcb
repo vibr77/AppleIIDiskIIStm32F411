@@ -3198,6 +3198,17 @@
 			(uuid "b6d5457b-b25f-4e0e-92cf-1528c716534d")
 		)
 		(embedded_fonts no)
+		(model "${KIPRJMOD}/3dstep/12085_buzzer.step"
+			(offset
+				(xyz -3.5 0 0)
+			)
+			(scale
+				(xyz 1 1 1)
+			)
+			(rotate
+				(xyz -0 -0 -0)
+			)
+		)
 	)
 	(footprint "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical"
 		(layer "F.Cu")
@@ -4610,7 +4621,18 @@
 		(embedded_fonts no)
 		(model "${KIPRJMOD}/blackpill v2.0 no_swi.STEP"
 			(offset
-				(xyz 0 -1 2.5)
+				(xyz 0 -1 1)
+			)
+			(scale
+				(xyz 1 1 1)
+			)
+			(rotate
+				(xyz -0 -0 90)
+			)
+		)
+		(model "${KIPRJMOD}/3dstep/blackpill v2.0.step"
+			(offset
+				(xyz 0 0.5 0)
 			)
 			(scale
 				(xyz 1 1 1)
@@ -7264,6 +7286,17 @@
 				(xyz -0 -0 -0)
 			)
 		)
+		(model "${KIPRJMOD}/3dstep/Weewooday I2C OLED 0.98” 128x64.step"
+			(offset
+				(xyz -48 -30 20)
+			)
+			(scale
+				(xyz 1 1 1)
+			)
+			(rotate
+				(xyz -90 -180 180)
+			)
+		)
 	)
 	(footprint "Capacitor_SMD:C_0805_2012Metric_Pad1.18x1.45mm_HandSolder"
 		(layer "F.Cu")
@@ -8015,6 +8048,17 @@
 			)
 			(rotate
 				(xyz -0 -0 90)
+			)
+		)
+		(model "${KIPRJMOD}/3dstep/mem2075.stp"
+			(offset
+				(xyz -0.15 15.5 0)
+			)
+			(scale
+				(xyz 1 1 1)
+			)
+			(rotate
+				(xyz 90 -180 -0)
 			)
 		)
 	)

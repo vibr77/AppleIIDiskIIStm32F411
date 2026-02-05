@@ -11015,11 +11015,12 @@
 			)
 		)
 		(property "Description" "6V 500mA 100A 1A 150mΩ 0805 PTC Resettable Fuses"
-			(at 50.165 156.845 0)
+			(at 50.8 162.814 90)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
+				(hide yes)
 			)
 		)
 		(property "Supply" "LCSC C66452"

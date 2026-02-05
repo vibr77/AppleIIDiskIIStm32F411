@@ -115,6 +115,9 @@ UART1
 // Changelog
 
 /*
+24.11.25 v0.80.33
+  + Smartloader update with Fav shortcut, Emulatation type shortcut, and last folder memory
+  
 16.11.25 v0.80.31
   + add screen update with WR displayed during write process
   + Fixing issue with write process not working after several writes
@@ -494,7 +497,7 @@ void (*ptrPhaseIRQ)();                                                          
 void (*ptrReceiveDataIRQ)();                                                                    // Pointer to Received Data function with WR_DATA
 void (*ptrSendDataIRQ)();                                                                       // Pointer to Send Data function with RD_DATA
 void (*ptrWrReqIRQ)();                                                                          // Pointer to Interrupt function for WR_REQUEST
-void (*ptrSelectIRQ)();                                                                         // Pointer to Select line IRQ function PB8 and IDC line 12 
+//void (*ptrSelectIRQ)();                                                                         // Pointer to Select line IRQ function PB8 and IDC line 12 
 int (*ptrDeviceEnableIRQ)(uint16_t GPIO_Pin);                                                   // Pointer to Interrupt function for DEVICE_ENABLE
 enum STATUS (*ptrUnmountImage)();                           
 enum STATUS (*ptrMountImagefile)(char * filename);
@@ -1696,7 +1699,7 @@ int main(void)
   ptrReceiveDataIRQ=nothingHook;
   ptrSendDataIRQ=nothingHook;
   ptrWrReqIRQ=nothingHook;
-  ptrSelectIRQ=nothingHook;
+  //ptrSelectIRQ=nothingHook;
   ptrDeviceEnableIRQ=ui16NothingHook;
   ptrMainLoop=nothingHook;
   ptrUnmountImage=statusNothingHook;
