@@ -71,7 +71,7 @@ int initPartition;
 
 static volatile unsigned char phase=0x0;
 uint16_t messageId=0x0;
-//static unsigned long cAlive=0;
+static unsigned long cAlive=0;
 // ------------------------------------------------------
 // STATIC FUNCTION DEFINITION
 // ------------------------------------------------------
@@ -1657,13 +1657,13 @@ void SmartPortMainLoop(){
                 flgUpdateMarquee=0;
                 updateMarquee();
             }
-            /*cAlive++;                                                         // DO a test to check if it is really needed
+            cAlive++;                                                         // DO a test to check if it is really needed
             if (cAlive==5000000){ 
                 HAL_SD_CardStateTypeDef state;
                 state = HAL_SD_GetCardState(&hsd);
                 printf(".%d %lu\n",fsState,state);
                 cAlive=0;
-            }*/
+            }
             
             pSdEject();
             if (nextAction!=NONE){                                                             // Manage by pNextAction

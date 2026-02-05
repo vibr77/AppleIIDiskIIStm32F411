@@ -241,13 +241,14 @@ void DiskIIPhaseIRQ(){
   * @param None
   * @retval None
   */
+/*
 void DiskIISelectIRQ(){
     if ((SELECT_GPIO_Port->IDR & SELECT_Pin)==0)
         flgSelect=0;
     else
         flgSelect=1;
 }
-
+*/
 uint8_t pFlgWRRequest=0;
 static volatile unsigned long maxt,t1,t2,diff1;
 static volatile uint8_t  flgDebug=0;
@@ -748,7 +749,7 @@ enum STATUS DiskIIiniteBeaming(){
 void DiskIIInit(){
     
     GPIO_InitTypeDef GPIO_InitStruct = {0};                                             // This Pin should be High on IIGS but connected to Ground Disk II 
-    GPIO_InitStruct.Pin = SELECT_Pin;                                                   // 
+    GPIO_InitStruct.Pin = SELECT_Pin;                                                   // to be tested if still needed
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull = GPIO_PULLDOWN;
     HAL_GPIO_Init(SELECT_GPIO_Port, &GPIO_InitStruct);
@@ -822,8 +823,8 @@ void DiskIIInit(){
     }
 
     flgBeaming=1;
-    DiskIISelectIRQ();                                                                       // Important at the end of Init
-    flgSelect=1;
+    //DiskIISelectIRQ();                                                                       // Important at the end of Init
+    //flgSelect=1;
 
     TIM3->ARR=32*12-1;
     TIM3->CCR1= 145;
