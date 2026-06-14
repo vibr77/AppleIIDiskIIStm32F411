@@ -1,292 +1,236 @@
-# SmartDisk II for Apple II
+# SmartDisk II — Apple II Floppy Emulator
 
-The SmartDisk II is an Apple II floppy disk emulator based on the STM32F411 (known as the blackPill). It replicates the behaviour of the DISKII and UNIDISK3.5 devices and provide a modern solution to read Apple II Images using various format: PO, DSK, WOZ, HDV, 2MG,...
+**The Apple II floppy emulator that even copy protection can't tell apart.**
 
-It has been made to allow copy protection disk to work like original disk.
+Swap a shelf of aging 5.25″ disks for a single SD card — without giving up an ounce of authenticity. SmartDisk II reproduces the exact timing and behaviour of a real DISK II and UNIDISK 3.5 drive, so your games load and run exactly as they did back in the day — protection schemes and all.
 
-This project is still active a regular Software release release
+<p align="center">
+  <img src="https://github.com/vibr77/AppleIIDiskIIStm32F411/blob/main/resources/readmeMainPhoto.png?raw=true" width="420px" />
+</p>
 
-<img src="https://github.com/vibr77/AppleIIDiskIIStm32F411/blob/main/resources/readmeMainPhoto.png?raw=true" width="400px" />
+<p align="center">
+  <a href="https://www.ebay.fr/itm/306883712221"><b>🛒 Buy a prebuilt board</b></a> ·
+  <a href="https://github.com/vibr77/AppleIIDiskIIStm32F411"><b>🔧 Build it yourself</b></a> ·
+  <a href="https://discord.gg/ZnzDqC2k"><b>💬 Join the Discord</b></a> ·
+  <a href="https://www.r3tr0.net/index.php/smartdisk-ii-documentation/"><b>📖 Documentation</b></a>
+</p>
 
-The following Apple II are supported:
+---
 
-| Apple II | Emulation  |
-|:----------|:----------|
-| II+       | Disk II    |
-| II Europlus       | Disk II    |
-| IIe 	    | Disk II    |
-| IIc      |  Disk II  & Smartport (Rom 4)   |
-| IIGS	    | Disk II & Smartport    |
+## What is it
 
+SmartDisk II is an **open-source hardware floppy-disk emulator for the Apple II**. It plugs into your machine like a real drive, reads disk images straight from an SD card, and lets you browse and mount them from a built-in OLED menu — no PC, no cables, no fuss.
 
-In this repository, all information are available to enable DIY build (Kicad PCB, Gerber, 3D case, file, firmware release and source code). Please pay attention to the licence of this project.
+Under the hood it's built on the **STM32F411 ("BlackPill")** and emulates the disk hardware *at the bit level*. That's the difference between *reading a disk image* and *being a disk drive* — and it's why SmartDisk II runs the titles other emulators choke on.
 
-If you do not want to build yourself a board, you can order direcly a [ready to use prebuild and flashed board on eBay](
-https://www.ebay.fr/itm/306152710617)
+## Why SmartDisk II
 
-The current production board revision is 8, 
-The is the last release and it has been fully tested. If you decide to build it yourself, it is higly recommanded to use production revision.
+- **Bit-perfect accuracy.** Timing is reproduced down to the microsecond, so the Apple II can't tell it apart from a mechanical drive.
+- **It beats copy protection.** Fake bits, weak bits, half-tracks, SpiraDisc and more — it passes every scheme tested so far.
+- **Your whole collection on one card.** Thousands of disks on a single SD card, browsable on the on-board OLED.
+- **Works across the Apple II line.** From the II+ to the IIGS, Disk II and SmartPort — one device covers your fleet.
+- **Read *and* write.** Save your progress and modify disks, not just load them.
+- **Open source, or ready to run.** Build it from the published files, or order a prebuilt, flashed board and plug in today.
 
+## Browse and boot — right from the Apple II
 
+With **SmartLoader**, you don't even need the SmartDisk II's own buttons for everyday loading. It puts a fast green-screen browser on the Apple II itself: SmartLoader reads the disk images on your SD card and lists them right on screen, so you can scroll through your whole collection and boot any title straight from the Apple II — highlight a disk, press **[B]** to boot, **[R]** to refresh the listing, or **[S]** for settings.
 
-A discord server is available if you need support and discuss the product [discords server](
-https://discord.gg/6y2Zdazy)
+## Copy protection that actually works
 
-### Firmware
-The last firmware (on the right hand side of this page), requires bootloader v0.14 or v0.16, version 0.15 is not compatible and cause generates issue on IIGS Smartport. 
-It recommanded to update the bootloader version to the last one. 
+Most emulators fall over the moment a disk uses copy protection. SmartDisk II doesn't. By reproducing the original drive's bit-level timing, it satisfies the protection checks that real software relied on — so your original protected images run untouched.
 
+| Copy protection             | Status     |
+|:----------------------------|:-----------|
+| Fat Track                   | ✅ Passed |
+| Weak Bit                    | ✅ Passed |
+| Cross-track synchronisation | ✅ Passed |
+| Half Track                  | ✅ Passed |
+| Data Latch                  | ✅ Passed |
+| Timing Bits                 | ✅ Passed |
+| E7                          | ✅ Passed |
+| Optimal Bit Timing (<4µs)   | ✅ Passed |
+| Various Bit Counter         | ✅ Passed |
+| SpiraDisc                   | ✅ Passed |
 
+## Compatibility
 
-### Supported Emulation:
-| Emulation  | Status
-|:------  |:-----|
-| DISK II 5.25| YES   |
-| SMARTPORT HD| YES   |
-| UNIDISK IIGS| YES   |
-| SMARTLOADER | YES   |
+| Apple II model | Emulation             |
+|:---------------|:----------------------|
+| II+            | Disk II               |
+| II Europlus    | Disk II               |
+| IIe            | Disk II               |
+| IIc (ROM 4)    | Disk II + SmartPort   |
+| IIGS           | Disk II + SmartPort   |
 
+SmartPort emulation is also available on the IIc (ROM 4.x), IIGS, and on the II+/IIe with a Liron or SoftSP6 card.
 
-### Supported disk image format:
+## Supported disk formats
 
 | Format  | Read | Write |
-|:------  |:-----|:------|
-| NIC| YES   | NO    | 
-| WOZ 1.0| YES    | NO    |
-| WOZ 2.0| YES | YES|
-| DSK       | YES  | YES    |
-| PO    | YES    | YES     |
-| 2MG    | YES    | YES     |
+|:--------|:-----|:------|
+| WOZ 2.0 | ✅   | ✅    |
+| DSK     | ✅   | ✅    |
+| PO      | ✅   | ✅    |
+| 2MG     | ✅   | ✅    |
+| WOZ 1.0 | ✅   | —     |
+| NIC     | ✅   | —     |
 
-### Copy protection status
+## Features at a glance
 
-| Copy Protection | Status  | 
-|:----------|:----------|
-| FAT Track | PASSED   |
-| Weak Bit  | PASSED    | 
-| Cross track sync  | PASSED    | 
-| Half track | PASSED    | 
-| Data Latch    | PASSED    | 
-| Timing Bits   | PASSED    |
-| E7   | PASSED    | 
-| Optimal Bit Timing <4uS   | PASSED    |
-| Various Bit Counter    | PASSED    | 
-| SpiraDisc    | PASSED    | 
+- **Three drives in one** — DISK II 5.25″, SmartPort HD, and UNIDISK 3.5 emulation
+- **On-board navigation** — browse, mount and unmount images from the 0.96″ OLED with four buttons
+- **Big images, no sweat** — 32 MB images and full Total Replay collections run smoothly
+- **Modern software too** — loads GS/OS on the IIGS; runs titles like Arkanoid from 2MG
+- **SmartLoader** built in — browse and boot from the Apple II screen itself
+- **Actively developed** — frequent firmware releases with the latest improvements
+
+## See it in action
+
+- ▶ [Total Replay & 32 MB images, running smoothly](https://www.youtube.com/watch?v=Sws6IjnWDGQ)
+- ▶ [Arkanoid, loaded from a 2MG image](https://www.youtube.com/watch?v=U3N-gej0NLk)
+- ▶ [Loading GS/OS on the IIGS](https://www.youtube.com/watch?v=gZH2njO4CEQ)
+
+## Get your SmartDisk II
+
+**Buy a prebuilt board.** Don't want to solder? Order a ready-to-use, fully flashed and tested SmartDisk II and plug in today → [Order on eBay](https://www.ebay.fr/itm/306883712221)
+
+**Build it yourself.** Everything you need is open source — KiCad PCB, Gerber files, bill of materials, 3D-printable case, firmware releases and full source code. **Current production board: Revision 8**, recommended for self-builds.
+
+**Get help & follow along.** Join the community on [Discord](https://discord.gg/6y2Zdazy), or read the full development story on [AppleFritter](https://www.applefritter.com/content/apple-ii-disk-emulator-using-stm32).
+
+## Tech specs
+
+- **MCU:** STM32F411 ("BlackPill") — chosen for CPU speed, >60 kB SRAM and 4-bit SDIO
+- **Storage:** SD card, FAT32 (4-bit SDIO for speed) — a quality, known-brand card is recommended
+- **Display:** 0.96″ OLED (SSD1306) with four-button navigation
+- **Board:** Production Revision 8, fully tested
+- **Licence:** open source for non-commercial use with attribution
+
+<p align="center">
+  <img src="https://github.com/vibr77/AppleIIDiskIIStm32F411/blob/main/resources/PCB_REV_1_MONTING.jpeg?raw=true" width="380px" />
+  <img src="https://github.com/vibr77/AppleIIDiskIIStm32F411/blob/main/resources/PCB_REV_1_IMAGE.jpeg?raw=true" width="380px" />
+</p>
+
+---
+
+# Build & developer guide
+
+Everything below is for people building, flashing, or hacking on the SmartDisk II. The full end-user manual (wiring, SD-card prep, menu walkthrough) lives in the [online documentation](https://www.r3tr0.net/index.php/smartdisk-ii-documentation/).
+
+## Firmware
+
+The latest firmware (see the releases on the right-hand side of the GitHub page) requires **bootloader v0.14 or v0.16**. Version 0.15 is **not** compatible and causes issues with the IIGS SmartPort. It is recommended to update the bootloader to the latest version.
+
+There are two release types:
+
+- **BIN** — classic binary, uploaded via ST-Link, starting at `0x08000000`.
+- **UF2** — first upload the custom bootloader via ST-Link, then connect USB and double-click the NRST button to drag-and-drop the UF2 release onto the STM32. **Warning:** with the bootloader, flash from `0x08000000` to `0x08100000` becomes read-only (use ST-Link tooling to change the STM32 register to reverse this).
+
+## Project structure
+
+| Directory            | Description                                          |
+|:---------------------|:-----------------------------------------------------|
+| `./hardware`         | KiCad project                                        |
+| `./hardware/gerber`  | Gerber release to produce the PCB                    |
+| `./hardware/bom`     | Bill of materials                                    |
+| `./core`             | Firmware source code                                 |
+| `./bootloader`       | Bootloader                                           |
+| `./Middleware`       | Libraries used                                       |
+| `./FATFS`            | FATFS wrapper                                         |
+| `./doc`              | Documentation used as reference                      |
+| `./3DPrintCase`      | 3D-print files & Fusion 360 source for the case      |
+
+## SD card
+
+The SD card must use a **FAT32 file system with 64 sectors of 512 bytes each per cluster (32 KB clusters)**.
+
+To format the card under Linux:
+
+```bash
+mkfs.fat -F 32 -s 64 /dev/sdX
+```
+
+Windows 10/11 does **not** format the card the right way. A config-menu option is provided directly on the SmartDisk II to format the SD card correctly. Note that some SD cards have very poor read/write rates — use a known brand to avoid wasting your time.
+
+## Important notes
+
+- The ST-Link programmer should **never** be connected at the same time as either USB or the Apple II — its voltage regulator is fragile.
+- The **J1 PWR** jumper (top-right of the PCB) enables +5 V from the Apple II to the STM32.
+- OLED screen: be careful of the power-pin order; some versions have the pins inverted.
+- R1, R2, R3 are not needed.
+- Before hardware Rev 3, the board is not compatible with the IIGS & IIc — the trace between IDC pins 5 & 7 needs to be cut.
+- Hardware design may evolve; new software releases might not work with older hardware revisions.
+
+## Hardware design principles
+
+The STM32F4x is preferred over the STM32F1 for CPU frequency, available SRAM (>60 kB), and (on the F411) SDIO. Timing is critical on this project, especially to pass copy protection.
+
+A DISK II floppy track is about 50,000 bits, and shifting from one track to another must respect specific timing rules. After many design iterations, the chosen approach loads a **single track in memory** and uses the **4-bit SDIO port** for SD card read/write speed — avoiding adjacent-track management and complex buffer copies.
+
+The Apple II expects data at a precise pace of **1 bit every 4 µs (32 × 125 ns)**. Three options were considered:
+
+1. SDIO with DMA — frees the CPU, but SPI sends 8 bits at a time; WOZ tracks aren't 8-bit aligned, which introduces bit misalignment and corrupted data on protected images.
+2. Assembly with CPU-cycle counting & GPIO bit-banging — poor reliability, discarded.
+3. **Timer-interrupt-triggered GPIO bit-banging (chosen)** — frees CPU time for OLED updates and button handling, makes fake-bit/protection mechanisms easy to address, and allows fine timing control (e.g. 3.8 µs vs 4 µs that some games use).
+
+The write process mirrors the read process with a dedicated timer overflowing every 4 µs; polarity inversion is handled in software with an XOR rather than external circuitry.
+
+### STM32 pin mapping
+
+**Head-positioning stepper (external interrupts):**
+`PA0` STEP0 / ExtI0 · `PA1` STEP1 / ExtI1 · `PA2` STEP2 / ExtI2 · `PA3` STEP3 / ExtI3
+
+**Other GPIO:**
+`PB8` SELECT (ExtI8, HIGH on Disk II controller — A2 powered on) · `PB9` WR Request (ExtI9, active LOW when writing) · `PA4` Device Enable (ExtI4, active LOW) · `PB2` WR Protect · `PA7` WR Data · `PB0` RD Data · `PA11` _DISK3.5
+
+**Buttons (ExtI 9-15, TIM4 debounce):**
+`PC13` BTN_DOWN · `PC14` BTN_UP · `PC15` BTN_ENTR · `PB12` BTN_RET
+
+**SD card (SDIO, clock ÷2):**
+`PB4` D0 · `PA8` D1 · `PA9` D2 · `PB5` D3 · `PA6` CMD · `PB15` CK
+
+**OLED SSD1306 (I²C):** `PB6` SCL · `PB7` SDA
+
+**UART:** `PA15` TX · `PB3` RX
+
+**Timers:**
+- **TIM2** — manages WR_DATA; ETR1 slave-reset mode resyncs with the Apple II write pulse (3.958 µs instead of 4 µs) on every rising edge.
+- **TIM3** — manages RD_DATA.
+- **TIM4** — internal (no PWM), debouncer for the control buttons.
+
+## Software design principles
+
+Built on:
+
+- STM32 HAL drivers from STMicro
+- FATFS 0.15 (note: STM32CubeMX overrides to 0.11)
+- cJSON for the configuration file (tweaked to work with FATFS)
+- SSD1306 library with DMA
+
+Maximum track size is `13 × 512 × 8 = 53,248` bits (6,656 bytes), held in `DMA_BIT_TX_BUFFER[6656]`. `weakBitTank` (uint8 array) and `fakeBitTank` (char array) manage copy-protection mechanisms.
+
+**Key functions:**
+
+- `TIM3_IRQHandler` — bit-bangs the GPIO to send track data every 4 µs (or less, per WOZ config) to the Apple II.
+- `TIM2_IRQHandler` — handles data sent from the Apple II for writing; uses a software XOR to detect polarity inversion and writes 1/0 to `DMA_BIT_RX_BUFFER`.
+- `irqReadTrack` / `irqWriteTrack` — configure read/write interrupts.
+- `getDataBlocksBareMetal(...)` / `setDataBlocksBareMetal(...)` — direct SDIO access to the SD card, faster than FATFS `f_open`. (FATFS is still required to build the file allocation table with correct block addresses.)
+- `processDeviceEnableInterrupt` — activates/deactivates the Disk II drive on the DEVICE_ENABLE pin (active LOW).
+- `processBtnInterrupt` — handles the four buttons.
+- `processDiskHeadMoveInterrupt(...)` — handles the four stepper-motor GPIOs.
+- `main()` — orchestrates program execution.
+
+A **ST-Link** programmer is required to upload firmware to the STM32F411.
+
+## Bill of materials
+
+Interactive BOM: [SmartDisk II Bill of Material](https://vibr77.github.io/AppleIIDiskIIStm32F411/hardware/bom/ibom.html)
+
+## Recommended reading
+
+WOZ 2.1 & 1.0 image file references · Tome of Copy Protection · Beneath Apple DOS · Assembly Lines · Understanding the Apple II · PoC‖GTFO issues 10 & 11 · IIGS Firmware Reference · IIc Programmer's Guide to the 3.5 ROM (part 2)
 
 ## Licence
 
-license attached to this project enables users to distribute, remix, adapt, and build upon the material in any medium or format for noncommercial purposes only, and only so long as attribution is given to the creator. Commercial rights are reserved to the Author of this project.
-
-## Project
-
-This hardware emulator replicates the behaviour of a real DISK II and thus should pass the copy protection on guenine disk images.
-
-The project is still in beta mode, progress thread is on [AppleFritter Apple II Disk emulator using STM32]( https://www.applefritter.com/content/apple-ii-disk-emulator-using-stm32).
-
-<img src="https://github.com/vibr77/AppleIIDiskIIStm32F411/blob/main/resources/PCB_REV_1_FILELST.jpeg?raw=true" width="600px" />
-
-
-** If you decide to build one, please note that hardware design might evolve and new software releases might not work with the current hardware design. ** 
- 
-This project relies on a STM32F411(BlackPill) with SDIO Port.
-
-## Project structre ##
-
-| Directory | Description  |
-|:----------|:----------|
-
-| ./hardware    | kicad project   |
-| ./hardware/gerber  | gerber release to produce PCB    |
-| ./hardware/bom  | Bill of material    |
-| ./core   | firmware source code    |
-|./bootloader  | Bootloader   |
-| ./Middleware    | libraries used   |
-| ./FATFS   | fatfs wrapper  |
-| ./doc   | documentation used as reference  |
-| ./3DPrintCase   | 3D print file & Fusion 360 source to print case  |
-
-
-## IMPORTANT NOTE ##
-
-The ST-Link programmer should never be connected at the same time with either USB or the Apple II. The ST-link has some very fragile voltage regulator. 
-
-The J1 PWR located at top right of the PCB enable +5V from the Apple II to the STM32.
-
-Regarding the OLED Screen: becareful of the Power pins order, some version have pin inversed
-
-R1,R2,R3 are not needed.
-
-Before hardware Rev 3 the board is not compatible with IIGS & IIC, trace between IDC pin 5 & 7 needs to be cut
-
-## <!> SDCARD <!> ##
-
-The SDCard must use FAT32 file system must use 64 Sectors of 512 Byte each per cluster.
-
-to format the SDCard under linux use the following command: 
-
-`mkfs.fat -F 32 -s 64 `
-
-Please be careful, Window 10/11 is not formatting the SDCard the right way. 
-
-An config menu option is provided directly in the SmartDisk II to format the SDCard
-
-<!> Please note as well that some SDCard has a very poor read / write rate, I have been testing dozen of sdcard, I really suggest to use known brand to avoid wasting your time.
-
-## Main Features ##
-
-The list of features currently supported in this project:
-- Read the content of the SDCard and display the list of images on a 0.96 OLED display based of the ss1306.
-- Mount / unmount disk image
-- Read mounted image file on Apple II
-- Write (experimental)
-
-<img src="https://github.com/vibr77/AppleIIDiskIIStm32F411/blob/main/resources/PCB_REV_1_MONTING.jpeg?raw=true" width="400px" />
-
-<img src="https://github.com/vibr77/AppleIIDiskIIStm32F411/blob/main/resources/PCB_REV_1_IMAGE.jpeg?raw=true" width="400px" />
-
-## Release
-
-There are 2 releases type :
-- BIN : classic binary to be uploaded via stlink and starting at 0x08000000
-- UF2 : first you need to upload via stlink the custom bootloader, and then using USB and double click on NRST button, you can easily drag and drop UF2 release file to the stm32. WARNING if using the bootloader, the flash memory from 0x0800000 to 0x80100000 will become read-only (you need to use st-tool to change the stm32 register to reverse).
-
-## Hardware design main principles: ##
-
-- The STM32F4x is preferred compared to the STM32F1 due to CPU Freq, available SRAM >60 kB and for the STM32F411 the use of SDIO. On this project timing is really critical, especially to pass some copy protection.
-
-A DISK II floppy track is about 50.000 Bits, and to be able to read some of the floppy shifting from one track to another should respect some very specific rules.
-
-- After many, many, many iterations and design tests, I decided to use a single track load in memory and to have SDCARD Data Read/Write using a 4bit SDIO port for speed. This way, there is no adjacent track management and complex buffer copy with internal index along with DMA interrupt. The constraints is to use very fast loading capability of the SDIO port (SPI works but with no containgency). 
-
-
-- The Apple II is expecting data at a very precise pace 1 bit every 4 uS (32*125ns). Multiple options can be considered to perform this:
-	- 1/ Using SDIO
-	- 2/ Assembly code with CPU cycle calculation & GPIO Bitbanging
-	- 3/ Timer interrupt trigger with GPIO Bitbanging (preferred option)
-
-
-The first option was my initial choice, very simple straight forward, and the CPU using DMA was completly free to do something else while sending data. One of the aspect of the SPI is to send 8 bits (1 Bytes) at a time. When using WOZ 1.0 and WOZ 2.0 the number of bits per track are not aligned with 8 and thus using SPI may (every time on a 36 track disk) introduce bit misalignement and corrupted data. There is no way to have WOZ copy protected image file to work using 8 Bits aligned data stream.
-
-The second option was also tested and gives very poor reliability and was very quickly put aside.
-
-The last one, using TIMER interrupt seems by far to be the best option and enable to free up CPU time to manage the OLED display updates and to other button interrupt. 
-Each interrupt, the Read GPIO is bitbang according to the track stream position. The real advantage is to be able to address very easily some specific protection mecanism using fake bit tank. Using timer is also very easy to increase or reduce the space between 2 bit because some games use 3.8 uS instead of 4 uS. The trick is to manage other interrupt priority not to disturb the READ/WRITE Timer process.
-
-
-- The approach for the writing process is pretty much the same as for the reading process, using a dedicated timer with an overflow every 4us. As writing uses polarity inversion, an internal software XOR is done instead of using external circuitery. Using the SDIO makes it also very easy timing wise to write to SDCard.  
-
-Using this approach with Timers, there is no need to external circuitery and almost everything can be manage from a software standpoint (in the future I might add a 74LS125 to protect the STM32).
-
-Main design on STM32:
-
-Head positionning stepper, managed by external interrupts: 
-  - PA0 STEP0, ExtI0
-  - PA1 STEP1, ExtI1
-  - PA2 STEP2, ExtI2
-  - PA3 STEP3, ExtI3
-
-Other GPIO:
-  - PB8 SELECT, ExtI8 HIGH on Disk II controller (used to define when the A2 is POWERED ON)
-  - PB9 WR Request, ExtI9 Active LOW when writing 
-  - PA4 Device Enable, ExtI4 Active LOW when enable
-  - PB2 WR Protect 
-  - PA7 WR Data 
-  - PB0 RD Data
-  - PA11 _DISK3.5
-
-Button: External Interrupt 9-15 with Timer4 as a debouncer
-  - PC13 BTN_DOWN
-  - PC14 BTN_UP
-  - PC15 BTN_ENTR
-  - PB12 BTN_RET
-
-SDCARD: SDIO Port with a clock divider by 2 (to keep most of the SDCard working)
-  - PB4 DO
-  - PA8 D1
-  - PA9 D2
-  - PB5 D3
-  - PA6 CMD
-  - PB15 CK
-
-I2C Oled Screen SSD1306
-  - PB06 SCL
-  - PB07 SDA
-
-UART:
-  - PA15 TX
-  - PB3 RX
-
-TIMERS:
-- TIM2 Timer 2 : Use to Manage the WR_DATA, ETR1 Slave Reset mode to resync with the Apple II  Write Pulse that is 3.958 uS instead of 4uS. Every Rising Edge resync
-- TIM3 Timer 3 : Use to Manage the RD_DATA, 
-- TIM4 Timer 4 : Internal no PWM, debouncer for the control button
-
-
-## BOM ## 
-
-The interactive bom can be found here: [SmartDiskII Bill of Material]( https://vibr77.github.io/AppleIIDiskIIStm32F411/hardware/bom/ibom.html).
-
-
-## Software design main principles: ##
-
-The current software version rely on :
-- STM32 HAL Driver from STMicro
-- FATFS 0.15 (becareful STCUBEMX32 overrides to version 0.11)
-- CJSON for configuration file (with some tweaks to make FATFS working)
-- SSD1306 Lib with DMA
-
-Software Architecture: 
-
-the maximum track size is 13*512*8= 53 248 Bits or 6656 Bytes
-
-- DMA_BIT_TX_BUFFER[6656];   	// For reading part     
-
-weakBitTank uint_8 array & fakeBitTank char array are used to manage some copy protection mecanism
-
-### Important Functions ### 
-
-- void TIM3_IRQHandler: Manage the Bitbang of the GPIO port to send track data every 4us (or less depending on the WOZ file configuration) to the Apple II
-
-- void void TIM2_IRQHandler: Manage the data sent from the Apple II for the writing process. It use a software XOR to detect polarity inversion and write 1 or 0 to the DMA_BIT_RX_BUFFER.
-
-- void irqReadTrack: Configure interrupt for Reading 
-- void irqWriteTrack: Configure interrupt for Writing
-
-- void getDataBlocksBareMetal(long memoryAdr,volatile unsigned char * buffer,int count): Instead of using FATFS function such as F_OPEN, using direct access to the SDCard using the SDIO port to receive data is faster.
-
-- void setDataBlocksBareMetal(long memoryAdr,volatile unsigned char * buffer,int count): same for the writing process, faster than using FATFS
-
-<!> keep in mind that even if FATFS is not used to read and write to the SDCARD data from/to the Apple II, FATFS is needed to build up the File Allocation Table with the right file address block.
-
-- void processDeviceEnableInterrupt: Interrrupt function used when Apple II change signal on DEVICE_ENABLE PIN to activate or deactivate the DISKII Drive. This signal is active LOW
-
-- void processBtnInterrupt: Manage the 4 BTN press
-
-- void processDiskHeadMoveInterrupt(uint16_t GPIO_Pin): Interrupt function link to the 4 GPIO Stepper motor of the DISKII.
-
-
-- Main () is orchestring the program execution. 
-
-Please note that you will need to have a STLINK32 to upload the firmware to the STM32F411
-
-<img src="https://github.com/vibr77/AppleIIDiskIIStm32F411/blob/main/resources/STLINK.jpg?raw=true" width="400px" />
-
-
-## Recommanded reading 
-
-- Woz 2.1 Image file reference
-- Woz 1.0 Image file reference
-- Tome of copy protection
-- Beneath Apple DOS
-- Assembly lines
-- Understanding the Apple II 
-- PoC|GFTO_issue10
-- PoC|GFTO_issue11
-- IIGS Firmware reference
-- IIc Programmer Guide to 3.5 ROM part 2
-
- 
-
-
-
-
+This project may be distributed, remixed, adapted and built upon, in any medium or format, **for non-commercial purposes only**, and only with attribution to the creator. Commercial rights are reserved to the author.
